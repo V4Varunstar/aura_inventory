@@ -8,10 +8,16 @@ interface ModalProps {
   title: string;
   children: React.ReactNode;
   footer?: React.ReactNode;
+  size?: 'default' | 'large';
 }
 
-const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, footer }) => {
+const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, footer, size = 'default' }) => {
   if (!isOpen) return null;
+
+  const sizeClasses = {
+    default: 'max-w-2xl',
+    large: 'max-w-5xl',
+  };
 
   return (
     <div
@@ -19,7 +25,7 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, footer 
       onClick={onClose}
     >
       <div
-        className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-2xl transform transition-all"
+        className={`bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full ${sizeClasses[size]} transform transition-all`}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">

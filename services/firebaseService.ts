@@ -147,6 +147,86 @@ export const updateProduct = (id: string, data: Partial<Product>) => {
     return Promise.reject('Product not found');
 };
 
+// Bulk Product Upload
+export interface BulkUploadResult {
+    imported: Product[];
+    failed: Array<{ product: Partial<Product>; error: string }>;
+    duplicates: Array<{ product: Partial<Product>; existingSKU: string }>;
+    summary: {
+        total: number;
+        successful: number;
+        failed: number;
+        duplicates: number;
+    };
+}
+
+export const checkExistingSKUs = (skus: string[]): Promise<string[]> => {
+    // Check which SKUs already exist in the database
+    return new Promise((resolve) => {
+        setTimeout(() => {
+            const existingSKUs = skus.filter(sku => 
+                products.some(p => p.sku.toLowerCase() === sku.toLowerCase())
+            );
+            resolve(existingSKUs);
+        }, 300);
+    });
+};
+
+export const addProductsBatch = async (productsData: Partial<Product>[]): Promise<BulkUploadResult> => {
+    return new Promise((resolve) => {
+        setTimeout(() => {
+            const result: BulkUploadResult = {
+                imported: [],
+                failed: [],
+                duplicates: [],
+                summary: {
+                    total: productsData.length,
+                    successful: 0,
+                    failed: 0,
+                    duplicates: 0,
+                },
+            };
+
+            productsData.forEach((productData) => {
+                try {
+                    // Check for duplicate SKU
+                    const existingProduct = products.find(
+                        p => p.sku.toLowerCase() === productData.sku!.toLowerCase()
+                    );
+
+                    if (existingProduct) {
+                        result.duplicates.push({
+                            product: productData,
+                            existingSKU: existingProduct.sku,
+                        });
+                        result.summary.duplicates++;
+                    } else {
+                        // Add the product
+                        const newProduct: Product = {
+                            id: `prod_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                            createdAt: new Date(),
+                            updatedAt: new Date(),
+                            ...productData,
+                        } as Product;
+
+                        products.push(newProduct);
+                        result.imported.push(newProduct);
+                        result.summary.successful++;
+                    }
+                } catch (error) {
+                    result.failed.push({
+                        product: productData,
+                        error: error instanceof Error ? error.message : 'Unknown error',
+                    });
+                    result.summary.failed++;
+                }
+            });
+
+            resolve(result);
+        }, 1000); // Simulate API delay
+    });
+};
+
 
 // Warehouses
 export const getWarehouses = () => simulateApi(warehouses);

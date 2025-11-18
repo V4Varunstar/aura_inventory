@@ -9,9 +9,10 @@ import Input from '../components/ui/Input';
 import Select from '../components/ui/Select';
 import Table from '../components/ui/Table';
 import { useToast } from '../context/ToastContext';
-import { PlusCircle, Edit, Trash2 } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, Upload } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { Role } from '../types';
+import BulkUpload from '../components/products/BulkUpload';
 
 const ProductForm: React.FC<{
   product: Partial<Product> | null;
@@ -78,6 +79,7 @@ const Products: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isBulkUploadOpen, setIsBulkUploadOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Partial<Product> | null>(null);
   const { addToast } = useToast();
   const { user } = useAuth();
@@ -126,6 +128,10 @@ const Products: React.FC = () => {
     }
   };
 
+  const handleBulkUploadSuccess = (importedProducts: Product[]) => {
+    setProducts([...products, ...importedProducts]);
+  };
+
   const columns: any[] = [
     { header: 'Image', accessor: 'imageUrl', render: (item: Product) => <img src={item.imageUrl} alt={item.name} className="h-10 w-10 rounded-full object-cover" /> },
     { header: 'SKU', accessor: 'sku' },
@@ -153,7 +159,20 @@ const Products: React.FC = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-200">Products</h1>
-        {canEdit && <Button onClick={() => handleOpenModal()} leftIcon={<PlusCircle />}>Add Product</Button>}
+        {canEdit && (
+          <div className="flex space-x-2">
+            <Button 
+              onClick={() => setIsBulkUploadOpen(true)} 
+              leftIcon={<Upload />}
+              variant="secondary"
+            >
+              Upload Excel
+            </Button>
+            <Button onClick={() => handleOpenModal()} leftIcon={<PlusCircle />}>
+              Add Product
+            </Button>
+          </div>
+        )}
       </div>
       <Card>
         {loading ? <p>Loading products...</p> : <Table columns={columns} data={products} />}
@@ -161,6 +180,11 @@ const Products: React.FC = () => {
       <Modal isOpen={isModalOpen} onClose={handleCloseModal} title={editingProduct?.id ? 'Edit Product' : 'Add New Product'}>
         <ProductForm product={editingProduct} onSave={handleSaveProduct} onCancel={handleCloseModal} />
       </Modal>
+      <BulkUpload
+        isOpen={isBulkUploadOpen}
+        onClose={() => setIsBulkUploadOpen(false)}
+        onSuccess={handleBulkUploadSuccess}
+      />
     </div>
   );
 };
