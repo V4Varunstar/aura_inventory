@@ -65,13 +65,6 @@ const SuperAdminCompanies: React.FC = () => {
     role: Role.Admin
   });
 
-  const [adminAssignForm, setAdminAssignForm] = useState({
-    name: '',
-    email: '',
-    password: '',
-    role: Role.Admin
-  });
-
   useEffect(() => {
     fetchCompanies();
   }, []);
@@ -174,15 +167,21 @@ const SuperAdminCompanies: React.FC = () => {
 
   const handleAssignUser = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedCompany) return;
+    if (!selectedCompany) {
+      addToast('No company selected', 'error');
+      return;
+    }
     
     if (!assignUserForm.name || !assignUserForm.email || !assignUserForm.password) {
-      addToast('Please fill in all fields', 'error');
+      addToast('Please fill in all required fields', 'error');
       return;
     }
     
     try {
       setCreating(true);
+      console.log('Assigning user:', assignUserForm);
+      console.log('To company:', selectedCompany);
+      
       await createCompanyUser(selectedCompany.id, {
         name: assignUserForm.name,
         email: assignUserForm.email,
@@ -190,13 +189,23 @@ const SuperAdminCompanies: React.FC = () => {
         role: assignUserForm.role,
         orgId: selectedCompany.orgId
       });
+      
       setShowAssignUserModal(false);
+      const userCredentials = {
+        email: assignUserForm.email,
+        password: assignUserForm.password,
+        name: assignUserForm.name,
+        role: assignUserForm.role
+      };
       setAssignUserForm({ name: '', email: '', password: '', role: Role.Admin });
-      addToast(`Login credentials assigned successfully. Email: ${assignUserForm.email}, Password: ${assignUserForm.password}`, 'success');
-      fetchCompanies();
+      
+      addToast(`User assigned successfully! 🎉\nEmail: ${userCredentials.email}\nPassword: ${userCredentials.password}\nRole: ${userCredentials.role}`, 'success');
+      console.log('User credentials assigned:', userCredentials);
+      
+      await fetchCompanies();
     } catch (error) {
       console.error('Error assigning user credentials:', error);
-      addToast('Failed to assign user credentials', 'error');
+      addToast('Failed to assign user credentials. Please try again.', 'error');
     } finally {
       setCreating(false);
     }
@@ -264,15 +273,21 @@ const SuperAdminCompanies: React.FC = () => {
 
   const handleAdminAssign = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedCompany) return;
+    if (!selectedCompany) {
+      addToast('No company selected', 'error');
+      return;
+    }
     
     if (!adminAssignForm.name || !adminAssignForm.email || !adminAssignForm.password) {
-      addToast('Please fill in all fields', 'error');
+      addToast('Please fill in all required fields', 'error');
       return;
     }
     
     try {
       setCreating(true);
+      console.log('Assigning admin user:', adminAssignForm);
+      console.log('To company:', selectedCompany);
+      
       await createCompanyUser(selectedCompany.id, {
         name: adminAssignForm.name,
         email: adminAssignForm.email,
@@ -280,13 +295,23 @@ const SuperAdminCompanies: React.FC = () => {
         role: adminAssignForm.role,
         orgId: selectedCompany.orgId
       });
+      
       setShowAdminAssignModal(false);
+      const assignedCredentials = {
+        email: adminAssignForm.email,
+        password: adminAssignForm.password,
+        name: adminAssignForm.name,
+        role: adminAssignForm.role
+      };
       setAdminAssignForm({ name: '', email: '', password: '', role: Role.Admin });
-      addToast(`Admin user assigned successfully! Email: ${adminAssignForm.email}, Password: ${adminAssignForm.password}`, 'success');
-      fetchCompanies();
+      
+      addToast(`Admin user assigned successfully! 🎉\nEmail: ${assignedCredentials.email}\nPassword: ${assignedCredentials.password}\nRole: ${assignedCredentials.role}`, 'success');
+      console.log('Admin user assigned:', assignedCredentials);
+      
+      await fetchCompanies();
     } catch (error) {
       console.error('Error assigning admin user:', error);
-      addToast('Failed to assign admin user', 'error');
+      addToast('Failed to assign admin user. Please try again.', 'error');
     } finally {
       setCreating(false);
     }
