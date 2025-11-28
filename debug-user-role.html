@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug User Role - Aura Inventory</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        pre { background: #f5f5f5; padding: 10px; border-radius: 5px; }
+        .success { color: green; }
+        .error { color: red; }
+        .info { color: blue; }
+    </style>
+</head>
+<body>
+    <h1>Debug User Role & Navigation - Aura Inventory</h1>
+    
+    <h2>Current User Data:</h2>
+    <pre id="userData"></pre>
+    
+    <h2>Expected Navigation Items:</h2>
+    <pre id="navItems"></pre>
+    
+    <h2>Role Constants:</h2>
+    <pre id="roleConstants"></pre>
+
+    <div id="result"></div>
+
+    <script>
+        // Expected navigation items for Admin role
+        const expectedNavItems = [
+            'Dashboard',
+            'Products', 
+            'Inward Stock',
+            'Outward Stock', 
+            'Adjustments',
+            'Audit',
+            'Amazon FBA',
+            'Flipkart FBF', 
+            'Myntra SJIT',
+            'Zepto PO',
+            'Nykaa PO',
+            'Warehouses',
+            'Inward Sources & Outward Destinations',
+            'EAN / Barcode Mapping', 
+            'Reports',
+            'User Management',
+            'Settings'
+        ];
+
+        function debugUserRole() {
+            const resultDiv = document.getElementById('result');
+            const userDataDiv = document.getElementById('userData');
+            const navItemsDiv = document.getElementById('navItems');
+            const roleConstDiv = document.getElementById('roleConstants');
+            
+            // Check localStorage for user data
+            const userSession = localStorage.getItem('aura_inventory_session');
+            if (userSession) {
+                try {
+                    const user = JSON.parse(userSession);
+                    userDataDiv.textContent = JSON.stringify(user, null, 2);
+                    
+                    resultDiv.innerHTML = `
+                        <div class="info">Found user session:</div>
+                        <ul>
+                            <li>Name: ${user.name}</li>
+                            <li>Email: ${user.email}</li>
+                            <li>Role: ${user.role}</li>
+                            <li>Role Type: ${typeof user.role}</li>
+                        </ul>
+                    `;
+
+                    // Check if role matches expected format
+                    const isAdminRole = user.role === 'admin' || user.role === 'Admin';
+                    resultDiv.innerHTML += `<div class="${isAdminRole ? 'success' : 'error'}">Admin role detected: ${isAdminRole}</div>`;
+                    
+                } catch (e) {
+                    userDataDiv.textContent = 'Invalid JSON in localStorage';
+                    resultDiv.innerHTML = `<div class="error">Error parsing user session: ${e.message}</div>`;
+                }
+            } else {
+                userDataDiv.textContent = 'No user session found in localStorage';
+                resultDiv.innerHTML = '<div class="error">No user session found. Please login first.</div>';
+            }
+
+            // Show expected navigation items
+            navItemsDiv.textContent = expectedNavItems.join('\n');
+            
+            // Show role constants
+            roleConstDiv.textContent = `
+Role enum values should be:
+Admin = 'admin'
+Manager = 'manager' 
+Employee = 'employee'
+Viewer = 'viewer'
+
+Navigation should show all items for Admin role.
+            `;
+        }
+        
+        function clearSession() {
+            localStorage.removeItem('aura_inventory_session');
+            document.getElementById('result').innerHTML = '<div class="success">Session cleared! Please refresh the app and login again.</div>';
+        }
+        
+        // Run debug on load
+        debugUserRole();
+    </script>
+    
+    <h2>Actions:</h2>
+    <button onclick="debugUserRole()">Refresh Debug Info</button>
+    <button onclick="clearSession()">Clear User Session</button>
+</body>
+</html>
