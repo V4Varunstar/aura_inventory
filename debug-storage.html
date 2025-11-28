@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug Storage - Live Check</title>
+    <style>
+        body { font-family: monospace; padding: 20px; background: #1a1a1a; color: #fff; }
+        pre { background: #2a2a2a; padding: 15px; overflow-x: auto; border-radius: 5px; }
+        h3 { color: #4ade80; margin-top: 30px; }
+        .error { color: #ef4444; }
+        .success { color: #22c55e; }
+        .warning { color: #f59e0b; }
+        button { background: #4ade80; color: #000; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; margin: 10px 5px; }
+        button:hover { background: #22c55e; }
+    </style>
+</head>
+<body>
+    <h1>🔍 Storage Debug - EAN 8906158841003</h1>
+    
+    <button onclick="location.reload()">🔄 Refresh Data</button>
+    <button onclick="runExpiringLogic()">▶️ Run Expiring Logic</button>
+    <button onclick="localStorage.clear(); alert('Cleared!'); location.reload();">🗑️ Clear Storage</button>
+    
+    <h3>📦 Product Details:</h3>
+    <pre id="products"></pre>
+    
+    <h3>📥 Inward Records (EAN 8906158841003):</h3>
+    <pre id="inward"></pre>
+    
+    <h3>📤 Outward Records (EAN 8906158841003):</h3>
+    <pre id="outward"></pre>
+    
+    <h3>📊 Stock Calculation:</h3>
+    <pre id="stock"></pre>
+    
+    <h3>📅 Date Range Check:</h3>
+    <pre id="dates"></pre>
+    
+    <h3>✅ Expiring Items Result:</h3>
+    <pre id="result"></pre>
+
+    <script>
+        const targetEan = '8906158841003';
+        
+        function loadData() {
+            const inwardRecords = JSON.parse(localStorage.getItem('aura_inventory_inward') || '[]');
+            const outwardRecords = JSON.parse(localStorage.getItem('aura_inventory_outward') || '[]');
+            const products = JSON.parse(localStorage.getItem('aura_inventory_products') || '[]');
+            const warehouses = JSON.parse(localStorage.getItem('aura_inventory_warehouses') || '[]');
+            
+            const product = products.find(p => p.ean === targetEan);
+            const inwardForEan = inwardRecords.filter(r => r.ean === targetEan);
+            const outwardForEan = outwardRecords.filter(r => r.ean === targetEan);
+            
+            // Display products
+            document.getElementById('products').innerHTML = product 
+                ? `<span class="success">✓ Found Product</span>\n${JSON.stringify(product, null, 2)}`
+                : `<span class="error">✗ Product NOT FOUND</span>`;
+            
+            // Display inward
+            document.getElementById('inward').innerHTML = inwardForEan.length > 0
+                ? `<span class="success">✓ ${inwardForEan.length} records found</span>\n${JSON.stringify(inwardForEan, null, 2)}`
+                : `<span class="error">✗ No inward records</span>`;
+            
+            // Display outward
+            document.getElementById('outward').innerHTML = outwardForEan.length > 0
+                ? `<span class="warning">⚠ ${outwardForEan.length} outward records</span>\n${JSON.stringify(outwardForEan, null, 2)}`
+                : `<span class="success">✓ No outward (stock not reduced)</span>`;
+            
+            return { inwardRecords, outwardRecords, products, warehouses, product, inwardForEan };
+        }
+        
+        function calculateStock() {
+            const { inwardForEan, outwardRecords, product } = loadData();
+            
+            if (!product) {
+                document.getElementById('stock').innerHTML = '<span class="error">Cannot calculate - product not found</span>';
+                return;
+            }
+            
+            // Calculate stock by batch
+            const normalizeBatch = (batchNo) => {
+                return (batchNo && batchNo.trim() !== '') ? batchNo.trim() : 'NO_BATCH';
+            };
+            
+            const stockByBatch = new Map();
+            
+            inwardForEan.forEach(record => {
+                const key = `${record.sku}|${record.warehouseId}|${normalizeBatch(record.batchNo)}`;
+                stockByBatch.set(key, (stockByBatch.get(key) || 0) + record.quantity);
+            });
+            
+            const outwardForSku = outwardRecords.filter(r => r.sku === product.sku);
+            outwardForSku.forEach(record => {
+                const key = `${record.sku}|${record.warehouseId}|${normalizeBatch(record.batchNo)}`;
+                stockByBatch.set(key, (stockByBatch.get(key) || 0) - record.quantity);
+            });
+            
+            const stockInfo = {
+                totalInward: inwardForEan.reduce((sum, r) => sum + r.quantity, 0),
+                totalOutward: outwardForSku.reduce((sum, r) => sum + r.quantity, 0),
+                batchWiseStock: Array.from(stockByBatch.entries()).map(([key, qty]) => ({
+                    batchKey: key,
+                    quantity: qty
+                }))
+            };
+            
+            document.getElementById('stock').innerHTML = `<span class="success">✓ Stock Calculated</span>\n${JSON.stringify(stockInfo, null, 2)}`;
+        }
+        
+        function runExpiringLogic() {
+            const { inwardForEan, product } = loadData();
+            
+            if (!product || inwardForEan.length === 0) {
+                document.getElementById('result').innerHTML = '<span class="error">Cannot run - no data</span>';
+                return;
+            }
+            
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const sixMonthsFromNow = new Date();
+            sixMonthsFromNow.setMonth(sixMonthsFromNow.getMonth() + 6);
+            sixMonthsFromNow.setHours(23, 59, 59, 999);
+            
+            document.getElementById('dates').innerHTML = `
+<span class="success">Today:</span> ${today.toLocaleDateString('en-IN')} (${today.toISOString()})
+<span class="success">Six Months:</span> ${sixMonthsFromNow.toLocaleDateString('en-IN')} (${sixMonthsFromNow.toISOString()})
+            `;
+            
+            const results = [];
+            
+            inwardForEan.forEach(record => {
+                if (record.expDate) {
+                    const expDate = new Date(record.expDate);
+                    expDate.setHours(0, 0, 0, 0);
+                    
+                    const daysToExpiry = Math.floor((expDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+                    const monthsToExpiry = Math.floor(daysToExpiry / 30);
+                    
+                    const isAfterToday = expDate > today;
+                    const isBeforeSixMonths = expDate <= sixMonthsFromNow;
+                    const shouldShow = isAfterToday && isBeforeSixMonths;
+                    
+                    results.push({
+                        sku: record.sku,
+                        quantity: record.quantity,
+                        batchNo: record.batchNo || 'NO_BATCH',
+                        expDateRaw: record.expDate,
+                        expDateParsed: expDate.toLocaleDateString('en-IN'),
+                        daysToExpiry,
+                        monthsToExpiry,
+                        checks: {
+                            isAfterToday,
+                            isBeforeSixMonths,
+                            shouldShow
+                        }
+                    });
+                }
+            });
+            
+            const willShow = results.filter(r => r.checks.shouldShow);
+            
+            document.getElementById('result').innerHTML = `
+<span class="${willShow.length > 0 ? 'success' : 'error'}">
+${willShow.length > 0 ? '✓ WILL SHOW' : '✗ WILL NOT SHOW'}
+</span>
+
+<strong>Total Records:</strong> ${results.length}
+<strong>Should Show:</strong> ${willShow.length}
+
+${JSON.stringify(results, null, 2)}
+            `;
+        }
+        
+        // Auto-run on load
+        loadData();
+        calculateStock();
+        runExpiringLogic();
+    </script>
+</body>
+</html>

@@ -20,7 +20,7 @@ import { getSources } from './sourceService';
 const users: User[] = [
   { id: '1', name: 'Admin User', email: 'admin@aura.com', role: Role.Admin, isEnabled: true, createdAt: new Date() },
   { id: '2', name: 'Manager User', email: 'manager@aura.com', role: Role.Manager, isEnabled: true, createdAt: new Date() },
-  { id: '3', name: 'Warehouse Staff', email: 'staff@aura.com', role: Role.WarehouseStaff, isEnabled: true, createdAt: new Date() },
+  { id: '3', name: 'Warehouse Staff', email: 'staff@aura.com', role: Role.Employee, isEnabled: true, createdAt: new Date() },
   { id: '4', name: 'Viewer User', email: 'viewer@aura.com', role: Role.Viewer, isEnabled: false, createdAt: new Date() },
   { id: '5', name: 'Orgatre Test User', email: 'Test@orgatre.com', role: Role.Admin, isEnabled: true, createdAt: new Date(), companyId: 'company_orgatre_trial' },
 ];

@@ -22,12 +22,12 @@ export const NAV_ITEMS = [
     href: '/dashboard',
     label: 'Dashboard',
     icon: LayoutDashboard,
-    roles: [Role.Admin, Role.Manager, Role.WarehouseStaff, Role.Viewer],
+    roles: [Role.Admin, Role.Manager, Role.Employee, Role.Viewer],
   },
   {
     label: 'Inventory',
     isHeader: true,
-    roles: [Role.Admin, Role.Manager, Role.WarehouseStaff, Role.Viewer],
+    roles: [Role.Admin, Role.Manager, Role.Employee, Role.Viewer],
   },
   {
     href: '/products',
@@ -39,25 +39,30 @@ export const NAV_ITEMS = [
     href: '/inward',
     label: 'Inward Stock',
     icon: PackagePlus,
-    roles: [Role.Admin, Role.Manager, Role.WarehouseStaff],
+    roles: [Role.Admin, Role.Manager, Role.Employee],
   },
   {
     href: '/outward',
     label: 'Outward Stock',
     icon: PackageMinus,
-    roles: [Role.Admin, Role.Manager, Role.WarehouseStaff],
+    roles: [Role.Admin, Role.Manager, Role.Employee],
   },
   {
     href: '/adjustments',
     label: 'Adjustments',
     icon: PackageX,
-    roles: [Role.Admin, Role.Manager, Role.WarehouseStaff],
+    roles: [Role.Admin, Role.Manager, Role.Employee],
   },
   {
     href: '/audit',
     label: 'Audit',
     icon: ClipboardList,
     roles: [Role.Admin, Role.Manager, Role.Viewer],
+  },
+  {
+    label: 'Platform Management',
+    isHeader: true,
+    roles: [Role.Admin, Role.Manager],
   },
   {
     href: '/amazon-fba',
@@ -102,7 +107,7 @@ export const NAV_ITEMS = [
   },
   {
     href: '/settings/sources',
-    label: 'Inward Sources & Outward Destinations',
+    label: 'Sources & Destinations',
     icon: PackagePlus,
     roles: [Role.Admin, Role.Manager],
   },

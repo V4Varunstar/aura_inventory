@@ -42,10 +42,10 @@ export interface Company {
 }
 
 export enum Role {
-  Admin = 'admin',
-  Manager = 'manager',
-  Employee = 'employee',
-  Viewer = 'viewer',
+  Admin = 'Admin',
+  Manager = 'Manager', 
+  Employee = 'Employee',
+  Viewer = 'Viewer',
 }
 
 export interface User {

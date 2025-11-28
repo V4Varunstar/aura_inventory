@@ -17,6 +17,10 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen }) => {
 
   const userHasAccess = (roles: Role[]) => {
     if (!user) return false;
+    // Always show all items for admin users (both 'admin' and 'Admin' values)
+    if (user.role === 'admin' || user.role === 'Admin' || user.role === Role.Admin) {
+      return true;
+    }
     return roles.includes(user.role);
   };
 
