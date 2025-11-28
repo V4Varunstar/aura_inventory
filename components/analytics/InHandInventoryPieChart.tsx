@@ -72,56 +72,51 @@ const InHandInventoryPieChart: React.FC<InHandInventoryPieChartProps> = ({
 
   // Calculate stock data using the same method as Products page
   const inventoryData = useMemo(() => {
+    console.log('InHandInventory - Starting calculation...');
+    console.log('Products:', products.length);
+    console.log('Warehouses:', warehouses.length);
+    console.log('Company:', company?.id);
+    
     const productInventory: ProductInventoryData[] = [];
     
     products.forEach((product, index) => {
+      console.log(`Processing product: ${product.name} (${product.sku})`);
       let totalStock = 0;
       const warehouseStocks: { warehouseId: string; warehouseName: string; quantity: number }[] = [];
       
-      // Calculate stock for each warehouse
-      warehouses.forEach(warehouse => {
-        let warehouseStock = 0;
+      // Calculate total stock across all warehouses
+      try {
+        const allWarehousesStock = getProductStock(product.id, undefined, company?.id);
+        console.log(`${product.name} total stock: ${allWarehousesStock}`);
         
-        try {
-          warehouseStock = getProductStock(product.id, warehouse.id, company?.id);
-        } catch (error) {
-          warehouseStock = 0;
-        }
-        
-        if (warehouseStock > 0) {
-          totalStock += warehouseStock;
-          warehouseStocks.push({
-            warehouseId: warehouse.id,
-            warehouseName: warehouse.name,
-            quantity: warehouseStock
+        if (allWarehousesStock > 0) {
+          totalStock = allWarehousesStock;
+          
+          // Get warehouse breakdown
+          warehouses.forEach(warehouse => {
+            try {
+              const warehouseStock = getProductStock(product.id, warehouse.id, company?.id);
+              console.log(`${product.name} in ${warehouse.name}: ${warehouseStock}`);
+              
+              if (warehouseStock > 0) {
+                warehouseStocks.push({
+                  warehouseId: warehouse.id,
+                  warehouseName: warehouse.name,
+                  quantity: warehouseStock
+                });
+              }
+            } catch (error) {
+              console.log(`Error getting stock for ${product.name} in ${warehouse.name}:`, error);
+            }
           });
         }
-      });
-      
-      // If filtering by specific warehouse
-      if (selectedWarehouse !== 'all') {
-        const warehouse = warehouses.find(w => w.id === selectedWarehouse);
-        if (warehouse) {
-          try {
-            const warehouseStock = getProductStock(product.id, selectedWarehouse, company?.id);
-            if (warehouseStock > 0) {
-              totalStock = warehouseStock;
-              warehouseStocks.length = 0;
-              warehouseStocks.push({
-                warehouseId: warehouse.id,
-                warehouseName: warehouse.name,
-                quantity: warehouseStock
-              });
-            } else {
-              totalStock = 0;
-            }
-          } catch (error) {
-            totalStock = 0;
-          }
-        }
+      } catch (error) {
+        console.log(`Error getting total stock for ${product.name}:`, error);
+        totalStock = 0;
       }
 
       if (totalStock > 0) {
+        console.log(`Adding ${product.name} with stock: ${totalStock}`);
         productInventory.push({
           productName: product.name,
           productSku: product.sku,
@@ -134,8 +129,12 @@ const InHandInventoryPieChart: React.FC<InHandInventoryPieChartProps> = ({
       }
     });
 
+    console.log('Final inventory data:', productInventory);
+
     // Calculate percentages
     const totalInventory = productInventory.reduce((sum, item) => sum + item.totalStock, 0);
+    console.log('Total inventory:', totalInventory);
+    
     productInventory.forEach(item => {
       item.percentage = totalInventory > 0 ? (item.totalStock / totalInventory) * 100 : 0;
     });
@@ -208,6 +207,11 @@ const InHandInventoryPieChart: React.FC<InHandInventoryPieChartProps> = ({
   };
 
   const totalStock = inventoryData.reduce((sum, item) => sum + item.totalStock, 0);
+
+  console.log('Final render data:');
+  console.log('Inventory data length:', inventoryData.length);
+  console.log('Total stock:', totalStock);
+  console.log('Loading:', loading);
 
   if (loading) {
     return (
