@@ -1,11 +1,15 @@
 import React from 'react';
-import { Outlet, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { Role } from '../../types';
 import Button from '../ui/Button';
 import { LogOut, Building2, LayoutDashboard } from 'lucide-react';
 
-const SuperAdminLayout: React.FC = () => {
+interface SuperAdminLayoutProps {
+  children: React.ReactNode;
+}
+
+const SuperAdminLayout: React.FC<SuperAdminLayoutProps> = ({ children }) => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
@@ -73,9 +77,9 @@ const SuperAdminLayout: React.FC = () => {
         <div className="w-64 bg-white dark:bg-gray-800 shadow-sm h-screen sticky top-0">
           <nav className="mt-5 px-2">
             <div className="space-y-1">
-              <a
-                href="/#/super-admin/dashboard"
-                className={`group flex items-center px-2 py-2 text-sm font-medium rounded-md transition-colors ${
+              <button
+                onClick={() => window.location.hash = '#/super-admin/dashboard'}
+                className={`group flex items-center px-2 py-2 text-sm font-medium rounded-md transition-colors w-full text-left ${
                   window.location.hash === '#/super-admin/dashboard' || window.location.hash === '#/super-admin'
                     ? 'bg-indigo-100 text-indigo-900 dark:bg-indigo-900 dark:text-indigo-200'
                     : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-700'
@@ -83,11 +87,11 @@ const SuperAdminLayout: React.FC = () => {
               >
                 <LayoutDashboard className="mr-3 h-5 w-5" />
                 Dashboard
-              </a>
+              </button>
               
-              <a
-                href="/#/super-admin/companies"
-                className={`group flex items-center px-2 py-2 text-sm font-medium rounded-md transition-colors ${
+              <button
+                onClick={() => window.location.hash = '#/super-admin/companies'}
+                className={`group flex items-center px-2 py-2 text-sm font-medium rounded-md transition-colors w-full text-left ${
                   window.location.hash === '#/super-admin/companies'
                     ? 'bg-indigo-100 text-indigo-900 dark:bg-indigo-900 dark:text-indigo-200'
                     : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-700'
@@ -95,7 +99,7 @@ const SuperAdminLayout: React.FC = () => {
               >
                 <Building2 className="mr-3 h-5 w-5" />
                 Companies
-              </a>
+              </button>
             </div>
           </nav>
         </div>
@@ -103,7 +107,7 @@ const SuperAdminLayout: React.FC = () => {
         {/* Main Content */}
         <div className="flex-1 overflow-auto">
           <div className="py-6 px-4 sm:px-6 lg:px-8">
-            <Outlet />
+            {children}
           </div>
         </div>
       </div>

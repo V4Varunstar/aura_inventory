@@ -20,9 +20,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setLoading(true);
     try {
       const loggedInUser = await mockFetchUser(); // Simulate checking session
+      console.log('Session check successful:', loggedInUser);
       setUser(loggedInUser);
     } catch (error) {
-      setUser(null);
+      console.log('No session found, user needs to login');
+      // Don't set user to null immediately on refresh, give time for login redirect
+      setTimeout(() => setUser(null), 100);
     } finally {
       setLoading(false);
     }
