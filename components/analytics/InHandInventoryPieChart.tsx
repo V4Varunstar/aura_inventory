@@ -8,8 +8,8 @@ import {
   TooltipItem
 } from 'chart.js';
 import { useCompany } from '../../context/CompanyContext';
-import { getProducts, getInwardRecords, getOutwardRecords } from '../../services/firebaseService';
-import { Product, Inward, Outward } from '../../types';
+import { getProducts, getProductStock, getWarehouses } from '../../services/firebaseService';
+import { Product, Warehouse } from '../../types';
 
 // Register Chart.js components
 ChartJS.register(ArcElement, Tooltip, Legend);
@@ -21,7 +21,7 @@ interface ProductInventoryData {
   totalStock: number;
   percentage: number;
   color: string;
-  warehouses: { name: string; quantity: number }[];
+  warehouseStocks: { warehouseId: string; warehouseName: string; quantity: number }[];
 }
 
 interface InHandInventoryPieChartProps {
@@ -44,8 +44,7 @@ const InHandInventoryPieChart: React.FC<InHandInventoryPieChartProps> = ({
   const { company } = useCompany();
   const [loading, setLoading] = useState(true);
   const [products, setProducts] = useState<Product[]>([]);
-  const [inwardRecords, setInwardRecords] = useState<Inward[]>([]);
-  const [outwardRecords, setOutwardRecords] = useState<Outward[]>([]);
+  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
 
   // Fetch data
   useEffect(() => {
@@ -54,15 +53,13 @@ const InHandInventoryPieChart: React.FC<InHandInventoryPieChartProps> = ({
       
       setLoading(true);
       try {
-        const [productsData, inwardData, outwardData] = await Promise.all([
+        const [productsData, warehousesData] = await Promise.all([
           getProducts(),
-          getInwardRecords(),
-          getOutwardRecords()
+          getWarehouses()
         ]);
 
         setProducts(productsData.filter(p => p.companyId === company.id));
-        setInwardRecords(inwardData.filter(r => r.companyId === company.id));
-        setOutwardRecords(outwardData.filter(r => r.companyId === company.id));
+        setWarehouses(warehousesData.filter(w => w.companyId === company.id));
       } catch (error) {
         console.error('Error fetching inventory data:', error);
       } finally {
@@ -73,63 +70,54 @@ const InHandInventoryPieChart: React.FC<InHandInventoryPieChartProps> = ({
     fetchData();
   }, [company]);
 
-  // Calculate stock data
+  // Calculate stock data using the same method as Products page
   const inventoryData = useMemo(() => {
-    // Calculate stock by product
-    const stockByProduct: { [productId: string]: { [warehouseId: string]: number } } = {};
-    
-    // Add inward quantities
-    inwardRecords.forEach(record => {
-      if (!stockByProduct[record.productId]) {
-        stockByProduct[record.productId] = {};
-      }
-      if (!stockByProduct[record.productId][record.warehouseId]) {
-        stockByProduct[record.productId][record.warehouseId] = 0;
-      }
-      stockByProduct[record.productId][record.warehouseId] += record.quantity;
-    });
-
-    // Subtract outward quantities
-    outwardRecords.forEach(record => {
-      if (!stockByProduct[record.productId]) {
-        stockByProduct[record.productId] = {};
-      }
-      if (!stockByProduct[record.productId][record.warehouseId]) {
-        stockByProduct[record.productId][record.warehouseId] = 0;
-      }
-      stockByProduct[record.productId][record.warehouseId] -= record.quantity;
-    });
-
-    // Convert to product inventory data
     const productInventory: ProductInventoryData[] = [];
     
     products.forEach((product, index) => {
-      const productStock = stockByProduct[product.id] || {};
       let totalStock = 0;
-      const warehouseData: { name: string; quantity: number }[] = [];
+      const warehouseStocks: { warehouseId: string; warehouseName: string; quantity: number }[] = [];
       
-      Object.entries(productStock).forEach(([warehouseId, quantity]) => {
-        if (quantity > 0) {
-          totalStock += quantity;
-          warehouseData.push({
-            name: warehouseId, // In real scenario, you'd fetch warehouse name
-            quantity: quantity
+      // Calculate stock for each warehouse
+      warehouses.forEach(warehouse => {
+        let warehouseStock = 0;
+        
+        try {
+          warehouseStock = getProductStock(product.id, warehouse.id, company?.id);
+        } catch (error) {
+          warehouseStock = 0;
+        }
+        
+        if (warehouseStock > 0) {
+          totalStock += warehouseStock;
+          warehouseStocks.push({
+            warehouseId: warehouse.id,
+            warehouseName: warehouse.name,
+            quantity: warehouseStock
           });
         }
       });
-
-      // Filter by warehouse if specified
+      
+      // If filtering by specific warehouse
       if (selectedWarehouse !== 'all') {
-        const warehouseStock = productStock[selectedWarehouse] || 0;
-        if (warehouseStock > 0) {
-          totalStock = warehouseStock;
-          warehouseData.length = 0;
-          warehouseData.push({
-            name: selectedWarehouse,
-            quantity: warehouseStock
-          });
-        } else {
-          totalStock = 0;
+        const warehouse = warehouses.find(w => w.id === selectedWarehouse);
+        if (warehouse) {
+          try {
+            const warehouseStock = getProductStock(product.id, selectedWarehouse, company?.id);
+            if (warehouseStock > 0) {
+              totalStock = warehouseStock;
+              warehouseStocks.length = 0;
+              warehouseStocks.push({
+                warehouseId: warehouse.id,
+                warehouseName: warehouse.name,
+                quantity: warehouseStock
+              });
+            } else {
+              totalStock = 0;
+            }
+          } catch (error) {
+            totalStock = 0;
+          }
         }
       }
 
@@ -141,7 +129,7 @@ const InHandInventoryPieChart: React.FC<InHandInventoryPieChartProps> = ({
           totalStock: totalStock,
           percentage: 0, // Will be calculated below
           color: PRODUCT_COLORS[index % PRODUCT_COLORS.length],
-          warehouses: warehouseData
+          warehouseStocks: warehouseStocks
         });
       }
     });
@@ -154,7 +142,7 @@ const InHandInventoryPieChart: React.FC<InHandInventoryPieChartProps> = ({
 
     // Sort by stock quantity (descending)
     return productInventory.sort((a, b) => b.totalStock - a.totalStock);
-  }, [products, inwardRecords, outwardRecords, selectedWarehouse]);
+  }, [products, warehouses, selectedWarehouse, company]);
 
   // Chart.js configuration
   const chartData = {
@@ -204,7 +192,7 @@ const InHandInventoryPieChart: React.FC<InHandInventoryPieChartProps> = ({
           afterLabel: (context: TooltipItem<'pie'>) => {
             const index = context.dataIndex;
             const product = inventoryData[index];
-            return product.warehouses.map(wh => `• ${wh.name}: ${wh.quantity} units`);
+            return product.warehouseStocks.map(wh => `• ${wh.warehouseName}: ${wh.quantity} units`);
           }
         }
       }
