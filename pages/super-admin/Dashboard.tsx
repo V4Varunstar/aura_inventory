@@ -5,11 +5,13 @@ import Modal from '../../components/ui/Modal';
 import Input from '../../components/ui/Input';
 import Select from '../../components/ui/Select';
 import { useToast } from '../../context/ToastContext';
+import { useAuth } from '../../context/AuthContext';
 import { Building2, Users, CheckCircle, XCircle, Plus, UserPlus, Settings } from 'lucide-react';
 import { SuperAdminStats, SubscriptionPlan, Role } from '../../types';
 import { getSuperAdminStats, getAllCompanies, createCompany } from '../../services/superAdminService';
 
 const SuperAdminDashboard: React.FC = () => {
+  const { user } = useAuth();
   const [stats, setStats] = useState<SuperAdminStats>({
     totalCompanies: 0,
     activeCompanies: 0,
@@ -31,17 +33,27 @@ const SuperAdminDashboard: React.FC = () => {
   const { addToast } = useToast();
 
   useEffect(() => {
+    console.log('SuperAdminDashboard mounted, user:', user);
     loadData();
   }, []);
 
   const loadData = async () => {
     try {
       setLoading(true);
+      console.log('Loading Super Admin dashboard data...');
       const statsData = await getSuperAdminStats();
+      console.log('Stats loaded:', statsData);
       setStats(statsData);
     } catch (error) {
       console.error('Error fetching Super Admin stats:', error);
       addToast('Error loading dashboard data', 'error');
+      // Set fallback stats if there's an error
+      setStats({
+        totalCompanies: 0,
+        activeCompanies: 0,
+        inactiveCompanies: 0,
+        totalUsers: 0
+      });
     } finally {
       setLoading(false);
     }
@@ -187,9 +199,9 @@ const SuperAdminDashboard: React.FC = () => {
             size="lg"
             onClick={() => window.location.href = '#/super-admin/companies'}
             leftIcon={<Building2 />}
-            className="justify-start"
+            className="justify-start text-left"
           >
-            <div className="text-left">
+            <div className="flex flex-col items-start">
               <div className="font-semibold">Manage Companies</div>
               <div className="text-sm text-gray-500">View and manage all companies</div>
             </div>
@@ -200,9 +212,9 @@ const SuperAdminDashboard: React.FC = () => {
             size="lg"
             onClick={() => setShowCreateModal(true)}
             leftIcon={<Plus />}
-            className="justify-start"
+            className="justify-start text-left"
           >
-            <div className="text-left">
+            <div className="flex flex-col items-start">
               <div className="font-semibold">Create Company</div>
               <div className="text-sm text-gray-500">Add a new company to the system</div>
             </div>
@@ -213,9 +225,9 @@ const SuperAdminDashboard: React.FC = () => {
             size="lg"
             onClick={() => window.location.href = '#/super-admin/companies'}
             leftIcon={<UserPlus />}
-            className="justify-start"
+            className="justify-start text-left"
           >
-            <div className="text-left">
+            <div className="flex flex-col items-start">
               <div className="font-semibold">Manage Users</div>
               <div className="text-sm text-gray-500">Manage users across companies</div>
             </div>
@@ -228,7 +240,7 @@ const SuperAdminDashboard: React.FC = () => {
         isOpen={showCreateModal}
         onClose={() => setShowCreateModal(false)}
         title="Create New Company"
-        size="lg"
+        size="large"
       >
         <form onSubmit={handleCreateCompany} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
