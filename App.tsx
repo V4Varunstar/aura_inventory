@@ -37,6 +37,7 @@ import Sources from './pages/settings/Sources';
 import Demo from './pages/Demo';
 import NotFound from './pages/NotFound';
 import ExpiringProducts from './pages/ExpiringProducts';
+import CategorySalesAnalytics from './pages/CategorySalesAnalytics';
 
 // ProtectedRoute component - simplified since we're using PermissionGate components in pages
 const ProtectedRoute: React.FC<{ children: React.ReactElement }> = ({ children }) => {
@@ -93,6 +94,7 @@ const AppRoutes: React.FC = () => {
             <Route path="/product-mapping" element={<ProtectedRoute><Layout><ProductMapping /></Layout></ProtectedRoute>} />
             <Route path="/users" element={<ProtectedRoute><Layout><Users /></Layout></ProtectedRoute>} />
             <Route path="/reports" element={<ProtectedRoute><Layout><Reports /></Layout></ProtectedRoute>} />
+            <Route path="/category-sales" element={<ProtectedRoute><Layout><CategorySalesAnalytics /></Layout></ProtectedRoute>} />
             <Route path="/settings" element={<ProtectedRoute><Layout><Settings /></Layout></ProtectedRoute>} />
             <Route path="/settings/sources" element={<ProtectedRoute><Layout><Sources /></Layout></ProtectedRoute>} />
             <Route path="/expiring-products" element={<ProtectedRoute><Layout><ExpiringProducts /></Layout></ProtectedRoute>} />

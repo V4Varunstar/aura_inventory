@@ -14,6 +14,7 @@ import {
   PackageX,
   Package,
   ClipboardList,
+  PieChart,
 } from 'lucide-react';
 
 
@@ -121,6 +122,12 @@ export const NAV_ITEMS = [
     href: '/reports',
     label: 'Reports',
     icon: FileText,
+    roles: [Role.Admin, Role.Manager, Role.Viewer],
+  },
+  {
+    href: '/category-sales',
+    label: 'Category Sales Analytics',
+    icon: PieChart,
     roles: [Role.Admin, Role.Manager, Role.Viewer],
   },
   {

@@ -8,6 +8,7 @@ import Select from '../components/ui/Select';
 import Button from '../components/ui/Button';
 import TodaysSalesChart from '../components/analytics/TodaysSalesChart';
 import InHandInventoryPieChart from '../components/analytics/InHandInventoryPieChart';
+import CategoryWiseSalesPieChart from '../components/analytics/CategoryWiseSalesPieChart';
 import {
   LineChart,
   Line,
@@ -211,6 +212,10 @@ const Dashboard: React.FC = () => {
                     
                     <div className="grid grid-cols-1 gap-6">
                         <InHandInventoryPieChart products={productInventory || []} />
+                    </div>
+                    
+                    <div className="grid grid-cols-1 gap-6">
+                        <CategoryWiseSalesPieChart />
                     </div>
                     
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
