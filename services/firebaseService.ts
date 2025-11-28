@@ -21,6 +21,59 @@ const users: User[] = [
   { id: '1', name: 'Super Admin', email: 'superadmin@aura.com', role: Role.SuperAdmin, isEnabled: true, createdAt: new Date(), updatedAt: new Date() },
 ];
 
+// Function to add user to global registry (called from Super Admin service)
+export const addUserToGlobalRegistry = (userData: {
+  id: string;
+  name: string;
+  email: string;
+  role: Role;
+  orgId: string;
+  isEnabled: boolean;
+  password: string;
+}) => {
+  // Check if user already exists
+  const existingUser = users.find(u => u.email === userData.email);
+  if (!existingUser) {
+    const newUser: User & { password?: string } = {
+      id: userData.id,
+      name: userData.name,
+      email: userData.email,
+      role: userData.role,
+      orgId: userData.orgId,
+      isEnabled: userData.isEnabled,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      password: userData.password // Store password for validation
+    };
+    users.push(newUser);
+    console.log('✅ Added user to global registry:', userData.email);
+  }
+};
+
+// Initialize users from localStorage on app start
+const initializeUsersFromStorage = () => {
+  try {
+    const superAdminUsers = JSON.parse(localStorage.getItem('superadmin_users') || '[]');
+    superAdminUsers.forEach((userData: any) => {
+      addUserToGlobalRegistry({
+        id: userData.id,
+        name: userData.name,
+        email: userData.email,
+        role: userData.role,
+        orgId: userData.orgId,
+        isEnabled: userData.isEnabled,
+        password: userData.password
+      });
+    });
+    console.log(`✅ Initialized ${superAdminUsers.length} users from storage`);
+  } catch (error) {
+    console.error('Error initializing users from storage:', error);
+  }
+};
+
+// Call initialization on module load
+initializeUsersFromStorage();
+
 const products: Product[] = [];
 
 const warehouses: Warehouse[] = [];
@@ -125,10 +178,31 @@ const loadFromStorage = <T>(key: string, defaultValue: T): T => {
 export const mockLogin = (email: string, pass: string): Promise<User> => {
   return new Promise((resolve, reject) => {
     setTimeout(() => {
-      // First check hardcoded users
+      // Sync users from localStorage first (handles incognito mode)
+      try {
+        const superAdminUsers = JSON.parse(localStorage.getItem('superadmin_users') || '[]');
+        superAdminUsers.forEach((userData: any) => {
+          const existingUser = users.find(u => u.email === userData.email);
+          if (!existingUser) {
+            addUserToGlobalRegistry({
+              id: userData.id,
+              name: userData.name,
+              email: userData.email,
+              role: userData.role,
+              orgId: userData.orgId,
+              isEnabled: userData.isEnabled,
+              password: userData.password
+            });
+          }
+        });
+      } catch (error) {
+        console.error('Error syncing users:', error);
+      }
+
+      // Find user in global registry (includes both hardcoded and Super Admin created users)
       let user = users.find(u => u.email === email);
       
-      // If not found in hardcoded users, check Super Admin created users
+      // If still not found, try localStorage directly (fallback for incognito)
       if (!user) {
         try {
           const superAdminUsers = JSON.parse(localStorage.getItem('superadmin_users') || '[]');
@@ -161,15 +235,21 @@ export const mockLogin = (email: string, pass: string): Promise<User> => {
       } else if (pass === 'password123') {
         validPassword = true;
       } else {
-        // For Super Admin created users, check their actual password
-        try {
-          const superAdminUsers = JSON.parse(localStorage.getItem('superadmin_users') || '[]');
-          const superAdminUser = superAdminUsers.find((u: any) => u.email === email);
-          if (superAdminUser && superAdminUser.password === pass) {
-            validPassword = true;
+        // For users in global registry (including Super Admin created users), check their password
+        const registryUser = users.find(u => u.email === email) as any;
+        if (registryUser && registryUser.password === pass) {
+          validPassword = true;
+        } else {
+          // Fallback: check Super Admin created users from localStorage
+          try {
+            const superAdminUsers = JSON.parse(localStorage.getItem('superadmin_users') || '[]');
+            const superAdminUser = superAdminUsers.find((u: any) => u.email === email);
+            if (superAdminUser && superAdminUser.password === pass) {
+              validPassword = true;
+            }
+          } catch (error) {
+            console.error('Error checking Super Admin user password:', error);
           }
-        } catch (error) {
-          console.error('Error checking Super Admin user password:', error);
         }
       }
       

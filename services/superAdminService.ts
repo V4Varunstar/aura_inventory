@@ -1,4 +1,5 @@
 import { Company, SuperAdminStats, CreateCompanyRequest, Role, SubscriptionStatus, SubscriptionPlan } from '../types';
+import { addUserToGlobalRegistry } from './firebaseService';
 
 // This will be replaced with actual Firestore calls in production
 // For now, using localStorage simulation to match existing pattern
@@ -150,6 +151,17 @@ export const createCompanyUser = async (
 
   superAdminUsers.push(newUser);
   saveToStorage(SUPER_ADMIN_STORAGE_KEYS.USERS, superAdminUsers);
+
+  // Add user to global registry for cross-session access
+  addUserToGlobalRegistry({
+    id: newUser.id,
+    name: newUser.name,
+    email: newUser.email,
+    role: newUser.role,
+    orgId: newUser.orgId,
+    isEnabled: newUser.isEnabled,
+    password: newUser.password
+  });
 
   // Update company user count
   const companyIndex = companies.findIndex(c => c.id === companyId);
