@@ -75,25 +75,13 @@ const InHandInventoryPieChart: React.FC<InHandInventoryPieChartProps> = ({
 
   // Calculate stock data using the same method as Products page
   const inventoryData = useMemo(() => {
-    console.log('InHandInventory - Starting calculation...');
-    console.log('Products:', products.length);
-    console.log('Warehouses:', warehouses.length);
-    console.log('Product Stocks:', Object.keys(productStocks).length);
-    console.log('Company:', company?.id);
-    
     const productInventory: ProductInventoryData[] = [];
     
     products.forEach((product, index) => {
-      console.log(`Processing product: ${product.name} (${product.sku})`);
-      
       const stockData = productStocks[product.id];
-      if (!stockData) {
-        console.log(`No stock data for ${product.name}`);
-        return;
-      }
+      if (!stockData) return;
       
       const totalStock = stockData.total || 0;
-      console.log(`${product.name} total stock: ${totalStock}`);
       
       if (totalStock > 0) {
         const warehouseStocks: { warehouseId: string; warehouseName: string; quantity: number }[] = [];
@@ -112,7 +100,6 @@ const InHandInventoryPieChart: React.FC<InHandInventoryPieChartProps> = ({
           });
         }
         
-        console.log(`Adding ${product.name} with stock: ${totalStock}`);
         productInventory.push({
           productName: product.name,
           productSku: product.sku,
@@ -125,12 +112,8 @@ const InHandInventoryPieChart: React.FC<InHandInventoryPieChartProps> = ({
       }
     });
 
-    console.log('Final inventory data:', productInventory);
-
     // Calculate percentages
     const totalInventory = productInventory.reduce((sum, item) => sum + item.totalStock, 0);
-    console.log('Total inventory:', totalInventory);
-    
     productInventory.forEach(item => {
       item.percentage = totalInventory > 0 ? (item.totalStock / totalInventory) * 100 : 0;
     });
@@ -203,11 +186,6 @@ const InHandInventoryPieChart: React.FC<InHandInventoryPieChartProps> = ({
   };
 
   const totalStock = inventoryData.reduce((sum, item) => sum + item.totalStock, 0);
-
-  console.log('Final render data:');
-  console.log('Inventory data length:', inventoryData.length);
-  console.log('Total stock:', totalStock);
-  console.log('Loading:', loading);
 
   if (loading) {
     return (
