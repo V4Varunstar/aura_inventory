@@ -175,6 +175,10 @@ const Outward: React.FC = () => {
         setIsLoading(true);
 
         try {
+            // Get the destination name from the source ID
+            const destinationSource = outwardDestinations.find(s => s.id === destination);
+            const destinationName = destinationSource ? destinationSource.name : destination;
+            
             // Process each item
             for (const item of items) {
                 await addOutward({
@@ -184,7 +188,7 @@ const Outward: React.FC = () => {
                     ean: item.ean,
                     quantity: item.quantity,
                     warehouseId: item.warehouseId,
-                    destination,
+                    destination: destinationName, // Use the name instead of ID
                     courierPartner,
                     shipmentRef,
                     notes,

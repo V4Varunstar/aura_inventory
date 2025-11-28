@@ -157,6 +157,10 @@ const Inward: React.FC = () => {
         setIsLoading(true);
 
         try {
+            // Get the source name from the source ID
+            const sourceSource = inwardSources.find(s => s.id === source);
+            const sourceName = sourceSource ? sourceSource.name : source;
+            
             // Process each item
             for (const item of items) {
                 await addInward({
@@ -170,7 +174,7 @@ const Inward: React.FC = () => {
                     expDate: new Date(item.expDate),
                     costPrice: item.costPrice,
                     warehouseId,
-                    source,
+                    source: sourceName, // Use the name instead of ID
                     documentNo: invoiceNo,
                     notes,
                     transactionDate: new Date(transactionDate),
