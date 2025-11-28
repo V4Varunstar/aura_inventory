@@ -51,8 +51,11 @@ export default function Sources() {
     
     setLoading(true);
     try {
-      const data = await getSources(companyId);
-      setSources(data);
+      // Load all sources (both inward and outward) including defaults
+      const allSources = await getSources(companyId);
+      console.log('Sources page - loaded sources:', allSources);
+      console.log('Sources page - Meesho sources:', allSources.filter(s => s.name.toLowerCase().includes('meesho')));
+      setSources(allSources);
     } catch (error) {
       addToast('Failed to load sources', 'error');
       console.error('Error loading sources:', error);

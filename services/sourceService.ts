@@ -160,9 +160,11 @@ export async function getSources(
     s => s.companyId === companyId || s.companyId === 'default'
   );
 
-  if (type) {
+  // When type filter is specified, filter by type
+  if (type && type !== 'both') {
     filtered = filtered.filter(s => s.type === type || s.type === 'both');
   }
+  // When type is 'both' or not specified, return all sources
 
   return filtered.filter(s => s.isActive);
 }
