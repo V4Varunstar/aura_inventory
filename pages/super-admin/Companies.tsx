@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Card } from '../../components/ui/Card';
-import { Button } from '../../components/ui/Button';
-import { Input } from '../../components/ui/Input';
-import { Select } from '../../components/ui/Select';
-import { Modal } from '../../components/ui/Modal';
-import { DataTable } from '../../components/ui/DataTable';
+import Card from '../../components/ui/Card';
+import Button from '../../components/ui/Button';
+import Input from '../../components/ui/Input';
+import Select from '../../components/ui/Select';
+import Modal from '../../components/ui/Modal';
+import DataTable from '../../components/ui/DataTable';
 import { useToast } from '../../context/ToastContext';
 import { Plus, Eye, Power, PowerOff, UserPlus, Settings } from 'lucide-react';
 import { 
@@ -15,7 +15,7 @@ import {
   SubscriptionStatus 
 } from '../../types';
 import { 
-  getSuperAdminCompanies, 
+  getAllCompanies, 
   createCompany, 
   toggleCompanyStatus,
   createCompanyUser
@@ -78,7 +78,7 @@ const SuperAdminCompanies: React.FC = () => {
   const fetchCompanies = async () => {
     try {
       setLoading(true);
-      const companiesData = await getSuperAdminCompanies();
+      const companiesData = await getAllCompanies();
       setCompanies(companiesData);
     } catch (error) {
       console.error('Error fetching companies:', error);
