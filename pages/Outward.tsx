@@ -66,8 +66,11 @@ const Outward: React.FC = () => {
 
     const handleDestinationCreated = async () => {
         if (!company) return;
+        console.log('Outward - Refreshing destinations after creation...');
         const destinationsData = await getSources(company.id, 'outward');
         setOutwardDestinations(destinationsData);
+        console.log('Outward - Destinations refreshed:', destinationsData.length, 'destinations loaded');
+        console.log('Outward - New destinations:', destinationsData.map(s => ({ id: s.id, name: s.name })));
     };
 
     const addItem = () => {

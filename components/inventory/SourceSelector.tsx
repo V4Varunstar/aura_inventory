@@ -61,8 +61,15 @@ export default function SourceSelector({
       setShowCreateModal(false);
       setNewSourceName('');
 
+      // Force refresh of sources list with enhanced callback
       if (onSourceCreated) {
-        onSourceCreated();
+        console.log('SourceSelector - Calling onSourceCreated callback for:', newSource.name);
+        await onSourceCreated();
+        
+        // Additional delay to ensure UI updates  
+        setTimeout(() => {
+          onSourceCreated();
+        }, 200);
       }
     } catch (error) {
       addToast(

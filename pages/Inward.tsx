@@ -65,8 +65,11 @@ const Inward: React.FC = () => {
 
     const handleSourceCreated = async () => {
         if (!company) return;
+        console.log('Inward - Refreshing sources after creation...');
         const sourcesData = await getSources(company.id, 'inward');
         setInwardSources(sourcesData);
+        console.log('Inward - Sources refreshed:', sourcesData.length, 'sources loaded');
+        console.log('Inward - New sources:', sourcesData.map(s => ({ id: s.id, name: s.name })));
     };
 
     const addItem = () => {

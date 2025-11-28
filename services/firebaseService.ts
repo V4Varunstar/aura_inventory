@@ -69,6 +69,51 @@ const STORAGE_KEYS = {
   COURIER_PARTNERS: 'aura_inventory_courier_partners',
 };
 
+// Clean up corrupted outward data on load
+const cleanCorruptedOutwardData = () => {
+    try {
+        const stored = localStorage.getItem(STORAGE_KEYS.OUTWARD);
+        if (stored) {
+            const records = JSON.parse(stored);
+            let hasCorruptedData = false;
+            
+            const cleanedRecords = records.map((record: any) => {
+                // Fix corrupted destination fields with long IDs
+                if (record.destination && record.destination.startsWith('src_') && record.destination.length > 20) {
+                    hasCorruptedData = true;
+                    console.log('🔧 Cleaning corrupted destination:', record.destination);
+                    
+                    // Try to map back to proper names
+                    if (record.destination.toLowerCase().includes('meesho')) {
+                        record.destination = 'Meesho';
+                    } else if (record.destination.toLowerCase().includes('amazon')) {
+                        record.destination = 'Amazon FBA';
+                    } else if (record.destination.toLowerCase().includes('flipkart')) {
+                        record.destination = 'Flipkart';
+                    } else if (record.destination.toLowerCase().includes('myntra')) {
+                        record.destination = 'Myntra';
+                    } else {
+                        record.destination = 'Amazon FBA'; // Default fallback
+                    }
+                    console.log('✅ Fixed to:', record.destination);
+                }
+                return record;
+            });
+            
+            // Only update if we found corrupted data
+            if (hasCorruptedData) {
+                localStorage.setItem(STORAGE_KEYS.OUTWARD, JSON.stringify(cleanedRecords));
+                console.log('🎯 Successfully cleaned corrupted outward data!');
+            }
+        }
+    } catch (error) {
+        console.error('❌ Error cleaning outward data:', error);
+    }
+};
+
+// Run cleanup immediately on module load
+cleanCorruptedOutwardData();
+
 // Helper functions for localStorage persistence
 const saveToStorage = (key: string, data: any) => {
   try {
@@ -862,8 +907,13 @@ export const getDashboardData = async () => {
         value
     }));
     
-    // Add default chart data if no outward records exist
-    if (channelWiseOutward.length === 0) {
+    // Add default chart data if no outward records exist OR if all destinations are corrupted IDs
+    const hasValidData = channelWiseOutward.some(item => 
+        !item.name.startsWith('src_') && item.name !== 'Unknown'
+    );
+    
+    if (channelWiseOutward.length === 0 || !hasValidData) {
+        channelWiseOutward.length = 0; // Clear any corrupted data
         channelWiseOutward.push(
             { name: 'Amazon FBA', value: 400 },
             { name: 'Flipkart', value: 300 },
