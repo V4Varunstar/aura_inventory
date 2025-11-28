@@ -71,6 +71,9 @@ export const createCompany = async (request: CreateCompanyRequest): Promise<Comp
   const orgId = generateOrgId();
   const companyId = `company_${Date.now()}`;
   
+  const now = new Date();
+  const oneYearLater = new Date(now.getFullYear() + 1, now.getMonth(), now.getDate());
+  
   const newCompany: Company = {
     id: companyId,
     name: request.name,
@@ -78,15 +81,18 @@ export const createCompany = async (request: CreateCompanyRequest): Promise<Comp
     phone: request.phone,
     plan: request.plan,
     subscriptionStatus: SubscriptionStatus.Active,
+    validFrom: now,
+    validTo: oneYearLater,
+    loginAllowed: true,
     orgId: orgId,
     isActive: true,
     limits: {
-      maxUsers: request.plan === SubscriptionPlan.Free ? 5 : request.plan === SubscriptionPlan.Starter ? 25 : request.plan === SubscriptionPlan.Pro ? 100 : -1,
-      maxWarehouses: request.plan === SubscriptionPlan.Free ? 2 : request.plan === SubscriptionPlan.Starter ? 5 : request.plan === SubscriptionPlan.Pro ? 20 : -1,
-      maxProducts: request.plan === SubscriptionPlan.Free ? 50 : request.plan === SubscriptionPlan.Starter ? 500 : request.plan === SubscriptionPlan.Pro ? 5000 : -1
+      maxUsers: request.plan === SubscriptionPlan.Free ? 5 : request.plan === SubscriptionPlan.Starter ? 25 : request.plan === SubscriptionPlan.Pro ? 100 : 999,
+      maxWarehouses: request.plan === SubscriptionPlan.Free ? 2 : request.plan === SubscriptionPlan.Starter ? 5 : request.plan === SubscriptionPlan.Pro ? 20 : 999,
+      maxProducts: request.plan === SubscriptionPlan.Free ? 50 : request.plan === SubscriptionPlan.Starter ? 500 : request.plan === SubscriptionPlan.Pro ? 5000 : 99999
     },
     usage: {
-      users: 1, // Owner user
+      users: 0, // Will be incremented when owner user is created
       warehouses: 0,
       products: 0
     },
@@ -97,21 +103,6 @@ export const createCompany = async (request: CreateCompanyRequest): Promise<Comp
 
   companies.push(newCompany);
   saveToStorage(SUPER_ADMIN_STORAGE_KEYS.COMPANIES, companies);
-
-  // Create owner user
-  const ownerUser = {
-    id: newCompany.ownerId,
-    name: request.ownerName,
-    email: request.ownerEmail,
-    role: Role.Admin,
-    orgId: orgId,
-    companyId: companyId,
-    createdAt: new Date(),
-    updatedAt: new Date()
-  };
-
-  superAdminUsers.push(ownerUser);
-  saveToStorage(SUPER_ADMIN_STORAGE_KEYS.USERS, superAdminUsers);
 
   return simulateApi(newCompany);
 };
@@ -131,7 +122,7 @@ export const toggleCompanyStatus = async (companyId: string, isActive: boolean):
 
 export const createCompanyUser = async (
   companyId: string, 
-  userData: { name: string; email: string; role: Role; orgId: string }
+  userData: { name: string; email: string; role: Role; orgId: string; password?: string }
 ): Promise<any> => {
   const company = companies.find(c => c.id === companyId);
   if (!company) {
@@ -142,9 +133,11 @@ export const createCompanyUser = async (
     id: `user_${Date.now()}`,
     name: userData.name,
     email: userData.email,
+    password: userData.password || 'password123', // Default or provided password
     role: userData.role,
     orgId: userData.orgId,
     companyId: companyId,
+    isEnabled: true,
     createdAt: new Date(),
     updatedAt: new Date()
   };

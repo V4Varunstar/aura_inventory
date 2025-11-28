@@ -20,6 +20,8 @@ const SuperAdminCompanies: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showUserModal, setShowUserModal] = useState(false);
+  const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
+  const [showAssignUserModal, setShowAssignUserModal] = useState(false);
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
   const [creating, setCreating] = useState(false);
   const { addToast } = useToast();
@@ -36,6 +38,22 @@ const SuperAdminCompanies: React.FC = () => {
   const [userForm, setUserForm] = useState({
     name: '',
     email: '',
+    role: Role.Admin
+  });
+
+  const [subscriptionForm, setSubscriptionForm] = useState({
+    validFrom: '',
+    validTo: '',
+    plan: SubscriptionPlan.Free,
+    maxUsers: 5,
+    maxWarehouses: 2,
+    maxProducts: 50
+  });
+
+  const [assignUserForm, setAssignUserForm] = useState({
+    name: '',
+    email: '',
+    password: '',
     role: Role.Admin
   });
 
@@ -66,9 +84,20 @@ const SuperAdminCompanies: React.FC = () => {
 
     try {
       setCreating(true);
-      await createCompany(createForm);
+      const newCompany = await createCompany(createForm);
       addToast('Company created successfully', 'success');
       setShowCreateModal(false);
+      
+      // Show user assignment modal after company creation
+      setSelectedCompany(newCompany);
+      setAssignUserForm({
+        name: createForm.ownerName,
+        email: createForm.ownerEmail,
+        password: '',
+        role: Role.Owner
+      });
+      setShowAssignUserModal(true);
+      
       setCreateForm({
         name: '',
         email: '',
@@ -128,6 +157,90 @@ const SuperAdminCompanies: React.FC = () => {
     }
   };
 
+  const handleAssignUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedCompany) return;
+    
+    if (!assignUserForm.name || !assignUserForm.email || !assignUserForm.password) {
+      addToast('Please fill in all fields', 'error');
+      return;
+    }
+    
+    try {
+      setCreating(true);
+      await createCompanyUser(selectedCompany.id, {
+        name: assignUserForm.name,
+        email: assignUserForm.email,
+        password: assignUserForm.password,
+        role: assignUserForm.role,
+        orgId: selectedCompany.orgId
+      });
+      setShowAssignUserModal(false);
+      setAssignUserForm({ name: '', email: '', password: '', role: Role.Admin });
+      addToast(`Login credentials assigned successfully. Email: ${assignUserForm.email}, Password: ${assignUserForm.password}`, 'success');
+      fetchCompanies();
+    } catch (error) {
+      console.error('Error assigning user credentials:', error);
+      addToast('Failed to assign user credentials', 'error');
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const handleUpdateSubscription = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedCompany) return;
+    
+    if (!subscriptionForm.validFrom || !subscriptionForm.validTo) {
+      addToast('Please select valid dates', 'error');
+      return;
+    }
+    
+    try {
+      setCreating(true);
+      // Update company subscription details
+      const updatedCompany = {
+        ...selectedCompany,
+        plan: subscriptionForm.plan,
+        validFrom: new Date(subscriptionForm.validFrom),
+        validTo: new Date(subscriptionForm.validTo),
+        limits: {
+          maxUsers: subscriptionForm.maxUsers,
+          maxWarehouses: subscriptionForm.maxWarehouses,
+          maxProducts: subscriptionForm.maxProducts
+        }
+      };
+      
+      setShowSubscriptionModal(false);
+      addToast('Subscription updated successfully', 'success');
+      fetchCompanies();
+    } catch (error) {
+      console.error('Error updating subscription:', error);
+      addToast('Failed to update subscription', 'error');
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const openSubscriptionModal = (company: Company) => {
+    setSelectedCompany(company);
+    setSubscriptionForm({
+      validFrom: company.validFrom ? company.validFrom.toISOString().split('T')[0] : '',
+      validTo: company.validTo ? company.validTo.toISOString().split('T')[0] : '',
+      plan: company.plan || SubscriptionPlan.Free,
+      maxUsers: company.limits?.maxUsers || 5,
+      maxWarehouses: company.limits?.maxWarehouses || 2,
+      maxProducts: company.limits?.maxProducts || 50
+    });
+    setShowSubscriptionModal(true);
+  };
+
+  const openUserModal = (company: Company) => {
+    setSelectedCompany(company);
+    setUserForm({ name: '', email: '', role: Role.Admin });
+    setShowUserModal(true);
+  };
+
   const columns = [
     {
       key: 'name',
@@ -177,14 +290,13 @@ const SuperAdminCompanies: React.FC = () => {
       key: 'actions',
       label: 'Actions',
       render: (_: any, company: Company) => (
-        <div className="flex space-x-2">
+        <div className="flex space-x-1">
           <Button
             size="sm"
             variant="ghost"
-            onClick={() => {
-              // In real implementation, this would show company details
-              addToast('View functionality would be implemented here', 'info');
-            }}
+            onClick={() => openSubscriptionModal(company)}
+            className="text-purple-600 hover:text-purple-700"
+            title="Manage Subscription"
           >
             <Eye className="w-4 h-4" />
           </Button>
@@ -193,17 +305,16 @@ const SuperAdminCompanies: React.FC = () => {
             variant="ghost"
             onClick={() => handleToggleStatus(company)}
             className={company.isActive ? 'text-red-600 hover:text-red-700' : 'text-green-600 hover:text-green-700'}
+            title={company.isActive ? 'Deactivate' : 'Activate'}
           >
             {company.isActive ? <PowerOff className="w-4 h-4" /> : <Power className="w-4 h-4" />}
           </Button>
           <Button
             size="sm"
             variant="ghost"
-            onClick={() => {
-              setSelectedCompany(company);
-              setShowUserModal(true);
-            }}
+            onClick={() => openUserModal(company)}
             className="text-blue-600 hover:text-blue-700"
+            title="Add User"
           >
             <UserPlus className="w-4 h-4" />
           </Button>
@@ -365,6 +476,198 @@ const SuperAdminCompanies: React.FC = () => {
               isLoading={creating}
             >
               Create User
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Assign User Credentials Modal */}
+      <Modal
+        isOpen={showAssignUserModal}
+        onClose={() => setShowAssignUserModal(false)}
+        title="Assign Login Credentials"
+        size="large"
+      >
+        <form onSubmit={handleAssignUser} className="space-y-4">
+          <div className="bg-blue-50 p-4 rounded-lg mb-4">
+            <p className="text-sm text-blue-800">
+              Assign login credentials for the company owner. These credentials will be used to access the system.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Input
+              label="Name *"
+              value={assignUserForm.name}
+              onChange={(e) => setAssignUserForm({ ...assignUserForm, name: e.target.value })}
+              required
+            />
+            <Input
+              label="Email *"
+              type="email"
+              value={assignUserForm.email}
+              onChange={(e) => setAssignUserForm({ ...assignUserForm, email: e.target.value })}
+              required
+            />
+            <Input
+              label="Password *"
+              type="password"
+              value={assignUserForm.password}
+              onChange={(e) => setAssignUserForm({ ...assignUserForm, password: e.target.value })}
+              required
+              placeholder="Create a secure password"
+            />
+            <Select
+              label="Role *"
+              value={assignUserForm.role}
+              onChange={(e) => setAssignUserForm({ ...assignUserForm, role: e.target.value as Role })}
+              required
+            >
+              <option value={Role.Owner}>Owner</option>
+              <option value={Role.Admin}>Admin</option>
+            </Select>
+          </div>
+
+          <div className="flex justify-end space-x-3 pt-4">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => {
+                setShowAssignUserModal(false);
+                setAssignUserForm({ name: '', email: '', password: '', role: Role.Admin });
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              isLoading={creating}
+              leftIcon={<UserPlus />}
+            >
+              Assign Credentials
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Subscription Management Modal */}
+      <Modal
+        isOpen={showSubscriptionModal}
+        onClose={() => setShowSubscriptionModal(false)}
+        title={`Manage Subscription - ${selectedCompany?.name}`}
+        size="large"
+      >
+        <form onSubmit={handleUpdateSubscription} className="space-y-4">
+          <div className="bg-purple-50 p-4 rounded-lg mb-4">
+            <p className="text-sm text-purple-800">
+              Configure subscription details, validity period, and usage limits for this company.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Select
+              label="Subscription Plan *"
+              value={subscriptionForm.plan}
+              onChange={(e) => {
+                const plan = e.target.value as SubscriptionPlan;
+                setSubscriptionForm({ 
+                  ...subscriptionForm, 
+                  plan,
+                  maxUsers: plan === SubscriptionPlan.Free ? 5 : 
+                           plan === SubscriptionPlan.Starter ? 25 : 
+                           plan === SubscriptionPlan.Pro ? 100 : 999,
+                  maxWarehouses: plan === SubscriptionPlan.Free ? 2 : 
+                                plan === SubscriptionPlan.Starter ? 5 : 
+                                plan === SubscriptionPlan.Pro ? 20 : 999,
+                  maxProducts: plan === SubscriptionPlan.Free ? 50 : 
+                              plan === SubscriptionPlan.Starter ? 500 : 
+                              plan === SubscriptionPlan.Pro ? 5000 : 99999
+                });
+              }}
+              required
+            >
+              <option value={SubscriptionPlan.Free}>Free</option>
+              <option value={SubscriptionPlan.Starter}>Starter</option>
+              <option value={SubscriptionPlan.Pro}>Pro</option>
+              <option value={SubscriptionPlan.Business}>Business</option>
+            </Select>
+
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-gray-700">Current Status</label>
+              <div className="p-2 bg-gray-50 rounded">
+                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                  selectedCompany?.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                }`}>
+                  {selectedCompany?.isActive ? 'Active' : 'Inactive'}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Input
+              label="Valid From *"
+              type="date"
+              value={subscriptionForm.validFrom}
+              onChange={(e) => setSubscriptionForm({ ...subscriptionForm, validFrom: e.target.value })}
+              required
+            />
+            <Input
+              label="Valid To *"
+              type="date"
+              value={subscriptionForm.validTo}
+              onChange={(e) => setSubscriptionForm({ ...subscriptionForm, validTo: e.target.value })}
+              required
+            />
+          </div>
+
+          <div className="bg-gray-50 p-4 rounded-lg">
+            <h4 className="font-medium text-gray-900 mb-3">Usage Limits</h4>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Input
+                label="Max Users"
+                type="number"
+                min="1"
+                value={subscriptionForm.maxUsers.toString()}
+                onChange={(e) => setSubscriptionForm({ ...subscriptionForm, maxUsers: parseInt(e.target.value) || 1 })}
+                required
+              />
+              <Input
+                label="Max Warehouses"
+                type="number"
+                min="1"
+                value={subscriptionForm.maxWarehouses.toString()}
+                onChange={(e) => setSubscriptionForm({ ...subscriptionForm, maxWarehouses: parseInt(e.target.value) || 1 })}
+                required
+              />
+              <Input
+                label="Max Products"
+                type="number"
+                min="1"
+                value={subscriptionForm.maxProducts.toString()}
+                onChange={(e) => setSubscriptionForm({ ...subscriptionForm, maxProducts: parseInt(e.target.value) || 1 })}
+                required
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-end space-x-3 pt-4">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => {
+                setShowSubscriptionModal(false);
+                setSelectedCompany(null);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              isLoading={creating}
+              leftIcon={<Eye />}
+            >
+              Update Subscription
             </Button>
           </div>
         </form>

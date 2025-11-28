@@ -116,7 +116,7 @@ const SuperAdminDashboard: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <Card 
           className="p-6 cursor-pointer hover:shadow-lg transition-shadow"
-          onClick={() => window.location.href = '#/super-admin/companies'}
+          onClick={() => window.location.hash = '#/super-admin/companies'}
         >
           <div className="flex items-center">
             <div className="p-2 bg-blue-100 rounded-lg">
@@ -135,7 +135,7 @@ const SuperAdminDashboard: React.FC = () => {
 
         <Card 
           className="p-6 cursor-pointer hover:shadow-lg transition-shadow"
-          onClick={() => window.location.href = '#/super-admin/companies'}
+          onClick={() => window.location.hash = '#/super-admin/companies'}
         >
           <div className="flex items-center">
             <div className="p-2 bg-green-100 rounded-lg">
@@ -154,7 +154,7 @@ const SuperAdminDashboard: React.FC = () => {
 
         <Card 
           className="p-6 cursor-pointer hover:shadow-lg transition-shadow"
-          onClick={() => window.location.href = '#/super-admin/companies'}
+          onClick={() => window.location.hash = '#/super-admin/companies'}
         >
           <div className="flex items-center">
             <div className="p-2 bg-green-100 rounded-lg">
@@ -173,7 +173,7 @@ const SuperAdminDashboard: React.FC = () => {
 
         <Card 
           className="p-6 cursor-pointer hover:shadow-lg transition-shadow"
-          onClick={() => window.location.href = '#/super-admin/companies'}
+          onClick={() => window.location.hash = '#/super-admin/companies'}
         >
           <div className="flex items-center">
             <div className="p-2 bg-red-100 rounded-lg">
@@ -197,7 +197,7 @@ const SuperAdminDashboard: React.FC = () => {
           <Button
             variant="outline"
             size="lg"
-            onClick={() => window.location.href = '#/super-admin/companies'}
+            onClick={() => window.location.hash = '#/super-admin/companies'}
             leftIcon={<Building2 />}
             className="justify-start text-left"
           >
@@ -223,7 +223,7 @@ const SuperAdminDashboard: React.FC = () => {
           <Button
             variant="outline"
             size="lg"
-            onClick={() => window.location.href = '#/super-admin/companies'}
+            onClick={() => window.location.hash = '#/super-admin/companies'}
             leftIcon={<UserPlus />}
             className="justify-start text-left"
           >

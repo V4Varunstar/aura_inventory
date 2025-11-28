@@ -26,6 +26,9 @@ export interface Company {
   subscriptionId?: string;
   trialEndsAt?: Date;
   currentPeriodEnd?: Date;
+  validFrom?: Date; // Subscription validity start date
+  validTo?: Date;   // Subscription validity end date
+  loginAllowed?: boolean; // Super Admin can control login access
   orgId: string; // Unique organization identifier for data isolation
   isActive: boolean; // For Super Admin to activate/deactivate
   limits: {
@@ -44,6 +47,7 @@ export interface Company {
 }
 
 export enum Role {
+  Owner = 'Owner',
   Admin = 'Admin',
   Manager = 'Manager', 
   Employee = 'Employee',
