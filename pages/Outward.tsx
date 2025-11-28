@@ -25,6 +25,9 @@ interface OutwardItem {
     quantity: number;
     warehouseId: string;
     availableStock: number;
+    batchNo?: string;
+    manufacturingDate?: string;
+    expiryDate?: string;
 }
 
 const Outward: React.FC = () => {
@@ -82,7 +85,10 @@ const Outward: React.FC = () => {
             productName: '',
             quantity: 1,
             warehouseId: '',
-            availableStock: 0
+            availableStock: 0,
+            batchNo: '',
+            manufacturingDate: '',
+            expiryDate: ''
         }]);
     };
 
@@ -196,6 +202,9 @@ const Outward: React.FC = () => {
                     shipmentRef,
                     notes,
                     transactionDate: new Date(transactionDate),
+                    batchNo: item.batchNo,
+                    manufacturingDate: item.manufacturingDate ? new Date(item.manufacturingDate) : undefined,
+                    expiryDate: item.expiryDate ? new Date(item.expiryDate) : undefined,
                 });
             }
             addToast(`Successfully recorded ${items.length} outward item(s)!`, 'success');
@@ -332,7 +341,7 @@ const Outward: React.FC = () => {
                                                 Remove
                                             </Button>
                                         </div>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                                             <Input
                                                 label="EAN / Barcode"
                                                 value={item.ean}
@@ -370,8 +379,26 @@ const Outward: React.FC = () => {
                                                 placeholder={item.availableStock > 0 ? `Available: ${item.availableStock}` : "0"}
                                                 required
                                             />
+                                            <Input
+                                                label="Batch No."
+                                                value={item.batchNo || ''}
+                                                onChange={e => updateItem(item.id, 'batchNo', e.target.value)}
+                                                placeholder="Optional"
+                                            />
+                                            <Input
+                                                label="Manufacturing Date"
+                                                type="date"
+                                                value={item.manufacturingDate || ''}
+                                                onChange={e => updateItem(item.id, 'manufacturingDate', e.target.value)}
+                                            />
+                                            <Input
+                                                label="Expiry Date"
+                                                type="date"
+                                                value={item.expiryDate || ''}
+                                                onChange={e => updateItem(item.id, 'expiryDate', e.target.value)}
+                                            />
                                             {item.productName && (
-                                                <div className="col-span-2 flex items-end pb-2">
+                                                <div className="col-span-full flex items-end pb-2">
                                                     <span className="text-sm text-green-600 dark:text-green-400 font-semibold">
                                                         {item.productName}
                                                     </span>

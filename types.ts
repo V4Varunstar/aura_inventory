@@ -212,6 +212,9 @@ export interface Outward {
   transactionDate?: Date;
   notes?: string;
   attachmentUrl?: string;
+  batchNo?: string;
+  manufacturingDate?: Date;
+  expiryDate?: Date;
   createdBy: string; // userId
   createdAt: Date;
 }

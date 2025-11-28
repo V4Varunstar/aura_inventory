@@ -23,6 +23,9 @@ interface OutwardRow {
   'Shipment Ref/AWB': string;
   'Transaction Date': string;
   'Notes': string;
+  'Batch No.': string;
+  'Manufacturing Date': string;
+  'Expiry Date': string;
 }
 
 const BulkOutwardUpload: React.FC<BulkOutwardUploadProps> = ({ isOpen, onClose, onSuccess }) => {
@@ -43,7 +46,10 @@ const BulkOutwardUpload: React.FC<BulkOutwardUploadProps> = ({ isOpen, onClose, 
         'Courier Partner': 'Delhivery',
         'Shipment Ref/AWB': 'AWB123456',
         'Transaction Date': '2025-11-26',
-        'Notes': 'Sample outward'
+        'Notes': 'Sample outward',
+        'Batch No.': 'B240826001',
+        'Manufacturing Date': '2024-08-26',
+        'Expiry Date': '2026-08-26'
       }
     ];
 
@@ -116,7 +122,10 @@ const BulkOutwardUpload: React.FC<BulkOutwardUploadProps> = ({ isOpen, onClose, 
             courierPartner: row['Courier Partner'] || '',
             shipmentRef: row['Shipment Ref/AWB'] || '',
             transactionDate: row['Transaction Date'] ? parseDate(row['Transaction Date']) : new Date(),
-            notes: row['Notes'] || ''
+            notes: row['Notes'] || '',
+            batchNo: row['Batch No.'] || '',
+            manufacturingDate: row['Manufacturing Date'] ? parseDate(row['Manufacturing Date']) : undefined,
+            expiryDate: row['Expiry Date'] ? parseDate(row['Expiry Date']) : undefined
           });
         }
       });
@@ -146,6 +155,9 @@ const BulkOutwardUpload: React.FC<BulkOutwardUploadProps> = ({ isOpen, onClose, 
             shipmentRef: record.shipmentRef,
             notes: record.notes,
             transactionDate: record.transactionDate,
+            batchNo: record.batchNo,
+            manufacturingDate: record.manufacturingDate,
+            expiryDate: record.expiryDate,
           } as any);
           successCount++;
         } catch (error) {
