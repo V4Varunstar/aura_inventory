@@ -2,8 +2,11 @@
 export enum SubscriptionPlan {
   Free = 'free',
   Starter = 'starter',
+  Standard = 'standard',
   Pro = 'pro',
+  Professional = 'professional',
   Business = 'business',
+  Enterprise = 'enterprise',
 }
 
 export enum SubscriptionStatus {
