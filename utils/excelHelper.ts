@@ -88,15 +88,24 @@ const validateProductRow = (row: any, rowIndex: number): ValidationError[] => {
       data: row,
     });
   } else {
-    // Validate category value
+    // Validate category value (case-insensitive, flexible matching)
     const validCategories = Object.values(ProductCategory);
-    if (!validCategories.includes(row.category as ProductCategory)) {
+    const categoryInput = String(row.category).trim();
+    const categoryLower = categoryInput.toLowerCase().replace(/\s+/g, ''); // Remove all spaces
+    const matchedCategory = validCategories.find(cat => 
+      cat.toLowerCase().replace(/\s+/g, '') === categoryLower
+    );
+    
+    if (!matchedCategory) {
       errors.push({
         row: rowNumber,
         field: 'category',
-        message: `Invalid category. Must be one of: ${validCategories.join(', ')}`,
+        message: `Invalid category "${categoryInput}". Must be one of: ${validCategories.join(', ')}`,
         data: row,
       });
+    } else {
+      // Use the matched category value
+      row.category = matchedCategory;
     }
   }
 
@@ -108,9 +117,12 @@ const validateProductRow = (row: any, rowIndex: number): ValidationError[] => {
       data: row,
     });
   } else {
-    // Validate unit value
+    // Validate unit value (case-insensitive)
     const validUnits = Object.values(ProductUnit);
-    if (!validUnits.includes(row.unit as ProductUnit)) {
+    const unitLower = String(row.unit).trim().toLowerCase();
+    const matchedUnit = validUnits.find(u => u.toLowerCase() === unitLower);
+    
+    if (!matchedUnit) {
       errors.push({
         row: rowNumber,
         field: 'unit',
@@ -176,11 +188,21 @@ const validateProductRow = (row: any, rowIndex: number): ValidationError[] => {
  * Convert Excel row to Product object
  */
 const mapRowToProduct = (row: any): Partial<Product> => {
+  // Case-insensitive category matching
+  const validCategories = Object.values(ProductCategory);
+  const categoryLower = String(row.category).trim().toLowerCase();
+  const matchedCategory = validCategories.find(cat => cat.toLowerCase() === categoryLower) || row.category;
+  
+  // Case-insensitive unit matching
+  const validUnits = Object.values(ProductUnit);
+  const unitLower = String(row.unit).trim().toLowerCase();
+  const matchedUnit = validUnits.find(u => u.toLowerCase() === unitLower) || row.unit;
+  
   return {
     sku: String(row.sku).trim(),
     name: String(row.name).trim(),
-    category: row.category as ProductCategory,
-    unit: row.unit as ProductUnit,
+    category: matchedCategory as ProductCategory,
+    unit: matchedUnit as ProductUnit,
     mrp: Number(row.mrp),
     costPrice: Number(row.costPrice),
     lowStockThreshold: Number(row.lowStockThreshold),
@@ -286,4 +308,19 @@ export const findDuplicateSKUs = (products: Partial<Product>[]): string[] => {
   });
 
   return duplicates;
+};
+
+/**
+ * Download data as Excel file
+ */
+export const downloadExcel = (data: any[], filename: string): void => {
+  const worksheet = XLSX.utils.json_to_sheet(data);
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, 'Report');
+  
+  // Generate filename with timestamp
+  const timestamp = new Date().toISOString().split('T')[0];
+  const fullFilename = `${filename}_${timestamp}.xlsx`;
+  
+  XLSX.writeFile(workbook, fullFilename);
 };

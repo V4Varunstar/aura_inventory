@@ -2,7 +2,7 @@ import React from 'react';
 import * as XLSX from 'xlsx';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
-import { Download } from 'lucide-react';
+import { Download, Package } from 'lucide-react';
 import {
     getFullStockReport,
     getInwardReport,
@@ -11,6 +11,9 @@ import {
     getSkuMovementReport,
     getWarehouseStockReport
 } from '../services/firebaseService';
+import { getAllPlatformShipments, getPlatformDisplayName } from '../services/platformShipmentService';
+import { useCompany } from '../context/CompanyContext';
+import { useToast } from '../context/ToastContext';
 
 interface ReportCardProps {
     title: string;
@@ -29,6 +32,82 @@ const ReportCard: React.FC<ReportCardProps> = ({ title, description, onDownload 
 );
 
 const Reports: React.FC = () => {
+    const { company } = useCompany();
+    const { addToast } = useToast();
+
+    const handleDownloadShipmentReport = async () => {
+        if (!company) {
+            addToast('Company not found', 'error');
+            return;
+        }
+
+        try {
+            addToast('Generating report...', 'info');
+
+            // Get all shipments across all platforms
+            const allShipments = await getAllPlatformShipments(company.id, {});
+
+            // Group by platform
+            const platforms = ['amazon-fba', 'flipkart-fbf', 'myntra-sjit', 'zepto-po', 'nykaa-po'] as const;
+            const workbook = XLSX.utils.book_new();
+
+            platforms.forEach(platform => {
+                const platformShipments = allShipments.filter(s => s.platform === platform);
+                
+                // Transform data for Excel
+                const excelData = platformShipments.map(shipment => ({
+                    'Shipment Name': shipment.shipmentName,
+                    'Tracking ID': shipment.trackingId || '-',
+                    'AWB Number': shipment.awb || '-',
+                    'Carrier': shipment.carrier || '-',
+                    'Items Count': shipment.items?.length || 0,
+                    'Total Quantity': shipment.items?.reduce((sum, item) => sum + item.quantity, 0) || 0,
+                    'Status': shipment.status,
+                    'Created Date': new Date(shipment.createdAt).toLocaleDateString('en-IN'),
+                    'Notes': shipment.notes || '-'
+                }));
+
+                // Create worksheet for this platform
+                const worksheet = XLSX.utils.json_to_sheet(excelData);
+                
+                // Set column widths
+                worksheet['!cols'] = [
+                    { wch: 20 }, // Shipment Name
+                    { wch: 15 }, // Tracking ID
+                    { wch: 15 }, // AWB
+                    { wch: 12 }, // Carrier
+                    { wch: 10 }, // Items Count
+                    { wch: 12 }, // Total Qty
+                    { wch: 12 }, // Status
+                    { wch: 15 }, // Date
+                    { wch: 30 }  // Notes
+                ];
+
+                // Add sheet to workbook
+                const sheetName = getPlatformDisplayName(platform).replace(/\s+/g, '_');
+                XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
+            });
+
+            // Generate and download file
+            const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+            const blob = new Blob([excelBuffer], { 
+                type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+            });
+            
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `Platform_Shipments_Report_${new Date().toISOString().split('T')[0]}.xlsx`);
+            document.body.appendChild(link);
+            link.click();
+            link.parentNode?.removeChild(link);
+
+            addToast('Report downloaded successfully', 'success');
+        } catch (error) {
+            console.error('Error generating shipment report:', error);
+            addToast('Failed to generate report', 'error');
+        }
+    };
 
     const handleDownload = async (report: string, format: 'csv' | 'xlsx') => {
         let data;
@@ -96,6 +175,33 @@ const Reports: React.FC = () => {
     return (
         <div className="space-y-6">
             <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-200">Reports</h1>
+            
+            {/* Platform Shipment Report - Featured */}
+            <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200">
+                <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-3">
+                            <div className="p-2 bg-blue-100 rounded-lg">
+                                <Package className="h-6 w-6 text-blue-600" />
+                            </div>
+                            <h3 className="text-xl font-bold text-gray-800">Platform Shipments Report</h3>
+                            <span className="px-2 py-1 bg-blue-600 text-white text-xs font-semibold rounded">NEW</span>
+                        </div>
+                        <p className="text-gray-600 mb-4">
+                            Comprehensive report of all platform shipments (Amazon FBA, Flipkart FBF, Myntra SJIT, Zepto PO, Nykaa PO) 
+                            in a single Excel file with separate sheets for each platform.
+                        </p>
+                        <Button 
+                            onClick={handleDownloadShipmentReport}
+                            leftIcon={<Download size={16} />}
+                        >
+                            Download Multi-Platform Report
+                        </Button>
+                    </div>
+                </div>
+            </Card>
+
+            {/* Other Reports */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {reports.map(report => (
                     <ReportCard 

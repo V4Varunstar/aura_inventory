@@ -1,7 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { Product, ProductCategory, ProductUnit } from '../types';
-import { getProducts, addProduct, updateProduct } from '../services/firebaseService';
+import { getProducts, addProduct, updateProduct, getAllProductStocks, getWarehouses, getCategories, addCategory } from '../services/firebaseService';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Modal from '../components/ui/Modal';
@@ -18,8 +19,13 @@ const ProductForm: React.FC<{
   product: Partial<Product> | null;
   onSave: (product: Partial<Product>) => void;
   onCancel: () => void;
-}> = ({ product, onSave, onCancel }) => {
+  categories: string[];
+  onCategoryAdded: () => void;
+}> = ({ product, onSave, onCancel, categories, onCategoryAdded }) => {
   const [formData, setFormData] = useState<Partial<Product>>(product || {});
+  const [showAddCategory, setShowAddCategory] = useState(false);
+  const [newCategory, setNewCategory] = useState('');
+  const { addToast } = useToast();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
@@ -49,9 +55,71 @@ const ProductForm: React.FC<{
     <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
       <Input name="sku" label="SKU" value={formData.sku || ''} onChange={handleChange} required />
       <Input name="name" label="Product Name" value={formData.name || ''} onChange={handleChange} required />
-      <Select name="category" label="Category" value={formData.category || ''} onChange={handleChange} required>
-        {Object.values(ProductCategory).map(cat => <option key={cat} value={cat}>{cat}</option>)}
-      </Select>
+      <Input name="ean" label="EAN (Optional)" value={formData.ean || ''} onChange={handleChange} placeholder="Enter EAN barcode" />
+      <div>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Category *</label>
+        <div className="flex gap-2">
+          <select 
+            name="category" 
+            value={formData.category || ''} 
+            onChange={handleChange} 
+            required
+            className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-primary-500"
+          >
+            <option value="">Select Category</option>
+            {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+          </select>
+          <Button 
+            type="button" 
+            onClick={() => setShowAddCategory(!showAddCategory)}
+            variant="secondary"
+            size="sm"
+          >
+            +
+          </Button>
+        </div>
+        {showAddCategory && (
+          <div className="mt-2 flex gap-2">
+            <Input 
+              value={newCategory}
+              onChange={(e) => setNewCategory(e.target.value)}
+              placeholder="New category name"
+              className="flex-1"
+            />
+            <Button
+              type="button"
+              size="sm"
+              onClick={async () => {
+                if (newCategory.trim()) {
+                  try {
+                    await addCategory(newCategory.trim());
+                    addToast('Category added successfully!', 'success');
+                    setNewCategory('');
+                    setShowAddCategory(false);
+                    setFormData(prev => ({ ...prev, category: newCategory.trim() as any }));
+                    onCategoryAdded();
+                  } catch (error) {
+                    addToast('Failed to add category', 'error');
+                  }
+                }
+              }}
+            >
+              Add
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={() => {
+                setShowAddCategory(false);
+                setNewCategory('');
+              }}
+            >
+              Cancel
+            </Button>
+          </div>
+        )}
+      </div>
       <Select name="unit" label="Unit" value={formData.unit || ''} onChange={handleChange} required>
         {Object.values(ProductUnit).map(unit => <option key={unit} value={unit}>{unit}</option>)}
       </Select>
@@ -76,7 +144,12 @@ const ProductForm: React.FC<{
 
 
 const Products: React.FC = () => {
+  const location = useLocation();
   const [products, setProducts] = useState<Product[]>([]);
+  const [productStocks, setProductStocks] = useState<any>({});
+  const [warehouses, setWarehouses] = useState<any[]>([]);
+  const [categories, setCategories] = useState<string[]>([]);
+  const [showLowStock, setShowLowStock] = useState(false);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isBulkUploadOpen, setIsBulkUploadOpen] = useState(false);
@@ -86,12 +159,35 @@ const Products: React.FC = () => {
   
   const canEdit = user && [Role.Admin, Role.Manager].includes(user.role);
 
+  const fetchCategories = async () => {
+    try {
+      const cats = await getCategories();
+      setCategories(cats);
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+    }
+  };
+
+  useEffect(() => {
+    // Check if navigated from low stock dashboard
+    const params = new URLSearchParams(location.search);
+    if (params.get('filter') === 'lowStock') {
+      setShowLowStock(true);
+    }
+  }, [location]);
+
   useEffect(() => {
     const fetchProducts = async () => {
       setLoading(true);
       try {
-        const data = await getProducts();
-        setProducts(data);
+        const [productsData, stocksData, warehousesData] = await Promise.all([
+          getProducts(),
+          getAllProductStocks(),
+          getWarehouses()
+        ]);
+        setProducts(productsData);
+        setProductStocks(stocksData);
+        setWarehouses(warehousesData);
       } catch (error) {
         addToast('Failed to fetch products.', 'error');
       } finally {
@@ -99,7 +195,13 @@ const Products: React.FC = () => {
       }
     };
     fetchProducts();
+    fetchCategories();
   }, [addToast]);
+
+  const refreshStocks = async () => {
+    const stocksData = await getAllProductStocks();
+    setProductStocks(stocksData);
+  };
   
   const handleOpenModal = (product?: Product) => {
     setEditingProduct(product || {});
@@ -130,16 +232,58 @@ const Products: React.FC = () => {
 
   const handleBulkUploadSuccess = (importedProducts: Product[]) => {
     setProducts([...products, ...importedProducts]);
+    refreshStocks();
   };
+
+  // Filter products based on low stock
+  const filteredProducts = showLowStock
+    ? products.filter(p => {
+        const stock = productStocks[p.id]?.total || 0;
+        return stock > 0 && stock <= p.lowStockThreshold;
+      })
+    : products;
 
   const columns: any[] = [
     { header: 'Image', accessor: 'imageUrl', render: (item: Product) => <img src={item.imageUrl} alt={item.name} className="h-10 w-10 rounded-full object-cover" /> },
     { header: 'SKU', accessor: 'sku' },
     { header: 'Name', accessor: 'name' },
+    { header: 'EAN', accessor: 'ean', render: (item: Product) => item.ean || '-' },
     { header: 'Category', accessor: 'category' },
+    { 
+      header: 'Stock', 
+      accessor: 'id', 
+      render: (item: Product) => {
+        const stock = productStocks[item.id]?.total || 0;
+        const isLowStock = stock < item.lowStockThreshold;
+        return (
+          <span className={isLowStock ? 'text-red-600 font-semibold' : 'text-green-600 font-semibold'}>
+            {stock}
+            {isLowStock && ' ⚠️'}
+          </span>
+        );
+      }
+    },
+    { 
+      header: 'Warehouse Stock', 
+      accessor: 'id', 
+      render: (item: Product) => {
+        const byWarehouse = productStocks[item.id]?.byWarehouse || {};
+        return (
+          <div className="text-xs">
+            {Object.keys(byWarehouse).length > 0 ? (
+              Object.entries(byWarehouse).map(([whId, qty]: any) => {
+                const wh = warehouses.find(w => w.id === whId);
+                return <div key={whId}>{wh?.name}: {qty}</div>;
+              })
+            ) : (
+              <span className="text-gray-400">No stock</span>
+            )}
+          </div>
+        );
+      }
+    },
     { header: 'MRP (₹)', accessor: 'mrp', render: (item: Product) => item.mrp.toFixed(2) },
     { header: 'Cost (₹)', accessor: 'costPrice', render: (item: Product) => item.costPrice.toFixed(2) },
-    { header: 'Low Stock', accessor: 'lowStockThreshold' },
   ];
 
   if(canEdit) {
@@ -158,27 +302,60 @@ const Products: React.FC = () => {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-200">Products</h1>
-        {canEdit && (
-          <div className="flex space-x-2">
-            <Button 
-              onClick={() => setIsBulkUploadOpen(true)} 
-              leftIcon={<Upload />}
-              variant="secondary"
-            >
-              Upload Excel
-            </Button>
-            <Button onClick={() => handleOpenModal()} leftIcon={<PlusCircle />}>
-              Add Product
-            </Button>
-          </div>
-        )}
+        <div>
+          <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-200">Products</h1>
+          {showLowStock && (
+            <p className="text-sm text-red-600 dark:text-red-400 mt-1">Showing low stock items only</p>
+          )}
+        </div>
+        <div className="flex space-x-2">
+          <Button
+            onClick={() => setShowLowStock(!showLowStock)}
+            variant={showLowStock ? "primary" : "secondary"}
+            size="sm"
+          >
+            {showLowStock ? 'Show All' : 'Low Stock Only'}
+          </Button>
+          {canEdit && (
+            <>
+              <Button 
+                onClick={() => setIsBulkUploadOpen(true)} 
+                leftIcon={<Upload />}
+                variant="secondary"
+              >
+                Upload Excel
+              </Button>
+              <Button onClick={() => handleOpenModal()} leftIcon={<PlusCircle />}>
+                Add Product
+              </Button>
+            </>
+          )}
+        </div>
       </div>
       <Card>
-        {loading ? <p>Loading products...</p> : <Table columns={columns} data={products} />}
+        {loading ? (
+          <p>Loading products...</p>
+        ) : (
+          <>
+            {showLowStock && filteredProducts.length === 0 && (
+              <div className="text-center py-8 text-gray-500">
+                No low stock items found
+              </div>
+            )}
+            {(!showLowStock || filteredProducts.length > 0) && (
+              <Table columns={columns} data={filteredProducts} />
+            )}
+          </>
+        )}
       </Card>
       <Modal isOpen={isModalOpen} onClose={handleCloseModal} title={editingProduct?.id ? 'Edit Product' : 'Add New Product'}>
-        <ProductForm product={editingProduct} onSave={handleSaveProduct} onCancel={handleCloseModal} />
+        <ProductForm 
+          product={editingProduct} 
+          onSave={handleSaveProduct} 
+          onCancel={handleCloseModal}
+          categories={categories}
+          onCategoryAdded={fetchCategories}
+        />
       </Modal>
       <BulkUpload
         isOpen={isBulkUploadOpen}
