@@ -215,6 +215,7 @@ export interface Outward {
   batchNo?: string;
   manufacturingDate?: Date;
   expiryDate?: Date;
+  costPrice?: number;
   createdBy: string; // userId
   createdAt: Date;
 }

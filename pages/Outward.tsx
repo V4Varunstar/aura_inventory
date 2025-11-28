@@ -6,8 +6,8 @@ import Input from '../components/ui/Input';
 import Select from '../components/ui/Select';
 import { useToast } from '../context/ToastContext';
 import { useCompany } from '../context/CompanyContext';
-import { Product, Warehouse, Source } from '../types';
-import { getProducts, getWarehouses, addOutward, getProductStock, getCourierPartners, addCourierPartner } from '../services/firebaseService';
+import { Product, Warehouse, Source, Inward } from '../types';
+import { getProducts, getWarehouses, addOutward, getProductStock, getCourierPartners, addCourierPartner, getInwardRecords } from '../services/firebaseService';
 import { getSources } from '../services/sourceService';
 // Removed validateStockAvailability - validation happens in addOutward service
 import EanInput from '../components/inventory/EanInput';
@@ -25,9 +25,12 @@ interface OutwardItem {
     quantity: number;
     warehouseId: string;
     availableStock: number;
-    batchNo?: string;
-    manufacturingDate?: string;
-    expiryDate?: string;
+    batchId?: string; // Selected batch ID
+    batchNo?: string; // Auto-filled from batch
+    manufacturingDate?: string; // Auto-filled from batch (read-only)
+    expiryDate?: string; // Auto-filled from batch (read-only)
+    costPrice?: number; // Auto-filled from batch (read-only)
+    availableBatches: Inward[]; // Available batches for this product
 }
 
 const Outward: React.FC = () => {
@@ -46,21 +49,24 @@ const Outward: React.FC = () => {
     const [showAddCourier, setShowAddCourier] = useState(false);
     const [newCourier, setNewCourier] = useState('');
     const [showBulkUpload, setShowBulkUpload] = useState(false);
+    const [allBatches, setAllBatches] = useState<Inward[]>([]);
     const { addToast } = useToast();
 
     useEffect(() => {
         const fetchData = async () => {
             if (!company) return;
-            const [productsData, warehousesData, destinationsData, couriersData] = await Promise.all([
+            const [productsData, warehousesData, destinationsData, couriersData, batchesData] = await Promise.all([
                 getProducts(),
                 getWarehouses(),
                 getSources(company.id, 'outward'),
-                getCourierPartners()
+                getCourierPartners(),
+                getInwardRecords()
             ]);
             setProducts(productsData);
             setWarehouses(warehousesData);
             setOutwardDestinations(destinationsData);
             setCourierPartners(couriersData);
+            setAllBatches(batchesData);
             if (destinationsData.length > 0) setDestination(destinationsData[0].id);
             if (couriersData.length > 0) setCourierPartner(couriersData[0]);
         };
@@ -76,6 +82,20 @@ const Outward: React.FC = () => {
         console.log('Outward - New destinations:', destinationsData.map(s => ({ id: s.id, name: s.name })));
     };
 
+    // Fetch batch details by batch ID and auto-fill form
+    const fetchBatchById = (batchId: string): Inward | null => {
+        return allBatches.find(batch => batch.id === batchId) || null;
+    };
+
+    // Get available batches for a specific product and warehouse
+    const getAvailableBatches = (productId: string, warehouseId: string): Inward[] => {
+        return allBatches.filter(batch => 
+            batch.productId === productId && 
+            batch.warehouseId === warehouseId &&
+            batch.batchNo // Only batches with batch numbers
+        );
+    };
+
     const addItem = () => {
         setItems([...items, {
             id: `temp_${Date.now()}`,
@@ -86,9 +106,12 @@ const Outward: React.FC = () => {
             quantity: 1,
             warehouseId: '',
             availableStock: 0,
+            batchId: '',
             batchNo: '',
             manufacturingDate: '',
-            expiryDate: ''
+            expiryDate: '',
+            costPrice: undefined,
+            availableBatches: []
         }]);
     };
 
@@ -118,13 +141,40 @@ const Outward: React.FC = () => {
                     }
                 }
                 
-                // Update available stock when product or warehouse changes
+                // Update available stock and batches when product or warehouse changes
                 if ((field === 'productId' || field === 'warehouseId') && updatedItem.productId && updatedItem.warehouseId && company) {
                     try {
                         const stock = getProductStock(updatedItem.productId, updatedItem.warehouseId, company.id);
                         updatedItem.availableStock = stock;
+                        // Update available batches
+                        updatedItem.availableBatches = getAvailableBatches(updatedItem.productId, updatedItem.warehouseId);
+                        // Clear batch selection when product/warehouse changes
+                        updatedItem.batchId = '';
+                        updatedItem.batchNo = '';
+                        updatedItem.manufacturingDate = '';
+                        updatedItem.expiryDate = '';
+                        updatedItem.costPrice = undefined;
                     } catch (error) {
                         updatedItem.availableStock = 0;
+                        updatedItem.availableBatches = [];
+                    }
+                }
+
+                // Auto-fill batch details when batch is selected
+                if (field === 'batchId' && value) {
+                    const batch = fetchBatchById(value);
+                    if (batch) {
+                        updatedItem.batchNo = batch.batchNo;
+                        updatedItem.manufacturingDate = batch.mfgDate ? new Date(batch.mfgDate).toISOString().split('T')[0] : '';
+                        updatedItem.expiryDate = batch.expDate ? new Date(batch.expDate).toISOString().split('T')[0] : '';
+                        updatedItem.costPrice = batch.costPrice;
+                    } else {
+                        addToast('Batch not found', 'error');
+                        // Clear batch fields if batch not found
+                        updatedItem.batchNo = '';
+                        updatedItem.manufacturingDate = '';
+                        updatedItem.expiryDate = '';
+                        updatedItem.costPrice = undefined;
                     }
                 }
                 
@@ -205,6 +255,7 @@ const Outward: React.FC = () => {
                     batchNo: item.batchNo,
                     manufacturingDate: item.manufacturingDate ? new Date(item.manufacturingDate) : undefined,
                     expiryDate: item.expiryDate ? new Date(item.expiryDate) : undefined,
+                    costPrice: item.costPrice,
                 });
             }
             addToast(`Successfully recorded ${items.length} outward item(s)!`, 'success');
@@ -379,24 +430,49 @@ const Outward: React.FC = () => {
                                                 placeholder={item.availableStock > 0 ? `Available: ${item.availableStock}` : "0"}
                                                 required
                                             />
+                                            <Select
+                                                label="Batch ID"
+                                                value={item.batchId || ''}
+                                                onChange={e => updateItem(item.id, 'batchId', e.target.value)}
+                                            >
+                                                <option value="">Select Batch (Optional)</option>
+                                                {item.availableBatches.map(batch => (
+                                                    <option key={batch.id} value={batch.id}>
+                                                        {batch.batchNo} (Qty: {batch.quantity}, Exp: {batch.expDate ? new Date(batch.expDate).toLocaleDateString() : 'N/A'})
+                                                    </option>
+                                                ))}
+                                            </Select>
                                             <Input
-                                                label="Batch No."
+                                                label="Batch No. (Auto-filled)"
                                                 value={item.batchNo || ''}
-                                                onChange={e => updateItem(item.id, 'batchNo', e.target.value)}
-                                                placeholder="Optional"
+                                                readOnly
+                                                className="bg-gray-100 dark:bg-gray-800 cursor-not-allowed"
+                                                placeholder="Select batch to auto-fill"
                                             />
                                             <Input
-                                                label="Manufacturing Date"
+                                                label="Manufacturing Date (Auto-filled)"
                                                 type="date"
                                                 value={item.manufacturingDate || ''}
-                                                onChange={e => updateItem(item.id, 'manufacturingDate', e.target.value)}
+                                                readOnly
+                                                className="bg-gray-100 dark:bg-gray-800 cursor-not-allowed"
                                             />
                                             <Input
-                                                label="Expiry Date"
+                                                label="Expiry Date (Auto-filled)"
                                                 type="date"
                                                 value={item.expiryDate || ''}
-                                                onChange={e => updateItem(item.id, 'expiryDate', e.target.value)}
+                                                readOnly
+                                                className="bg-gray-100 dark:bg-gray-800 cursor-not-allowed"
                                             />
+                                            {item.costPrice !== undefined && (
+                                                <Input
+                                                    label="Cost Price (Auto-filled)"
+                                                    type="number"
+                                                    value={item.costPrice}
+                                                    readOnly
+                                                    className="bg-gray-100 dark:bg-gray-800 cursor-not-allowed"
+                                                    placeholder="₹0.00"
+                                                />
+                                            )}
                                             {item.productName && (
                                                 <div className="col-span-full flex items-end pb-2">
                                                     <span className="text-sm text-green-600 dark:text-green-400 font-semibold">
