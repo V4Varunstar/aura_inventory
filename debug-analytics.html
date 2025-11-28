@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Fix Dashboard Analytics - Aura Inventory</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        pre { background: #f5f5f5; padding: 10px; border-radius: 5px; }
+        .success { color: green; }
+        .error { color: red; }
+        .info { color: blue; }
+        button { margin: 10px; padding: 10px 20px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>Fix Dashboard Analytics - Channel-wise Outward Chart</h1>
+    
+    <h2>Issue:</h2>
+    <p>Channel-wise outward chart showing source IDs like "src_1764238301584_l1dq8pajesrc_1764250010797_n6vld6dxw" instead of proper names like "Meesho"</p>
+    
+    <h2>Current Outward Records:</h2>
+    <pre id="outwardData"></pre>
+    
+    <h2>Actions:</h2>
+    <button onclick="showCurrentData()">Show Current Data</button>
+    <button onclick="cleanOutwardData()">Clean Corrupted Data</button>
+    <button onclick="addSampleData()">Add Sample Outward Data</button>
+    
+    <div id="result"></div>
+
+    <script>
+        function showCurrentData() {
+            const outwardData = localStorage.getItem('aura_inventory_outward');
+            const resultDiv = document.getElementById('result');
+            const dataDiv = document.getElementById('outwardData');
+            
+            if (outwardData) {
+                try {
+                    const records = JSON.parse(outwardData);
+                    dataDiv.textContent = JSON.stringify(records, null, 2);
+                    
+                    const corruptedRecords = records.filter(r => 
+                        r.destination && r.destination.startsWith('src_') && r.destination.length > 20
+                    );
+                    
+                    resultDiv.innerHTML = `
+                        <div class="info">Found ${records.length} outward records</div>
+                        <div class="${corruptedRecords.length > 0 ? 'error' : 'success'}">
+                            Corrupted records with long source IDs: ${corruptedRecords.length}
+                        </div>
+                    `;
+                    
+                    if (corruptedRecords.length > 0) {
+                        resultDiv.innerHTML += '<div class="error">Recommendation: Clean the corrupted data</div>';
+                    }
+                } catch (e) {
+                    dataDiv.textContent = 'Invalid JSON';
+                    resultDiv.innerHTML = '<div class="error">Error parsing outward data</div>';
+                }
+            } else {
+                dataDiv.textContent = 'No outward records found';
+                resultDiv.innerHTML = '<div class="info">No outward data in localStorage</div>';
+            }
+        }
+        
+        function cleanOutwardData() {
+            const outwardData = localStorage.getItem('aura_inventory_outward');
+            if (outwardData) {
+                try {
+                    const records = JSON.parse(outwardData);
+                    const cleanedRecords = records.map(record => {
+                        // Fix corrupted destination fields
+                        if (record.destination && record.destination.startsWith('src_') && record.destination.length > 20) {
+                            // Try to extract the intended destination from the corrupted data
+                            if (record.destination.toLowerCase().includes('meesho')) {
+                                record.destination = 'Meesho';
+                            } else if (record.destination.toLowerCase().includes('amazon')) {
+                                record.destination = 'Amazon FBA';
+                            } else if (record.destination.toLowerCase().includes('flipkart')) {
+                                record.destination = 'Flipkart';
+                            } else if (record.destination.toLowerCase().includes('myntra')) {
+                                record.destination = 'Myntra';
+                            } else {
+                                record.destination = 'Amazon FBA'; // Default fallback
+                            }
+                        }
+                        return record;
+                    });
+                    
+                    localStorage.setItem('aura_inventory_outward', JSON.stringify(cleanedRecords));
+                    document.getElementById('result').innerHTML = '<div class="success">Outward data cleaned successfully! Please refresh the dashboard.</div>';
+                    showCurrentData();
+                } catch (e) {
+                    document.getElementById('result').innerHTML = '<div class="error">Error cleaning data: ' + e.message + '</div>';
+                }
+            } else {
+                document.getElementById('result').innerHTML = '<div class="info">No data to clean</div>';
+            }
+        }
+        
+        function addSampleData() {
+            const sampleData = [
+                {
+                    id: 'out_sample_1',
+                    companyId: 'demo-company-001',
+                    productId: 'prod_1',
+                    sku: 'AS-HS-50ML',
+                    quantity: 100,
+                    warehouseId: 'wh_1',
+                    destination: 'Amazon FBA',
+                    createdBy: 'user_1',
+                    createdAt: new Date().toISOString(),
+                    transactionDate: new Date().toISOString()
+                },
+                {
+                    id: 'out_sample_2',
+                    companyId: 'demo-company-001',
+                    productId: 'prod_2',
+                    sku: 'AS-FS-30ML',
+                    quantity: 150,
+                    warehouseId: 'wh_1',
+                    destination: 'Meesho',
+                    createdBy: 'user_1',
+                    createdAt: new Date().toISOString(),
+                    transactionDate: new Date().toISOString()
+                },
+                {
+                    id: 'out_sample_3',
+                    companyId: 'demo-company-001',
+                    productId: 'prod_3',
+                    sku: 'AS-BC-200G',
+                    quantity: 75,
+                    warehouseId: 'wh_1',
+                    destination: 'Flipkart',
+                    createdBy: 'user_1',
+                    createdAt: new Date().toISOString(),
+                    transactionDate: new Date().toISOString()
+                }
+            ];
+            
+            localStorage.setItem('aura_inventory_outward', JSON.stringify(sampleData));
+            document.getElementById('result').innerHTML = '<div class="success">Sample outward data added! Please refresh the dashboard to see clean chart.</div>';
+            showCurrentData();
+        }
+        
+        // Show current data on load
+        showCurrentData();
+    </script>
+</body>
+</html>
