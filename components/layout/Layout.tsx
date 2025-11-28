@@ -4,7 +4,7 @@ import Sidebar from './Sidebar';
 import Header from './Header';
 
 const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true); // Changed to true for desktop
 
   return (
     <div className="flex h-screen bg-gray-100 dark:bg-gray-900">

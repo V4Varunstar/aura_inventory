@@ -12,6 +12,8 @@ import {
   PackagePlus,
   PackageMinus,
   PackageX,
+  Package,
+  ClipboardList,
 } from 'lucide-react';
 
 
@@ -52,7 +54,43 @@ export const NAV_ITEMS = [
     roles: [Role.Admin, Role.Manager, Role.WarehouseStaff],
   },
   {
-    label: 'Management',
+    href: '/audit',
+    label: 'Audit',
+    icon: ClipboardList,
+    roles: [Role.Admin, Role.Manager, Role.Viewer],
+  },
+  {
+    href: '/amazon-fba',
+    label: 'Amazon FBA',
+    icon: Package,
+    roles: [Role.Admin, Role.Manager],
+  },
+  {
+    href: '/flipkart-fbf',
+    label: 'Flipkart FBF',
+    icon: Package,
+    roles: [Role.Admin, Role.Manager],
+  },
+  {
+    href: '/myntra-sjit',
+    label: 'Myntra SJIT',
+    icon: Package,
+    roles: [Role.Admin, Role.Manager],
+  },
+  {
+    href: '/zepto-po',
+    label: 'Zepto PO',
+    icon: Package,
+    roles: [Role.Admin, Role.Manager],
+  },
+  {
+    href: '/nykaa-po',
+    label: 'Nykaa PO',
+    icon: Package,
+    roles: [Role.Admin, Role.Manager],
+  },
+  {
+    label: 'Master Data',
     isHeader: true,
     roles: [Role.Admin, Role.Manager, Role.Viewer],
   },
@@ -60,6 +98,18 @@ export const NAV_ITEMS = [
     href: '/warehouses',
     label: 'Warehouses',
     icon: Warehouse,
+    roles: [Role.Admin, Role.Manager],
+  },
+  {
+    href: '/settings/sources',
+    label: 'Inward Sources & Outward Destinations',
+    icon: PackagePlus,
+    roles: [Role.Admin, Role.Manager],
+  },
+   {
+    href: '/product-mapping',
+    label: 'EAN / Barcode Mapping',
+    icon: Box,
     roles: [Role.Admin, Role.Manager],
   },
    {
@@ -77,6 +127,12 @@ export const NAV_ITEMS = [
     href: '/users',
     label: 'User Management',
     icon: Users,
+    roles: [Role.Admin],
+  },
+  {
+    href: '/settings',
+    label: 'Settings',
+    icon: Settings,
     roles: [Role.Admin],
   },
 ];
