@@ -6,7 +6,7 @@ import Modal from '../../components/ui/Modal';
 import Input from '../../components/ui/Input';
 import Select from '../../components/ui/Select';
 import { useToast } from '../../context/ToastContext';
-import { Plus, Eye, Power, PowerOff, UserPlus } from 'lucide-react';
+import { Plus, Eye, Power, PowerOff, UserPlus, Settings } from 'lucide-react';
 import { Company, CreateCompanyRequest, SubscriptionPlan, Role } from '../../types';
 import {
   getAllCompanies,
@@ -22,6 +22,7 @@ const SuperAdminCompanies: React.FC = () => {
   const [showUserModal, setShowUserModal] = useState(false);
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
   const [showAssignUserModal, setShowAssignUserModal] = useState(false);
+  const [showAdminAssignModal, setShowAdminAssignModal] = useState(false);
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
   const [creating, setCreating] = useState(false);
   const { addToast } = useToast();
@@ -51,6 +52,20 @@ const SuperAdminCompanies: React.FC = () => {
   });
 
   const [assignUserForm, setAssignUserForm] = useState({
+    name: '',
+    email: '',
+    password: '',
+    role: Role.Admin
+  });
+
+  const [adminAssignForm, setAdminAssignForm] = useState({
+    name: '',
+    email: '',
+    password: '',
+    role: Role.Admin
+  });
+
+  const [adminAssignForm, setAdminAssignForm] = useState({
     name: '',
     email: '',
     password: '',
@@ -241,6 +256,48 @@ const SuperAdminCompanies: React.FC = () => {
     setShowUserModal(true);
   };
 
+  const openAdminAssignModal = (company: Company) => {
+    setSelectedCompany(company);
+    setAdminAssignForm({ name: '', email: '', password: '', role: Role.Admin });
+    setShowAdminAssignModal(true);
+  };
+
+  const handleAdminAssign = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedCompany) return;
+    
+    if (!adminAssignForm.name || !adminAssignForm.email || !adminAssignForm.password) {
+      addToast('Please fill in all fields', 'error');
+      return;
+    }
+    
+    try {
+      setCreating(true);
+      await createCompanyUser(selectedCompany.id, {
+        name: adminAssignForm.name,
+        email: adminAssignForm.email,
+        password: adminAssignForm.password,
+        role: adminAssignForm.role,
+        orgId: selectedCompany.orgId
+      });
+      setShowAdminAssignModal(false);
+      setAdminAssignForm({ name: '', email: '', password: '', role: Role.Admin });
+      addToast(`Admin user assigned successfully! Email: ${adminAssignForm.email}, Password: ${adminAssignForm.password}`, 'success');
+      fetchCompanies();
+    } catch (error) {
+      console.error('Error assigning admin user:', error);
+      addToast('Failed to assign admin user', 'error');
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const openAdminAssignModal = (company: Company) => {
+    setSelectedCompany(company);
+    setAdminAssignForm({ name: '', email: '', password: '', role: Role.Admin });
+    setShowAdminAssignModal(true);
+  };
+
   const columns = [
     {
       key: 'name',
@@ -317,6 +374,24 @@ const SuperAdminCompanies: React.FC = () => {
             title="Add User"
           >
             <UserPlus className="w-4 h-4" />
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => openAdminAssignModal(company)}
+            className="text-orange-600 hover:text-orange-700"
+            title="Assign Admin User"
+          >
+            <Settings className="w-4 h-4" />
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => openAdminAssignModal(company)}
+            className="text-orange-600 hover:text-orange-700"
+            title="Assign Admin User"
+          >
+            <Settings className="w-4 h-4" />
           </Button>
         </div>
       )
@@ -668,6 +743,83 @@ const SuperAdminCompanies: React.FC = () => {
               leftIcon={<Eye />}
             >
               Update Subscription
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Admin User Assignment Modal */}
+      <Modal
+        isOpen={showAdminAssignModal}
+        onClose={() => setShowAdminAssignModal(false)}
+        title={`Assign Admin User - ${selectedCompany?.name}`}
+        size="large"
+      >
+        <form onSubmit={handleAdminAssign} className="space-y-4">
+          <div className="bg-orange-50 p-4 rounded-lg mb-4">
+            <p className="text-sm text-orange-800">
+              Assign a new admin user with full access to this company. This user will be able to manage the company's inventory, users, and settings.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Input
+              label="Admin Name *"
+              value={adminAssignForm.name}
+              onChange={(e) => setAdminAssignForm({ ...adminAssignForm, name: e.target.value })}
+              required
+              placeholder="Enter admin user name"
+            />
+            <Input
+              label="Admin Email *"
+              type="email"
+              value={adminAssignForm.email}
+              onChange={(e) => setAdminAssignForm({ ...adminAssignForm, email: e.target.value })}
+              required
+              placeholder="Enter admin email address"
+            />
+            <Input
+              label="Password *"
+              type="password"
+              value={adminAssignForm.password}
+              onChange={(e) => setAdminAssignForm({ ...adminAssignForm, password: e.target.value })}
+              required
+              placeholder="Create secure password"
+            />
+            <Select
+              label="Admin Role *"
+              value={adminAssignForm.role}
+              onChange={(e) => setAdminAssignForm({ ...adminAssignForm, role: e.target.value as Role })}
+              required
+            >
+              <option value={Role.Admin}>Admin</option>
+              <option value={Role.Manager}>Manager</option>
+            </Select>
+          </div>
+
+          <div className="bg-yellow-50 p-3 rounded border-l-4 border-yellow-400">
+            <p className="text-sm text-yellow-800">
+              <strong>Note:</strong> This admin user will have full access to manage the company's inventory, create users, and configure settings.
+            </p>
+          </div>
+
+          <div className="flex justify-end space-x-3 pt-4">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => {
+                setShowAdminAssignModal(false);
+                setAdminAssignForm({ name: '', email: '', password: '', role: Role.Admin });
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              isLoading={creating}
+              leftIcon={<Settings />}
+            >
+              Assign Admin User
             </Button>
           </div>
         </form>
