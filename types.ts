@@ -470,4 +470,9 @@ export interface CreateCompanyRequest {
   plan: SubscriptionPlan;
   ownerName: string;
   ownerEmail: string;
+  maxUsers?: number;
+  maxWarehouses?: number;
+  maxProducts?: number;
+  validFrom?: Date;
+  validTo?: Date;
 }

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import Modal from '../../components/ui/Modal';
@@ -12,6 +13,7 @@ import { getSuperAdminStats, getAllCompanies, createCompany } from '../../servic
 
 const SuperAdminDashboard: React.FC = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [stats, setStats] = useState<SuperAdminStats>({
     totalCompanies: 0,
     activeCompanies: 0,
@@ -27,8 +29,9 @@ const SuperAdminDashboard: React.FC = () => {
     plan: SubscriptionPlan.Free,
     ownerName: '',
     ownerEmail: '',
-    validFrom: new Date().toISOString().split('T')[0],
-    validTo: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+    maxUsers: 5,
+    maxWarehouses: 2,
+    maxProducts: 50
   });
   const { addToast } = useToast();
 
@@ -64,8 +67,8 @@ const SuperAdminDashboard: React.FC = () => {
     try {
       await createCompany({
         ...createForm,
-        validFrom: new Date(createForm.validFrom),
-        validTo: new Date(createForm.validTo)
+        validFrom: new Date(),
+        validTo: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)
       });
       await loadData();
       setShowCreateModal(false);
@@ -76,8 +79,9 @@ const SuperAdminDashboard: React.FC = () => {
         plan: SubscriptionPlan.Free,
         ownerName: '',
         ownerEmail: '',
-        validFrom: new Date().toISOString().split('T')[0],
-        validTo: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+        maxUsers: 5,
+        maxWarehouses: 2,
+        maxProducts: 50
       });
       addToast('Company created successfully', 'success');
     } catch (error) {
@@ -116,7 +120,7 @@ const SuperAdminDashboard: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <Card 
           className="p-6 cursor-pointer hover:shadow-lg transition-shadow"
-          onClick={() => window.location.hash = '#/super-admin/companies'}
+          onClick={() => navigate('/super-admin/companies')}
         >
           <div className="flex items-center">
             <div className="p-2 bg-blue-100 rounded-lg">
@@ -135,7 +139,7 @@ const SuperAdminDashboard: React.FC = () => {
 
         <Card 
           className="p-6 cursor-pointer hover:shadow-lg transition-shadow"
-          onClick={() => window.location.hash = '#/super-admin/companies'}
+          onClick={() => navigate('/super-admin/companies')}
         >
           <div className="flex items-center">
             <div className="p-2 bg-green-100 rounded-lg">
@@ -154,7 +158,7 @@ const SuperAdminDashboard: React.FC = () => {
 
         <Card 
           className="p-6 cursor-pointer hover:shadow-lg transition-shadow"
-          onClick={() => window.location.hash = '#/super-admin/companies'}
+          onClick={() => navigate('/super-admin/companies')}
         >
           <div className="flex items-center">
             <div className="p-2 bg-green-100 rounded-lg">
@@ -173,7 +177,7 @@ const SuperAdminDashboard: React.FC = () => {
 
         <Card 
           className="p-6 cursor-pointer hover:shadow-lg transition-shadow"
-          onClick={() => window.location.hash = '#/super-admin/companies'}
+          onClick={() => navigate('/super-admin/companies')}
         >
           <div className="flex items-center">
             <div className="p-2 bg-red-100 rounded-lg">
@@ -197,7 +201,7 @@ const SuperAdminDashboard: React.FC = () => {
           <Button
             variant="outline"
             size="lg"
-            onClick={() => window.location.hash = '#/super-admin/companies'}
+            onClick={() => navigate('/super-admin/companies')}
             leftIcon={<Building2 />}
             className="justify-start text-left"
           >
@@ -223,7 +227,7 @@ const SuperAdminDashboard: React.FC = () => {
           <Button
             variant="outline"
             size="lg"
-            onClick={() => window.location.hash = '#/super-admin/companies'}
+            onClick={() => navigate('/super-admin/companies')}
             leftIcon={<UserPlus />}
             className="justify-start text-left"
           >
@@ -265,7 +269,22 @@ const SuperAdminDashboard: React.FC = () => {
             <Select
               label="Subscription Plan *"
               value={createForm.plan}
-              onChange={(e) => setCreateForm({ ...createForm, plan: e.target.value as SubscriptionPlan })}
+              onChange={(e) => {
+                const plan = e.target.value as SubscriptionPlan;
+                setCreateForm({ 
+                  ...createForm, 
+                  plan,
+                  maxUsers: plan === SubscriptionPlan.Free ? 5 : 
+                           plan === SubscriptionPlan.Starter ? 25 : 
+                           plan === SubscriptionPlan.Pro ? 100 : 999,
+                  maxWarehouses: plan === SubscriptionPlan.Free ? 2 : 
+                                plan === SubscriptionPlan.Starter ? 5 : 
+                                plan === SubscriptionPlan.Pro ? 20 : 999,
+                  maxProducts: plan === SubscriptionPlan.Free ? 50 : 
+                              plan === SubscriptionPlan.Starter ? 500 : 
+                              plan === SubscriptionPlan.Pro ? 5000 : 99999
+                });
+              }}
               required
             >
               <option value={SubscriptionPlan.Free}>Free</option>
@@ -306,6 +325,42 @@ const SuperAdminDashboard: React.FC = () => {
               onChange={(e) => setCreateForm({ ...createForm, validTo: e.target.value })}
               required
             />
+          </div>
+
+          <div className="bg-blue-50 p-4 rounded-lg">
+            <h4 className="font-medium text-blue-900 mb-3">Company Usage Limits</h4>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Input
+                label="Max Users *"
+                type="number"
+                min="1"
+                value={createForm.maxUsers.toString()}
+                onChange={(e) => setCreateForm({ ...createForm, maxUsers: parseInt(e.target.value) || 1 })}
+                required
+                placeholder="Number of users allowed"
+              />
+              <Input
+                label="Max Warehouses *"
+                type="number"
+                min="1"
+                value={createForm.maxWarehouses.toString()}
+                onChange={(e) => setCreateForm({ ...createForm, maxWarehouses: parseInt(e.target.value) || 1 })}
+                required
+                placeholder="Number of warehouses allowed"
+              />
+              <Input
+                label="Max Products *"
+                type="number"
+                min="1"
+                value={createForm.maxProducts.toString()}
+                onChange={(e) => setCreateForm({ ...createForm, maxProducts: parseInt(e.target.value) || 1 })}
+                required
+                placeholder="Number of products allowed"
+              />
+            </div>
+            <div className="mt-2 text-sm text-blue-700">
+              <p><strong>Note:</strong> These limits control how many users the company admin can create and how many warehouses/products can be added.</p>
+            </div>
           </div>
 
           <div className="flex justify-end space-x-3 pt-4">

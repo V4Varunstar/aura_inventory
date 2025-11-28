@@ -85,15 +85,15 @@ const SuperAdminCompanies: React.FC = () => {
     try {
       setCreating(true);
       const newCompany = await createCompany(createForm);
-      addToast('Company created successfully', 'success');
+      addToast('Company created successfully! Now assign login credentials.', 'success');
       setShowCreateModal(false);
       
-      // Show user assignment modal after company creation
+      // Automatically show user assignment modal after company creation
       setSelectedCompany(newCompany);
       setAssignUserForm({
         name: createForm.ownerName,
         email: createForm.ownerEmail,
-        password: '',
+        password: `${createForm.ownerName.replace(' ', '')}@123`, // Auto-generate password
         role: Role.Owner
       });
       setShowAssignUserModal(true);

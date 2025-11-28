@@ -81,15 +81,21 @@ export const createCompany = async (request: CreateCompanyRequest): Promise<Comp
     phone: request.phone,
     plan: request.plan,
     subscriptionStatus: SubscriptionStatus.Active,
-    validFrom: now,
-    validTo: oneYearLater,
+    validFrom: request.validFrom || now,
+    validTo: request.validTo || oneYearLater,
     loginAllowed: true,
     orgId: orgId,
     isActive: true,
     limits: {
-      maxUsers: request.plan === SubscriptionPlan.Free ? 5 : request.plan === SubscriptionPlan.Starter ? 25 : request.plan === SubscriptionPlan.Pro ? 100 : 999,
-      maxWarehouses: request.plan === SubscriptionPlan.Free ? 2 : request.plan === SubscriptionPlan.Starter ? 5 : request.plan === SubscriptionPlan.Pro ? 20 : 999,
-      maxProducts: request.plan === SubscriptionPlan.Free ? 50 : request.plan === SubscriptionPlan.Starter ? 500 : request.plan === SubscriptionPlan.Pro ? 5000 : 99999
+      maxUsers: request.maxUsers || (request.plan === SubscriptionPlan.Free ? 5 : 
+                request.plan === SubscriptionPlan.Starter ? 25 : 
+                request.plan === SubscriptionPlan.Pro ? 100 : 999),
+      maxWarehouses: request.maxWarehouses || (request.plan === SubscriptionPlan.Free ? 2 : 
+                     request.plan === SubscriptionPlan.Starter ? 5 : 
+                     request.plan === SubscriptionPlan.Pro ? 20 : 999),
+      maxProducts: request.maxProducts || (request.plan === SubscriptionPlan.Free ? 50 : 
+                   request.plan === SubscriptionPlan.Starter ? 500 : 
+                   request.plan === SubscriptionPlan.Pro ? 5000 : 99999)
     },
     usage: {
       users: 0, // Will be incremented when owner user is created
