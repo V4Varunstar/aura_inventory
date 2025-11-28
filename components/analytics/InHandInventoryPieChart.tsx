@@ -8,7 +8,7 @@ import {
   TooltipItem
 } from 'chart.js';
 import { useCompany } from '../../context/CompanyContext';
-import { getProducts, getProductStock, getWarehouses } from '../../services/firebaseService';
+import { getProducts, getAllProductStocks, getWarehouses } from '../../services/firebaseService';
 import { Product, Warehouse } from '../../types';
 
 // Register Chart.js components
@@ -45,6 +45,7 @@ const InHandInventoryPieChart: React.FC<InHandInventoryPieChartProps> = ({
   const [loading, setLoading] = useState(true);
   const [products, setProducts] = useState<Product[]>([]);
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
+  const [productStocks, setProductStocks] = useState<any>({});
 
   // Fetch data
   useEffect(() => {
@@ -53,12 +54,14 @@ const InHandInventoryPieChart: React.FC<InHandInventoryPieChartProps> = ({
       
       setLoading(true);
       try {
-        const [productsData, warehousesData] = await Promise.all([
+        const [productsData, stocksData, warehousesData] = await Promise.all([
           getProducts(),
+          getAllProductStocks(),
           getWarehouses()
         ]);
 
         setProducts(productsData.filter(p => p.companyId === company.id));
+        setProductStocks(stocksData);
         setWarehouses(warehousesData.filter(w => w.companyId === company.id));
       } catch (error) {
         console.error('Error fetching inventory data:', error);
@@ -75,47 +78,40 @@ const InHandInventoryPieChart: React.FC<InHandInventoryPieChartProps> = ({
     console.log('InHandInventory - Starting calculation...');
     console.log('Products:', products.length);
     console.log('Warehouses:', warehouses.length);
+    console.log('Product Stocks:', Object.keys(productStocks).length);
     console.log('Company:', company?.id);
     
     const productInventory: ProductInventoryData[] = [];
     
     products.forEach((product, index) => {
       console.log(`Processing product: ${product.name} (${product.sku})`);
-      let totalStock = 0;
-      const warehouseStocks: { warehouseId: string; warehouseName: string; quantity: number }[] = [];
       
-      // Calculate total stock across all warehouses
-      try {
-        const allWarehousesStock = getProductStock(product.id, undefined, company?.id);
-        console.log(`${product.name} total stock: ${allWarehousesStock}`);
+      const stockData = productStocks[product.id];
+      if (!stockData) {
+        console.log(`No stock data for ${product.name}`);
+        return;
+      }
+      
+      const totalStock = stockData.total || 0;
+      console.log(`${product.name} total stock: ${totalStock}`);
+      
+      if (totalStock > 0) {
+        const warehouseStocks: { warehouseId: string; warehouseName: string; quantity: number }[] = [];
         
-        if (allWarehousesStock > 0) {
-          totalStock = allWarehousesStock;
-          
-          // Get warehouse breakdown
-          warehouses.forEach(warehouse => {
-            try {
-              const warehouseStock = getProductStock(product.id, warehouse.id, company?.id);
-              console.log(`${product.name} in ${warehouse.name}: ${warehouseStock}`);
-              
-              if (warehouseStock > 0) {
-                warehouseStocks.push({
-                  warehouseId: warehouse.id,
-                  warehouseName: warehouse.name,
-                  quantity: warehouseStock
-                });
-              }
-            } catch (error) {
-              console.log(`Error getting stock for ${product.name} in ${warehouse.name}:`, error);
+        // Get warehouse breakdown
+        if (stockData.byWarehouse) {
+          Object.entries(stockData.byWarehouse).forEach(([warehouseId, quantity]: [string, any]) => {
+            const warehouse = warehouses.find(w => w.id === warehouseId);
+            if (warehouse && quantity > 0) {
+              warehouseStocks.push({
+                warehouseId: warehouse.id,
+                warehouseName: warehouse.name,
+                quantity: quantity
+              });
             }
           });
         }
-      } catch (error) {
-        console.log(`Error getting total stock for ${product.name}:`, error);
-        totalStock = 0;
-      }
-
-      if (totalStock > 0) {
+        
         console.log(`Adding ${product.name} with stock: ${totalStock}`);
         productInventory.push({
           productName: product.name,
@@ -141,7 +137,7 @@ const InHandInventoryPieChart: React.FC<InHandInventoryPieChartProps> = ({
 
     // Sort by stock quantity (descending)
     return productInventory.sort((a, b) => b.totalStock - a.totalStock);
-  }, [products, warehouses, selectedWarehouse, company]);
+  }, [products, warehouses, productStocks, selectedWarehouse, company]);
 
   // Chart.js configuration
   const chartData = {
