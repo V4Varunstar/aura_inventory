@@ -55,6 +55,8 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
         phone: '+91 98765 43210',
         plan: SubscriptionPlan.Pro,
         subscriptionStatus: SubscriptionStatus.Active,
+        orgId: 'org_demo_001',
+        isActive: true,
         limits: PLAN_LIMITS[SubscriptionPlan.Pro],
         usage: {
           users: 5,

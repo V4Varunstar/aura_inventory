@@ -20,9 +20,15 @@ const Login: React.FC = () => {
     e.preventDefault();
     setIsLoading(true);
     try {
-      await login(email, password);
+      const user = await login(email, password);
       addToast('Login successful!', 'success');
-      navigate('/dashboard');
+      
+      // Navigate based on user role
+      if (user.role === 'SuperAdmin') {
+        navigate('/super-admin/dashboard');
+      } else {
+        navigate('/dashboard');
+      }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
       addToast(errorMessage, 'error');

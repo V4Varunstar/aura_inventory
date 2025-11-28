@@ -39,6 +39,12 @@ import NotFound from './pages/NotFound';
 import ExpiringProducts from './pages/ExpiringProducts';
 import CategorySalesAnalytics from './pages/CategorySalesAnalytics';
 
+// Super Admin imports
+import SuperAdminRoute from './components/auth/SuperAdminRoute';
+import SuperAdminLayout from './components/layout/SuperAdminLayout';
+import SuperAdminDashboard from './pages/super-admin/Dashboard';
+import SuperAdminCompanies from './pages/super-admin/Companies';
+
 // ProtectedRoute component - simplified since we're using PermissionGate components in pages
 const ProtectedRoute: React.FC<{ children: React.ReactElement }> = ({ children }) => {
   const { user, loading } = useAuth();
@@ -55,6 +61,11 @@ const ProtectedRoute: React.FC<{ children: React.ReactElement }> = ({ children }
     return <Navigate to="/login" replace />;
   }
 
+  // Redirect Super Admin to Super Admin panel
+  if (user.role === 'SuperAdmin') {
+    return <Navigate to="/super-admin/dashboard" replace />;
+  }
+
   return children;
 };
 
@@ -65,13 +76,25 @@ const AppRoutes: React.FC = () => {
     return(
         <Routes>
             {/* Public Routes */}
-            <Route path="/" element={user ? <Navigate to="/dashboard" /> : <Landing />} />
+            <Route path="/" element={
+                user ? (
+                    user.role === 'SuperAdmin' ? 
+                    <Navigate to="/super-admin/dashboard" /> : 
+                    <Navigate to="/dashboard" />
+                ) : <Landing />
+            } />
             <Route path="/demo" element={<Demo />} />
             <Route path="/pricing" element={<Pricing />} />
             <Route path="/privacy" element={<PrivacyPolicy />} />
             <Route path="/terms" element={<Terms />} />
             <Route path="/refund" element={<RefundPolicy />} />
-            <Route path="/login" element={<Login />} />
+            <Route path="/login" element={
+                user ? (
+                    user.role === 'SuperAdmin' ?
+                    <Navigate to="/super-admin/dashboard" /> :
+                    <Navigate to="/dashboard" />
+                ) : <Login />
+            } />
             
             {/* Protected Routes */}
             <Route path="/dashboard" element={<ProtectedRoute><Layout><Dashboard /></Layout></ProtectedRoute>} />
@@ -98,6 +121,19 @@ const AppRoutes: React.FC = () => {
             <Route path="/settings" element={<ProtectedRoute><Layout><Settings /></Layout></ProtectedRoute>} />
             <Route path="/settings/sources" element={<ProtectedRoute><Layout><Sources /></Layout></ProtectedRoute>} />
             <Route path="/expiring-products" element={<ProtectedRoute><Layout><ExpiringProducts /></Layout></ProtectedRoute>} />
+            
+            {/* Super Admin Routes */}
+            <Route path="/super-admin/*" element={
+                <SuperAdminRoute>
+                    <SuperAdminLayout>
+                        <Routes>
+                            <Route index element={<Navigate to="dashboard" replace />} />
+                            <Route path="dashboard" element={<SuperAdminDashboard />} />
+                            <Route path="companies" element={<SuperAdminCompanies />} />
+                        </Routes>
+                    </SuperAdminLayout>
+                </SuperAdminRoute>
+            } />
             
             <Route path="*" element={<NotFound />} />
         </Routes>

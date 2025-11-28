@@ -26,6 +26,8 @@ export interface Company {
   subscriptionId?: string;
   trialEndsAt?: Date;
   currentPeriodEnd?: Date;
+  orgId: string; // Unique organization identifier for data isolation
+  isActive: boolean; // For Super Admin to activate/deactivate
   limits: {
     maxUsers: number;
     maxWarehouses: number;
@@ -46,6 +48,7 @@ export enum Role {
   Manager = 'Manager', 
   Employee = 'Employee',
   Viewer = 'Viewer',
+  SuperAdmin = 'SuperAdmin',
 }
 
 export interface User {
@@ -54,6 +57,10 @@ export interface User {
   name: string;
   phone?: string;
   photoURL?: string;
+  role?: Role; // For Super Admin users
+  orgId?: string; // Organization ID for data isolation
+  companyId?: string; // Company ID for regular users
+  isEnabled?: boolean; // Enable/disable user
   createdAt: Date;
   updatedAt: Date;
 }
@@ -91,12 +98,12 @@ export interface Source {
   id: string;
   companyId: string;
   name: string;
-  type: 'inward' | 'outward' | 'both';
+  type: 'inward' | 'outward' | 'both' | 'supplier' | 'warehouse' | 'return';
   isActive: boolean;
-  isDefault: boolean;
-  createdBy: string;
+  isDefault?: boolean;
+  createdBy?: string;
   createdAt: Date;
-  updatedAt: Date;
+  updatedAt?: Date;
 }
 
 export interface Product {
@@ -245,6 +252,7 @@ export enum AdjustmentType {
 
 export interface Adjustment {
   id: string;
+  companyId: string;
   productId: string;
   sku: string;
   quantity: number; // can be negative
@@ -388,15 +396,6 @@ export interface Destination {
   createdAt: Date;
 }
 
-export interface Source {
-  id: string;
-  companyId: string;
-  name: string;
-  type: 'supplier' | 'warehouse' | 'return';
-  isActive: boolean;
-  createdAt: Date;
-}
-
 // Bulk Inward Document
 export interface BulkInwardDocument {
   id: string;
@@ -451,3 +450,20 @@ export const PLAN_LIMITS = {
     features: ['All Pro Features', 'Priority Support', 'Custom Integrations', 'Dedicated Account Manager'],
   },
 };
+
+// Super Admin Types
+export interface SuperAdminStats {
+  totalCompanies: number;
+  activeCompanies: number;
+  inactiveCompanies: number;
+  totalUsers: number;
+}
+
+export interface CreateCompanyRequest {
+  name: string;
+  email: string;
+  phone?: string;
+  plan: SubscriptionPlan;
+  ownerName: string;
+  ownerEmail: string;
+}

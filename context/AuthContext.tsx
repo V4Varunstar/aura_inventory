@@ -6,7 +6,7 @@ import { mockLogin, mockLogout, mockFetchUser } from '../services/firebaseServic
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  login: (email: string, pass: string) => Promise<void>;
+  login: (email: string, pass: string) => Promise<User>;
   logout: () => void;
 }
 
@@ -37,6 +37,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const loggedInUser = await mockLogin(email, pass);
       setUser(loggedInUser);
+      return loggedInUser;
     } catch(error) {
       setUser(null);
       throw error;

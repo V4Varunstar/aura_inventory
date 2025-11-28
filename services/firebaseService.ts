@@ -18,42 +18,14 @@ import { getSources } from './sourceService';
 
 // --- MOCK DATABASE ---
 const users: User[] = [
-  { id: '1', name: 'Admin User', email: 'admin@aura.com', role: Role.Admin, isEnabled: true, createdAt: new Date() },
-  { id: '2', name: 'Manager User', email: 'manager@aura.com', role: Role.Manager, isEnabled: true, createdAt: new Date() },
-  { id: '3', name: 'Warehouse Staff', email: 'staff@aura.com', role: Role.Employee, isEnabled: true, createdAt: new Date() },
-  { id: '4', name: 'Viewer User', email: 'viewer@aura.com', role: Role.Viewer, isEnabled: false, createdAt: new Date() },
-  { id: '5', name: 'Orgatre Test User', email: 'Test@orgatre.com', role: Role.Admin, isEnabled: true, createdAt: new Date(), companyId: 'company_orgatre_trial' },
+  { id: '1', name: 'Super Admin', email: 'superadmin@aura.com', role: Role.SuperAdmin, isEnabled: true, createdAt: new Date(), updatedAt: new Date() },
 ];
 
-const products: Product[] = [
-  {
-    id: 'prod_1', sku: 'AS-HS-50ML', ean: '8906158841001', name: 'Aura Glow Hair Serum', imageUrl: 'https://picsum.photos/id/106/200',
-    category: ProductCategory.HairCare, unit: ProductUnit.Ml, mrp: 599, costPrice: 150, batchTracking: true,
-    lowStockThreshold: 50, createdAt: new Date(), updatedAt: new Date()
-  },
-  {
-    id: 'prod_2', sku: 'AS-FS-30ML', ean: '8906158841002', name: 'Radiant Face Serum', imageUrl: 'https://picsum.photos/id/111/200',
-    category: ProductCategory.FaceCare, unit: ProductUnit.Ml, mrp: 899, costPrice: 220, batchTracking: true,
-    lowStockThreshold: 30, createdAt: new Date(), updatedAt: new Date()
-  },
-  {
-    id: 'prod_3', sku: 'AS-BC-200G', ean: '8906158841003', name: 'Hydrating Body Cream', imageUrl: 'https://picsum.photos/id/115/200',
-    category: ProductCategory.BodyCare, unit: ProductUnit.G, mrp: 450, costPrice: 120, batchTracking: false,
-    lowStockThreshold: 100, createdAt: new Date(), updatedAt: new Date()
-  }
-];
+const products: Product[] = [];
 
-const warehouses: Warehouse[] = [
-    { id: 'wh_1', name: 'Mumbai WH', location: 'Mumbai, Maharashtra', createdAt: new Date() },
-    { id: 'wh_2', name: 'Delhi WH', location: 'Delhi, NCR', createdAt: new Date() }
-];
+const warehouses: Warehouse[] = [];
 
-const activities: ActivityLog[] = [
-    {id: 'act_1', userId: '1', userName: 'Admin User', type: ActivityType.ProductCreated, referenceId: 'prod_3', details: 'Created new product AS-BC-200G', createdAt: new Date(Date.now() - 1 * 60 * 60 * 1000) },
-    {id: 'act_2', userId: '2', userName: 'Manager User', type: ActivityType.InwardCreated, referenceId: 'in_1', details: 'Inwarded 500 units of AS-HS-50ML', createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000) },
-    {id: 'act_3', userId: '3', userName: 'Warehouse Staff', type: ActivityType.OutwardCreated, referenceId: 'out_1', details: 'Outwarded 150 units of AS-FS-30ML to Amazon FBA', createdAt: new Date(Date.now() - 3 * 60 * 60 * 1000) },
-    {id: 'act_4', userId: '1', userName: 'Admin User', type: ActivityType.UserUpdated, referenceId: '4', details: 'Disabled user viewer@aura.com', createdAt: new Date(Date.now() - 5 * 60 * 60 * 1000) },
-];
+const activities: ActivityLog[] = [];
 
 
 let currentUser: User | null = null;
@@ -111,7 +83,23 @@ const cleanCorruptedOutwardData = () => {
     }
 };
 
+// Clear all localStorage data for fresh start
+const clearAllStorageData = () => {
+    try {
+        Object.values(STORAGE_KEYS).forEach(key => {
+            localStorage.removeItem(key);
+        });
+        localStorage.removeItem(SESSION_KEY);
+        localStorage.removeItem('superadmin_companies');
+        localStorage.removeItem('superadmin_users');
+        console.log('🧹 Cleared all localStorage data for fresh deployment');
+    } catch (error) {
+        console.error('❌ Error clearing localStorage:', error);
+    }
+};
+
 // Run cleanup immediately on module load
+clearAllStorageData(); // Clear all data for deployment
 cleanCorruptedOutwardData();
 
 // Helper functions for localStorage persistence
@@ -142,6 +130,8 @@ export const mockLogin = (email: string, pass: string): Promise<User> => {
       // Check password based on user
       let validPassword = false;
       if (email === 'Test@orgatre.com' && pass === 'Test@1234') {
+        validPassword = true;
+      } else if (email === 'superadmin@aura.com' && pass === 'SuperAdmin@123') {
         validPassword = true;
       } else if (pass === 'password123') {
         validPassword = true;
@@ -198,6 +188,7 @@ export const addUser = (data: Partial<User>) => {
         role: data.role || Role.Viewer,
         isEnabled: true,
         createdAt: new Date(),
+        updatedAt: new Date(),
     };
     users.push(newUser);
     return simulateApi(newUser);
@@ -361,9 +352,9 @@ export const deleteCourierPartner = (partnerName: string) => {
 };
 
 // Load persisted data from localStorage
-let inwardRecords: Inward[] = loadFromStorage<Inward[]>(STORAGE_KEYS.INWARD, []);
-let outwardRecords: Outward[] = loadFromStorage<Outward[]>(STORAGE_KEYS.OUTWARD, []);
-let adjustmentRecords: Adjustment[] = loadFromStorage<Adjustment[]>(STORAGE_KEYS.ADJUSTMENTS, []);
+let inwardRecords: Inward[] = [];
+let outwardRecords: Outward[] = [];
+let adjustmentRecords: Adjustment[] = [];
 
 // Initialize products and warehouses from localStorage or use defaults
 const initProducts = loadFromStorage<Product[]>(STORAGE_KEYS.PRODUCTS, []);
