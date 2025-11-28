@@ -125,7 +125,32 @@ const loadFromStorage = <T>(key: string, defaultValue: T): T => {
 export const mockLogin = (email: string, pass: string): Promise<User> => {
   return new Promise((resolve, reject) => {
     setTimeout(() => {
-      const user = users.find(u => u.email === email);
+      // First check hardcoded users
+      let user = users.find(u => u.email === email);
+      
+      // If not found in hardcoded users, check Super Admin created users
+      if (!user) {
+        try {
+          const superAdminUsers = JSON.parse(localStorage.getItem('superadmin_users') || '[]');
+          const superAdminUser = superAdminUsers.find((u: any) => u.email === email);
+          
+          if (superAdminUser) {
+            // Convert Super Admin user format to standard User format
+            user = {
+              id: superAdminUser.id,
+              name: superAdminUser.name,
+              email: superAdminUser.email,
+              role: superAdminUser.role,
+              orgId: superAdminUser.orgId,
+              isEnabled: superAdminUser.isEnabled,
+              createdAt: new Date(superAdminUser.createdAt),
+              updatedAt: new Date(superAdminUser.updatedAt)
+            };
+          }
+        } catch (error) {
+          console.error('Error checking Super Admin users:', error);
+        }
+      }
       
       // Check password based on user
       let validPassword = false;
@@ -135,6 +160,17 @@ export const mockLogin = (email: string, pass: string): Promise<User> => {
         validPassword = true;
       } else if (pass === 'password123') {
         validPassword = true;
+      } else {
+        // For Super Admin created users, check their actual password
+        try {
+          const superAdminUsers = JSON.parse(localStorage.getItem('superadmin_users') || '[]');
+          const superAdminUser = superAdminUsers.find((u: any) => u.email === email);
+          if (superAdminUser && superAdminUser.password === pass) {
+            validPassword = true;
+          }
+        } catch (error) {
+          console.error('Error checking Super Admin user password:', error);
+        }
       }
       
       if (user && validPassword) {

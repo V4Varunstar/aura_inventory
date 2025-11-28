@@ -31,10 +31,53 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
     setLoading(true);
     try {
-      // TODO: Replace with actual Firebase queries
-      // For now, using mock data
+      // If user has orgId, try to find the actual company from Super Admin created companies
+      if (user.orgId) {
+        try {
+          const superAdminCompanies = JSON.parse(localStorage.getItem('superadmin_companies') || '[]');
+          const userCompany = superAdminCompanies.find((comp: any) => comp.orgId === user.orgId);
+          
+          if (userCompany) {
+            // Use actual company data from Super Admin
+            const actualCompany: Company = {
+              id: userCompany.id,
+              name: userCompany.name,
+              email: userCompany.email,
+              phone: userCompany.phone || '',
+              plan: userCompany.plan,
+              subscriptionStatus: userCompany.subscriptionStatus,
+              orgId: userCompany.orgId,
+              isActive: userCompany.isActive,
+              limits: userCompany.limits,
+              usage: userCompany.usage,
+              ownerId: userCompany.ownerId,
+              createdAt: new Date(userCompany.createdAt),
+              updatedAt: new Date(userCompany.updatedAt),
+            };
+
+            const actualCompanyUser: CompanyUser = {
+              id: `cu_${user.id}`,
+              companyId: userCompany.id,
+              userId: user.id,
+              userEmail: user.email,
+              userName: user.name,
+              role: user.role,
+              isEnabled: user.isEnabled,
+              joinedAt: new Date(),
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            };
+
+            setCompany(actualCompany);
+            setCompanyUser(actualCompanyUser);
+            return;
+          }
+        } catch (error) {
+          console.error('Error loading company data from Super Admin:', error);
+        }
+      }
       
-      // Mock: Find company where user is a member
+      // Fallback to mock data for demo users
       const mockCompanyUser: CompanyUser = {
         id: 'cu_1',
         companyId: 'comp_1',
@@ -55,7 +98,7 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
         phone: '+91 98765 43210',
         plan: SubscriptionPlan.Pro,
         subscriptionStatus: SubscriptionStatus.Active,
-        orgId: 'org_demo_001',
+        orgId: user.orgId || 'org_demo_001',
         isActive: true,
         limits: PLAN_LIMITS[SubscriptionPlan.Pro],
         usage: {
