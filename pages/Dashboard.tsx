@@ -211,7 +211,7 @@ const Dashboard: React.FC = () => {
                     </div>
                     
                     <div className="grid grid-cols-1 gap-6">
-                        <InHandInventoryPieChart products={productInventory || []} />
+                        <InHandInventoryPieChart />
                     </div>
                     
                     <div className="grid grid-cols-1 gap-6">
