@@ -74,6 +74,28 @@ const initializeUsersFromStorage = () => {
 // Call initialization on module load
 initializeUsersFromStorage();
 
+// Debug function to check current users
+export const debugUserStorage = () => {
+  console.log('=== USER STORAGE DEBUG ===');
+  console.log('Global registry users:', users);
+  
+  try {
+    const localStorageUsers = JSON.parse(localStorage.getItem('superadmin_users') || '[]');
+    console.log('localStorage users:', localStorageUsers);
+    
+    const companies = JSON.parse(localStorage.getItem('superadmin_companies') || '[]');
+    console.log('localStorage companies:', companies);
+  } catch (error) {
+    console.error('Error reading localStorage:', error);
+  }
+  console.log('=========================');
+};
+
+// Auto-run debug on load
+setTimeout(() => {
+  debugUserStorage();
+}, 1000);
+
 const products: Product[] = [];
 
 const warehouses: Warehouse[] = [];
@@ -178,9 +200,13 @@ const loadFromStorage = <T>(key: string, defaultValue: T): T => {
 export const mockLogin = (email: string, pass: string): Promise<User> => {
   return new Promise((resolve, reject) => {
     setTimeout(() => {
+      console.log(`🔐 Login attempt: ${email} / ${pass}`);
+      
       // Sync users from localStorage first (handles incognito mode)
       try {
         const superAdminUsers = JSON.parse(localStorage.getItem('superadmin_users') || '[]');
+        console.log('📦 SuperAdmin users in localStorage:', superAdminUsers);
+        
         superAdminUsers.forEach((userData: any) => {
           const existingUser = users.find(u => u.email === userData.email);
           if (!existingUser) {
@@ -199,6 +225,8 @@ export const mockLogin = (email: string, pass: string): Promise<User> => {
         console.error('Error syncing users:', error);
       }
 
+      console.log('👥 All users in global registry:', users);
+
       // Find user in global registry (includes both hardcoded and Super Admin created users)
       let user = users.find(u => u.email === email);
       
@@ -209,6 +237,7 @@ export const mockLogin = (email: string, pass: string): Promise<User> => {
           const superAdminUser = superAdminUsers.find((u: any) => u.email === email);
           
           if (superAdminUser) {
+            console.log('✅ Found user in localStorage:', superAdminUser);
             // Convert Super Admin user format to standard User format
             user = {
               id: superAdminUser.id,
@@ -225,27 +254,42 @@ export const mockLogin = (email: string, pass: string): Promise<User> => {
           console.error('Error checking Super Admin users:', error);
         }
       }
+
+      console.log('🎯 Found user for login:', user);
       
       // Check password based on user
       let validPassword = false;
       if (email === 'Test@orgatre.com' && pass === 'Test@1234') {
         validPassword = true;
+        console.log('✅ Valid: Test user');
       } else if (email === 'superadmin@aura.com' && pass === 'SuperAdmin@123') {
         validPassword = true;
+        console.log('✅ Valid: Super Admin');
       } else if (pass === 'password123') {
         validPassword = true;
+        console.log('✅ Valid: Default password');
       } else {
         // For users in global registry (including Super Admin created users), check their password
         const registryUser = users.find(u => u.email === email) as any;
+        console.log('🔍 Registry user found:', registryUser);
+        
         if (registryUser && registryUser.password === pass) {
           validPassword = true;
+          console.log('✅ Valid: Registry password match');
         } else {
+          console.log(`❌ Password mismatch. Expected: "${registryUser?.password}", Got: "${pass}"`);
+          
           // Fallback: check Super Admin created users from localStorage
           try {
             const superAdminUsers = JSON.parse(localStorage.getItem('superadmin_users') || '[]');
             const superAdminUser = superAdminUsers.find((u: any) => u.email === email);
+            console.log('🔍 localStorage user found:', superAdminUser);
+            
             if (superAdminUser && superAdminUser.password === pass) {
               validPassword = true;
+              console.log('✅ Valid: localStorage password match');
+            } else {
+              console.log(`❌ localStorage password mismatch. Expected: "${superAdminUser?.password}", Got: "${pass}"`);
             }
           } catch (error) {
             console.error('Error checking Super Admin user password:', error);
