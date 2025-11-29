@@ -1036,20 +1036,15 @@ export const getDashboardData = async () => {
         value
     }));
     
-    // Add default chart data if no outward records exist OR if all destinations are corrupted IDs
-    const hasValidData = channelWiseOutward.some(item => 
-        !item.name.startsWith('src_') && item.name !== 'Unknown'
+    // Filter out corrupted data (source IDs starting with 'src_') but don't add fallback data
+    const cleanChannelData = channelWiseOutward.filter(item => 
+        !item.name.startsWith('src_') && item.name !== 'Unknown' && item.value > 0
     );
     
-    if (channelWiseOutward.length === 0 || !hasValidData) {
-        channelWiseOutward.length = 0; // Clear any corrupted data
-        channelWiseOutward.push(
-            { name: 'Amazon FBA', value: 400 },
-            { name: 'Flipkart', value: 300 },
-            { name: 'Meesho', value: 250 },
-            { name: 'Myntra', value: 200 }
-        );
-    }
+    // Only use clean data - no hardcoded fallbacks
+    const finalChannelWiseOutward = cleanChannelData.length > 0 ? cleanChannelData : [];
+    
+    console.log('Dashboard - Clean channel outward data:', finalChannelWiseOutward);
     
     // Calculate stock by warehouse
     const warehouseStockMap = new Map<string, number>();
@@ -1106,7 +1101,7 @@ export const getDashboardData = async () => {
             activeSKUs,
         },
         inwardOutwardTrend,
-        channelWiseOutward,
+        channelWiseOutward: finalChannelWiseOutward,
         stockByWarehouse,
         topSKUsByStock,
         productInventory,

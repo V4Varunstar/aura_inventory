@@ -198,15 +198,24 @@ const Dashboard: React.FC = () => {
                             </ResponsiveContainer>
                         </Card>
                         <Card title="Channel-wise Outward">
-                            <ResponsiveContainer width="100%" height={300}>
-                                <PieChart>
-                                    <Pie data={channelWiseOutward} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} fill="#8884d8" label>
-                                        {channelWiseOutward.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
-                                    </Pie>
-                                    <Tooltip />
-                                    <Legend />
-                                </PieChart>
-                            </ResponsiveContainer>
+                            {channelWiseOutward && channelWiseOutward.length > 0 ? (
+                                <ResponsiveContainer width="100%" height={300}>
+                                    <PieChart>
+                                        <Pie data={channelWiseOutward} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} fill="#8884d8" label>
+                                            {channelWiseOutward.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
+                                        </Pie>
+                                        <Tooltip />
+                                        <Legend />
+                                    </PieChart>
+                                </ResponsiveContainer>
+                            ) : (
+                                <div className="flex items-center justify-center h-[300px]">
+                                    <div className="text-center text-gray-500">
+                                        <div className="text-lg mb-2">No outward data available</div>
+                                        <div className="text-sm">Create outward entries to see channel distribution</div>
+                                    </div>
+                                </div>
+                            )}
                         </Card>
                     </div>
                     

@@ -39,10 +39,35 @@ const ProductForm: React.FC<{
   };
   
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    // In a real app, this would upload to Firebase Storage and get a URL
+    // Handle image file upload with preview
     if (e.target.files && e.target.files[0]) {
-       setFormData(prev => ({...prev, imageUrl: 'https://picsum.photos/200' }));
-       console.log("File selected:", e.target.files[0].name);
+      const file = e.target.files[0];
+      
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        addToast('Please select a valid image file', 'error');
+        return;
+      }
+      
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        addToast('Image file size should be less than 5MB', 'error');
+        return;
+      }
+      
+      // Create preview URL and store file data
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const imageDataUrl = event.target?.result as string;
+        setFormData(prev => ({
+          ...prev, 
+          imageUrl: imageDataUrl,
+          imageFile: file
+        }));
+        addToast('Image uploaded successfully!', 'success');
+      };
+      reader.readAsDataURL(file);
+      console.log("File selected:", file.name, "Size:", (file.size / 1024).toFixed(1) + "KB");
     }
   };
 
@@ -128,7 +153,34 @@ const ProductForm: React.FC<{
       <Input name="lowStockThreshold" label="Low Stock Threshold" type="number" value={formData.lowStockThreshold || ''} onChange={handleChange} required />
       <div className="md:col-span-2">
         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Product Image</label>
-        <input type="file" onChange={handleFileChange} className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100"/>
+        <div className="space-y-3">
+          <input 
+            type="file" 
+            accept="image/*"
+            onChange={handleFileChange} 
+            className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100"
+          />
+          {formData.imageUrl && (
+            <div className="flex items-center space-x-4">
+              <img 
+                src={formData.imageUrl} 
+                alt="Product preview" 
+                className="w-16 h-16 object-cover rounded-lg border border-gray-300 dark:border-gray-600"
+              />
+              <div className="text-sm text-gray-600 dark:text-gray-400">
+                <p>✓ Image uploaded successfully</p>
+                <button
+                  type="button"
+                  onClick={() => setFormData(prev => ({ ...prev, imageUrl: '', imageFile: undefined }))}
+                  className="text-red-500 hover:text-red-700 text-xs"
+                >
+                  Remove image
+                </button>
+              </div>
+            </div>
+          )}
+          <p className="text-xs text-gray-500">Supported formats: JPG, PNG, GIF. Max size: 5MB</p>
+        </div>
       </div>
       <div className="flex items-center md:col-span-2">
           <input type="checkbox" id="batchTracking" name="batchTracking" checked={!!formData.batchTracking} onChange={handleChange} className="h-4 w-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"/>

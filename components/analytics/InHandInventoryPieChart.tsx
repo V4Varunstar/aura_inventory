@@ -46,6 +46,7 @@ const InHandInventoryPieChart: React.FC<InHandInventoryPieChartProps> = ({
   const [products, setProducts] = useState<Product[]>([]);
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [productStocks, setProductStocks] = useState<any>({});
+  const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
 
   // Fetch data
   useEffect(() => {
@@ -63,6 +64,14 @@ const InHandInventoryPieChart: React.FC<InHandInventoryPieChartProps> = ({
         setProducts(productsData.filter(p => p.companyId === company.id));
         setProductStocks(stocksData);
         setWarehouses(warehousesData.filter(w => w.companyId === company.id));
+        setLastRefresh(new Date());
+        
+        console.log('InHandInventoryPieChart - Refreshed data:', {
+          productsCount: productsData.filter(p => p.companyId === company.id).length,
+          stocksDataKeys: Object.keys(stocksData),
+          warehousesCount: warehousesData.filter(w => w.companyId === company.id).length,
+          refreshTime: new Date().toLocaleTimeString()
+        });
       } catch (error) {
         console.error('Error fetching inventory data:', error);
       } finally {
@@ -71,6 +80,11 @@ const InHandInventoryPieChart: React.FC<InHandInventoryPieChartProps> = ({
     };
 
     fetchData();
+    
+    // Set up auto-refresh every 30 seconds to catch new stock additions
+    const refreshInterval = setInterval(fetchData, 30000);
+    
+    return () => clearInterval(refreshInterval);
   }, [company]);
 
   // Calculate stock data using the same method as Products page
@@ -215,8 +229,35 @@ const InHandInventoryPieChart: React.FC<InHandInventoryPieChartProps> = ({
     <div className="bg-gray-900 rounded-lg p-6 text-white">
       <div className="flex justify-between items-center mb-6">
         <h3 className="text-xl font-semibold">In-Hand Inventory by Products</h3>
-        <div className="text-sm text-gray-400">
-          Total Products: {inventoryData.length}
+        <div className="flex items-center space-x-4">
+          <div className="text-sm text-gray-400">
+            Total Products: {inventoryData.length}
+          </div>
+          <button
+            onClick={async () => {
+              setLoading(true);
+              try {
+                const [productsData, stocksData, warehousesData] = await Promise.all([
+                  getProducts(),
+                  getAllProductStocks(),
+                  getWarehouses()
+                ]);
+                setProducts(productsData.filter(p => p.companyId === company.id));
+                setProductStocks(stocksData);
+                setWarehouses(warehousesData.filter(w => w.companyId === company.id));
+                setLastRefresh(new Date());
+              } finally {
+                setLoading(false);
+              }
+            }}
+            className="text-xs bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded-lg transition-colors"
+            disabled={loading}
+          >
+            {loading ? 'Refreshing...' : 'Refresh'}
+          </button>
+          <div className="text-xs text-gray-500">
+            Last: {lastRefresh.toLocaleTimeString()}
+          </div>
         </div>
       </div>
       
