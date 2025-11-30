@@ -1,5 +1,5 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { Role } from '../../types';
 import Button from '../ui/Button';
@@ -12,6 +12,7 @@ interface SuperAdminLayoutProps {
 const SuperAdminLayout: React.FC<SuperAdminLayoutProps> = ({ children }) => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   // Redirect if not super admin
   React.useEffect(() => {
@@ -78,9 +79,9 @@ const SuperAdminLayout: React.FC<SuperAdminLayoutProps> = ({ children }) => {
           <nav className="mt-5 px-2">
             <div className="space-y-1">
               <button
-                onClick={() => window.location.hash = '#/super-admin/dashboard'}
+                onClick={() => navigate('/super-admin/dashboard')}
                 className={`group flex items-center px-2 py-2 text-sm font-medium rounded-md transition-colors w-full text-left ${
-                  window.location.hash === '#/super-admin/dashboard' || window.location.hash === '#/super-admin'
+                  location.pathname === '/super-admin/dashboard' || location.pathname === '/super-admin'
                     ? 'bg-indigo-100 text-indigo-900 dark:bg-indigo-900 dark:text-indigo-200'
                     : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-700'
                 }`}
@@ -90,9 +91,9 @@ const SuperAdminLayout: React.FC<SuperAdminLayoutProps> = ({ children }) => {
               </button>
               
               <button
-                onClick={() => window.location.hash = '#/super-admin/companies'}
+                onClick={() => navigate('/super-admin/companies')}
                 className={`group flex items-center px-2 py-2 text-sm font-medium rounded-md transition-colors w-full text-left ${
-                  window.location.hash === '#/super-admin/companies'
+                  location.pathname === '/super-admin/companies'
                     ? 'bg-indigo-100 text-indigo-900 dark:bg-indigo-900 dark:text-indigo-200'
                     : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-700'
                 }`}

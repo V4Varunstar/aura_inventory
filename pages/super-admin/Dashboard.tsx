@@ -122,7 +122,7 @@ const SuperAdminDashboard: React.FC = () => {
           className="p-6 cursor-pointer hover:shadow-lg transition-shadow"
           onClick={() => {
             console.log('Navigating to companies...');
-            window.location.hash = '#/super-admin/companies';
+            navigate('/super-admin/companies');
           }}
         >
           <div className="flex items-center">
@@ -144,7 +144,7 @@ const SuperAdminDashboard: React.FC = () => {
           className="p-6 cursor-pointer hover:shadow-lg transition-shadow"
           onClick={() => {
             console.log('Navigating to companies...');
-            window.location.hash = '#/super-admin/companies';
+            navigate('/super-admin/companies');
           }}
         >
           <div className="flex items-center">
@@ -166,7 +166,7 @@ const SuperAdminDashboard: React.FC = () => {
           className="p-6 cursor-pointer hover:shadow-lg transition-shadow"
           onClick={() => {
             console.log('Navigating to companies...');
-            window.location.hash = '#/super-admin/companies';
+            navigate('/super-admin/companies');
           }}
         >
           <div className="flex items-center">
@@ -188,7 +188,7 @@ const SuperAdminDashboard: React.FC = () => {
           className="p-6 cursor-pointer hover:shadow-lg transition-shadow"
           onClick={() => {
             console.log('Navigating to companies...');
-            window.location.hash = '#/super-admin/companies';
+            navigate('/super-admin/companies');
           }}
         >
           <div className="flex items-center">
@@ -215,7 +215,7 @@ const SuperAdminDashboard: React.FC = () => {
             size="lg"
             onClick={() => {
               console.log('Navigate to companies via button');
-              window.location.hash = '#/super-admin/companies';
+              navigate('/super-admin/companies');
             }}
             leftIcon={<Building2 />}
             className="justify-start text-left"
@@ -244,7 +244,7 @@ const SuperAdminDashboard: React.FC = () => {
             size="lg"
             onClick={() => {
               console.log('Navigate to companies for user management');
-              window.location.hash = '#/super-admin/companies';
+              navigate('/super-admin/companies');
             }}
             leftIcon={<UserPlus />}
             className="justify-start text-left"
