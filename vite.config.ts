@@ -26,7 +26,7 @@ export default defineConfig(({ mode }) => {
           }
         },
         target: 'es2015',
-        minify: 'terser',
+        minify: 'esbuild', // Use esbuild instead of terser for faster builds
         chunkSizeWarningLimit: 1000
       },
       define: {
