@@ -136,8 +136,24 @@ export const createCompanyUser = async (
     throw new Error('Company not found');
   }
 
+  // Check if company is active and login allowed
+  if (!company.isActive) {
+    throw new Error('Cannot create users for inactive company');
+  }
+
+  // Check user limit
+  if (company.usage.users >= company.limits.maxUsers) {
+    throw new Error(`User limit exceeded. Maximum ${company.limits.maxUsers} users allowed.`);
+  }
+
+  // Check if user already exists
+  const existingUser = superAdminUsers.find(u => u.email === userData.email);
+  if (existingUser) {
+    throw new Error('User with this email already exists');
+  }
+
   const newUser = {
-    id: `user_${Date.now()}`,
+    id: `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
     name: userData.name,
     email: userData.email,
     password: userData.password || 'password123', // Default or provided password
@@ -145,10 +161,12 @@ export const createCompanyUser = async (
     orgId: userData.orgId,
     companyId: companyId,
     isEnabled: true,
+    active: true, // Add active flag for user status
     createdAt: new Date(),
     updatedAt: new Date()
   };
 
+  // Store user in localStorage (for persistence)
   superAdminUsers.push(newUser);
   saveToStorage(SUPER_ADMIN_STORAGE_KEYS.USERS, superAdminUsers);
 
@@ -171,7 +189,18 @@ export const createCompanyUser = async (
     saveToStorage(SUPER_ADMIN_STORAGE_KEYS.COMPANIES, companies);
   }
 
-  return simulateApi(newUser);
+  console.log('✅ Created company user (NO AUTO-LOGIN):', {
+    email: newUser.email,
+    role: newUser.role,
+    orgId: newUser.orgId,
+    companyId: companyId,
+    autoLogin: false // Explicitly indicate no auto-login
+  });
+
+  return simulateApi({
+    ...newUser,
+    message: 'User created successfully. They can now login with their credentials.'
+  });
 };
 
 export const getCompanyById = async (companyId: string): Promise<Company | null> => {

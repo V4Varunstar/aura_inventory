@@ -151,13 +151,31 @@ const SuperAdminCompanies: React.FC = () => {
       addToast('Please fill in all required fields', 'error');
       return;
     }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(adminAssignForm.email)) {
+      addToast('Please enter a valid email address', 'error');
+      return;
+    }
+
+    // Validate password strength
+    if (adminAssignForm.password.length < 6) {
+      addToast('Password must be at least 6 characters long', 'error');
+      return;
+    }
     
     try {
       setCreating(true);
-      console.log('Assigning admin user:', adminAssignForm);
-      console.log('To company:', selectedCompany);
+      console.log('Creating company user (NO AUTO-LOGIN):', {
+        name: adminAssignForm.name,
+        email: adminAssignForm.email,
+        role: adminAssignForm.role,
+        companyId: selectedCompany.id,
+        orgId: selectedCompany.orgId
+      });
       
-      await createCompanyUser(selectedCompany.id, {
+      const result = await createCompanyUser(selectedCompany.id, {
         name: adminAssignForm.name,
         email: adminAssignForm.email,
         password: adminAssignForm.password,
@@ -174,13 +192,28 @@ const SuperAdminCompanies: React.FC = () => {
       };
       setAdminAssignForm({ name: '', email: '', password: '', role: Role.Admin });
       
-      addToast(`Admin user assigned successfully! 🎉\nEmail: ${assignedCredentials.email}\nPassword: ${assignedCredentials.password}\nRole: ${assignedCredentials.role}`, 'success');
-      console.log('Admin user assigned:', assignedCredentials);
+      // Success message without auto-login
+      addToast(
+        `✅ User created successfully!\n` +
+        `📧 Email: ${assignedCredentials.email}\n` +
+        `🔑 Password: ${assignedCredentials.password}\n` +
+        `👤 Role: ${assignedCredentials.role}\n\n` +
+        `🚀 User can now login from any device/browser with these credentials.\n` +
+        `⚠️ SuperAdmin session remains unchanged.`,
+        'success'
+      );
+      
+      console.log('✅ User created successfully (SuperAdmin NOT auto-logged-out):', {
+        ...assignedCredentials,
+        autoLogin: false,
+        crossDeviceLogin: true
+      });
       
       await fetchCompanies();
     } catch (error) {
-      console.error('Error assigning admin user:', error);
-      addToast('Failed to assign admin user. Please try again.', 'error');
+      console.error('❌ Error creating user:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to create user';
+      addToast(`Failed to create user: ${errorMessage}`, 'error');
     } finally {
       setCreating(false);
     }

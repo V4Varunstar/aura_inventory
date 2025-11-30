@@ -274,13 +274,47 @@ export const mockLogin = (email: string, pass: string): Promise<User> => {
           }
         }
       }
+
+      // Additional validation for company users
+      if (user && user.orgId && validPassword) {
+        try {
+          const superAdminCompanies = JSON.parse(localStorage.getItem('superadmin_companies') || '[]');
+          const userCompany = superAdminCompanies.find((comp: any) => comp.orgId === user.orgId);
+          
+          if (userCompany) {
+            // Check company status
+            if (!userCompany.isActive) {
+              reject(new Error('Your company account is disabled. Please contact support.'));
+              return;
+            }
+            
+            // Check subscription status
+            if (userCompany.subscriptionStatus !== 'active') {
+              reject(new Error('Your company subscription has expired. Please contact support.'));
+              return;
+            }
+            
+            // Check if login is allowed for the company
+            if (userCompany.loginAllowed === false) {
+              reject(new Error('Login is currently disabled for your company. Please contact support.'));
+              return;
+            }
+          }
+        } catch (error) {
+          console.error('Error validating company status:', error);
+          // Continue with login if company check fails (for backward compatibility)
+        }
+      }
       
       if (user && validPassword) {
         if (!user.isEnabled) {
             reject(new Error("Your account is disabled. Please contact an administrator."));
         } else {
+            // Prevent session conflicts - only update session for the specific login
+            console.log('🔐 Setting session for user:', user.email);
             currentUser = user;
             localStorage.setItem(SESSION_KEY, JSON.stringify(user));
+            console.log('✅ Session established successfully for:', user.email);
             resolve(user);
         }
       } else {

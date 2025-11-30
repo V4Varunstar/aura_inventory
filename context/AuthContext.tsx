@@ -38,10 +38,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (email: string, pass: string) => {
     setLoading(true);
     try {
+      console.log('🔐 Login attempt:', { email, timestamp: new Date().toISOString() });
+      
+      // Prevent any automatic session switching during login
+      const currentSession = localStorage.getItem('aura_inventory_user');
+      if (currentSession) {
+        const currentUser = JSON.parse(currentSession);
+        console.log('🔍 Existing session detected for:', currentUser.email);
+      }
+      
       const loggedInUser = await mockLogin(email, pass);
+      console.log('✅ Login successful:', { 
+        email: loggedInUser.email, 
+        role: loggedInUser.role,
+        orgId: loggedInUser.orgId,
+        sessionReplaced: !!currentSession
+      });
+      
       setUser(loggedInUser);
       return loggedInUser;
     } catch(error) {
+      console.error('❌ Login failed:', error);
       setUser(null);
       throw error;
     } finally {
