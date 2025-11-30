@@ -111,6 +111,22 @@ export const createCompany = async (request: CreateCompanyRequest): Promise<Comp
   companies.push(newCompany);
   saveToStorage(SUPER_ADMIN_STORAGE_KEYS.COMPANIES, companies);
 
+  // Automatically create a default admin user for the company (for easier testing)
+  if (request.ownerEmail && request.ownerName) {
+    try {
+      await createCompanyUser(companyId, {
+        name: request.ownerName,
+        email: request.ownerEmail,
+        role: Role.Admin,
+        orgId: orgId,
+        password: 'admin123' // Default password
+      });
+      console.log('✅ Auto-created admin user for company:', request.ownerEmail);
+    } catch (error) {
+      console.warn('Could not auto-create admin user:', error);
+    }
+  }
+
   return simulateApi(newCompany);
 };
 

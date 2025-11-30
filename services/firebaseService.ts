@@ -21,6 +21,78 @@ const users: User[] = [
   { id: '1', name: 'Super Admin', email: 'superadmin@aura.com', role: Role.SuperAdmin, isEnabled: true, createdAt: new Date(), updatedAt: new Date() },
 ];
 
+// Add a robust initialization function for Vercel production
+const initializeVercelProduction = () => {
+  try {
+    // Ensure SuperAdmin always exists in production
+    const superAdminExists = users.find(u => u.email === 'superadmin@aura.com');
+    if (!superAdminExists) {
+      users.push({
+        id: 'superadmin-production',
+        name: 'Super Admin',
+        email: 'superadmin@aura.com',
+        role: Role.SuperAdmin,
+        isEnabled: true,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      });
+      console.log('🔧 Added SuperAdmin for Vercel production');
+    }
+
+    // Initialize test data if in debug mode or if no data exists
+    const hasCompanies = localStorage.getItem('superadmin_companies');
+    const hasUsers = localStorage.getItem('superadmin_users');
+    
+    if (!hasCompanies && !hasUsers && window.location.hostname.includes('vercel.app')) {
+      console.log('🚀 Initializing default test data for Vercel production...');
+      
+      // Create a test company
+      const testCompany = {
+        id: 'company_vercel_default',
+        name: 'Demo Company',
+        email: 'demo@aura.com',
+        phone: '1234567890',
+        plan: 'Pro',
+        subscriptionStatus: 'active',
+        validFrom: new Date().toISOString(),
+        validTo: new Date(Date.now() + 365*24*60*60*1000).toISOString(),
+        loginAllowed: true,
+        orgId: 'org_demo',
+        isActive: true,
+        limits: { maxUsers: 100, maxWarehouses: 20, maxProducts: 5000 },
+        usage: { users: 1, warehouses: 0, products: 0 },
+        ownerId: 'user_demo',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      
+      // Create a test user
+      const testUser = {
+        id: 'user_demo',
+        name: 'Demo Admin',
+        email: 'demo@aura.com',
+        password: 'demo123',
+        role: 'Admin',
+        orgId: 'org_demo',
+        companyId: 'company_vercel_default',
+        isEnabled: true,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      
+      localStorage.setItem('superadmin_companies', JSON.stringify([testCompany]));
+      localStorage.setItem('superadmin_users', JSON.stringify([testUser]));
+      
+      console.log('✅ Default test data initialized for Vercel');
+    }
+  } catch (error) {
+    console.error('Error initializing Vercel production data:', error);
+  }
+};
+
+// Run Vercel initialization
+initializeVercelProduction();
+
 // Function to add user to global registry (called from Super Admin service)
 export const addUserToGlobalRegistry = (userData: {
   id: string;

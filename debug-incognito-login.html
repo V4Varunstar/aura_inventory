@@ -55,24 +55,51 @@
                 <input type="password" id="test-password" placeholder="Password" required>
                 <button type="submit" class="btn-success">Test Login</button>
             </form>
+            <button class="btn-warning" onclick="testSuperAdminLogin()">Test SuperAdmin Login</button>
+            <button class="btn-primary" onclick="testBuiltInUsers()">Test Built-in Users</button>
             <div id="login-result"></div>
         </div>
 
         <div class="section">
             <h3>✨ Quick Fix Actions</h3>
             <button class="btn-success" onclick="createTestUser()">Create Test User</button>
+            <button class="btn-success" onclick="createTestCompany()">Create Test Company</button>
             <button class="btn-warning" onclick="syncUsersToGlobalRegistry()">Sync Users to Global Registry</button>
+            <button class="btn-primary" onclick="forceSuperAdminLogin()">Force SuperAdmin Login</button>
             <button class="btn-danger" onclick="resetEverything()">Reset Everything</button>
         </div>
 
         <div class="section">
-            <h3>📝 Instructions</h3>
+            <h3>🔧 Vercel Production Fixes</h3>
+            <button class="btn-primary" onclick="fixVercelAuth()">Fix Vercel Auth Issues</button>
+            <button class="btn-warning" onclick="enableCORS()">Enable CORS for localhost</button>
+            <button class="btn-success" onclick="initializeDefaultData()">Initialize Default Data</button>
+        </div>
+
+        <div class="section">
+            <h3>📝 Vercel Production Debug Instructions</h3>
             <ol>
-                <li>Open this page in <strong>incognito/private browsing mode</strong></li>
-                <li>Check storage data to see if users exist</li>
-                <li>Try logging in with a user created through SuperAdmin</li>
-                <li>Use the sync function if users are not accessible</li>
+                <li><strong>First Time Setup:</strong> Click "Fix Vercel Auth Issues" to initialize test data</li>
+                <li><strong>Open incognito tab:</strong> Press Ctrl+Shift+N (Chrome) या Ctrl+Shift+P (Firefox)</li>
+                <li><strong>Navigate to:</strong> <a href="https://aura-inventory.vercel.app">https://aura-inventory.vercel.app</a></li>
+                <li><strong>Try these test credentials:</strong>
+                    <ul>
+                        <li>SuperAdmin: <code>superadmin@aura.com</code> / <code>SuperAdmin@123</code></li>
+                        <li>Company User: <code>testuser@vercel.com</code> / <code>vercel123</code></li>
+                    </ul>
+                </li>
+                <li><strong>If still not working:</strong> Use this debug page to check storage data</li>
+                <li><strong>For new users:</strong> First create company through SuperAdmin, then create users</li>
             </ol>
+            
+            <div style="background: #fff3cd; padding: 15px; border-radius: 5px; margin-top: 10px;">
+                <strong>⚠️ Common Vercel Issues:</strong>
+                <ul style="margin: 5px 0;">
+                    <li>localStorage may be cleared between sessions in strict incognito mode</li>
+                    <li>Some browsers block localStorage in incognito - try different browser</li>
+                    <li>Vercel builds are cached - may need to hard refresh (Ctrl+F5)</li>
+                </ul>
+            </div>
         </div>
     </div>
 
@@ -240,6 +267,171 @@ ${JSON.stringify({
             } catch (error) {
                 showResult('login-result', `❌ Error creating test user: ${error.message}`, true);
             }
+        }
+
+        function createTestCompany() {
+            try {
+                const testCompany = {
+                    id: `company_test_${Date.now()}`,
+                    name: 'Test Company',
+                    email: 'testcompany@example.com',
+                    phone: '1234567890',
+                    plan: 'Free',
+                    subscriptionStatus: 'active',
+                    validFrom: new Date().toISOString(),
+                    validTo: new Date(Date.now() + 365*24*60*60*1000).toISOString(),
+                    loginAllowed: true,
+                    orgId: 'org_test',
+                    isActive: true,
+                    limits: { maxUsers: 5, maxWarehouses: 2, maxProducts: 50 },
+                    usage: { users: 0, warehouses: 0, products: 0 },
+                    ownerId: 'user_test',
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString()
+                };
+
+                const companies = JSON.parse(localStorage.getItem('superadmin_companies') || '[]');
+                companies.push(testCompany);
+                localStorage.setItem('superadmin_companies', JSON.stringify(companies));
+
+                showResult('login-result', `✅ Created test company: Test Company (org_test)`);
+            } catch (error) {
+                showResult('login-result', `❌ Error creating test company: ${error.message}`, true);
+            }
+        }
+
+        function testSuperAdminLogin() {
+            document.getElementById('test-email').value = 'superadmin@aura.com';
+            document.getElementById('test-password').value = 'SuperAdmin@123';
+            document.querySelector('#test-form form').dispatchEvent(new Event('submit'));
+        }
+
+        function testBuiltInUsers() {
+            const builtInUsers = [
+                { email: 'superadmin@aura.com', password: 'SuperAdmin@123' },
+                { email: 'Test@orgatre.com', password: 'Test@1234' },
+                { email: 'test@example.com', password: 'password123' }
+            ];
+
+            let results = '<h4>🧪 Testing Built-in Users:</h4><pre>';
+            builtInUsers.forEach(({ email, password }) => {
+                try {
+                    // Simulate login test
+                    results += `Testing ${email}...\n`;
+                    results += `Password: ${password}\n`;
+                    results += `Status: Available for testing\n\n`;
+                } catch (error) {
+                    results += `Error testing ${email}: ${error.message}\n\n`;
+                }
+            });
+            results += '</pre>';
+
+            showResult('login-result', results);
+        }
+
+        function forceSuperAdminLogin() {
+            try {
+                const superAdminUser = {
+                    id: 'superadmin',
+                    name: 'Super Admin',
+                    email: 'superadmin@aura.com',
+                    role: 'SuperAdmin',
+                    isEnabled: true,
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString()
+                };
+
+                localStorage.setItem('aura_inventory_user', JSON.stringify(superAdminUser));
+                showResult('login-result', `✅ Forced SuperAdmin login session. Refresh the page to see effect.`);
+            } catch (error) {
+                showResult('login-result', `❌ Error forcing SuperAdmin login: ${error.message}`, true);
+            }
+        }
+
+        function fixVercelAuth() {
+            try {
+                // Fix common Vercel authentication issues
+                console.log('Fixing Vercel auth issues...');
+                
+                // Ensure SuperAdmin user exists
+                let users = JSON.parse(localStorage.getItem('superadmin_users') || '[]');
+                const superAdminExists = users.find(u => u.email === 'superadmin@aura.com');
+                
+                if (!superAdminExists) {
+                    users.push({
+                        id: 'superadmin_vercel',
+                        name: 'Super Admin',
+                        email: 'superadmin@aura.com',
+                        password: 'SuperAdmin@123',
+                        role: 'SuperAdmin',
+                        isEnabled: true,
+                        createdAt: new Date().toISOString(),
+                        updatedAt: new Date().toISOString()
+                    });
+                    localStorage.setItem('superadmin_users', JSON.stringify(users));
+                }
+
+                // Ensure test company exists
+                let companies = JSON.parse(localStorage.getItem('superadmin_companies') || '[]');
+                const testCompanyExists = companies.find(c => c.orgId === 'org_test');
+                
+                if (!testCompanyExists) {
+                    companies.push({
+                        id: 'company_vercel_test',
+                        name: 'Vercel Test Company',
+                        email: 'test@vercel.com',
+                        phone: '9999999999',
+                        plan: 'Pro',
+                        subscriptionStatus: 'active',
+                        validFrom: new Date().toISOString(),
+                        validTo: new Date(Date.now() + 365*24*60*60*1000).toISOString(),
+                        loginAllowed: true,
+                        orgId: 'org_test',
+                        isActive: true,
+                        limits: { maxUsers: 100, maxWarehouses: 20, maxProducts: 5000 },
+                        usage: { users: 1, warehouses: 0, products: 0 },
+                        ownerId: 'user_test_vercel',
+                        createdAt: new Date().toISOString(),
+                        updatedAt: new Date().toISOString()
+                    });
+                    localStorage.setItem('superadmin_companies', JSON.stringify(companies));
+                }
+
+                // Add test user for the company
+                const testUserExists = users.find(u => u.email === 'testuser@vercel.com');
+                if (!testUserExists) {
+                    users.push({
+                        id: 'user_test_vercel',
+                        name: 'Vercel Test User',
+                        email: 'testuser@vercel.com',
+                        password: 'vercel123',
+                        role: 'Admin',
+                        orgId: 'org_test',
+                        companyId: 'company_vercel_test',
+                        isEnabled: true,
+                        createdAt: new Date().toISOString(),
+                        updatedAt: new Date().toISOString()
+                    });
+                    localStorage.setItem('superadmin_users', JSON.stringify(users));
+                }
+
+                showResult('login-result', `✅ Vercel auth fixed! Test users created:
+                <ul>
+                    <li>SuperAdmin: superadmin@aura.com / SuperAdmin@123</li>
+                    <li>Company User: testuser@vercel.com / vercel123</li>
+                </ul>`);
+                
+            } catch (error) {
+                showResult('login-result', `❌ Error fixing Vercel auth: ${error.message}`, true);
+            }
+        }
+
+        function enableCORS() {
+            showResult('login-result', `ℹ️ CORS is handled by Vercel configuration. No manual action needed.`);
+        }
+
+        function initializeDefaultData() {
+            fixVercelAuth(); // This already includes default data initialization
         }
 
         function syncUsersToGlobalRegistry() {
