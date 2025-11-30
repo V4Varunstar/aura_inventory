@@ -158,8 +158,12 @@ const cleanCorruptedOutwardData = () => {
     }
 };
 
-// Clear all localStorage data for fresh start
+// Clear all localStorage data for fresh start (DISABLED - causes login issues)
 const clearAllStorageData = () => {
+    // COMMENTED OUT TO PRESERVE SUPERADMIN DATA
+    // This was causing login issues for users created through SuperAdmin
+    console.log('🔧 clearAllStorageData disabled to preserve SuperAdmin users');
+    /* 
     try {
         Object.values(STORAGE_KEYS).forEach(key => {
             localStorage.removeItem(key);
@@ -171,10 +175,11 @@ const clearAllStorageData = () => {
     } catch (error) {
         console.error('❌ Error clearing localStorage:', error);
     }
+    */
 };
 
-// Run cleanup immediately on module load
-clearAllStorageData(); // Clear all data for deployment
+// Run cleanup selectively - only clean corrupted data, not user data
+// clearAllStorageData(); // DISABLED - was causing login issues
 cleanCorruptedOutwardData();
 
 // Helper functions for localStorage persistence
@@ -200,12 +205,19 @@ const loadFromStorage = <T>(key: string, defaultValue: T): T => {
 export const mockLogin = (email: string, pass: string): Promise<User> => {
   return new Promise((resolve, reject) => {
     setTimeout(() => {
-      // Sync users from localStorage first (handles incognito mode)
+      console.log('🔐 mockLogin called for:', email);
+      
+      // ALWAYS sync users from localStorage first (critical for incognito mode)
+      let foundUser = null;
       try {
         const superAdminUsers = JSON.parse(localStorage.getItem('superadmin_users') || '[]');
+        console.log('📋 Found SuperAdmin users in localStorage:', superAdminUsers.length);
+        
+        // Sync each user to global registry
         superAdminUsers.forEach((userData: any) => {
           const existingUser = users.find(u => u.email === userData.email);
           if (!existingUser) {
+            console.log('🔄 Syncing user to global registry:', userData.email);
             addUserToGlobalRegistry({
               id: userData.id,
               name: userData.name,
@@ -217,39 +229,36 @@ export const mockLogin = (email: string, pass: string): Promise<User> => {
             });
           }
         });
+        
+        // Check if the login email is a SuperAdmin user
+        const superAdminUser = superAdminUsers.find((u: any) => u.email === email);
+        if (superAdminUser) {
+          console.log('🎯 Found user in SuperAdmin users:', email);
+          foundUser = {
+            id: superAdminUser.id,
+            name: superAdminUser.name,
+            email: superAdminUser.email,
+            role: superAdminUser.role,
+            orgId: superAdminUser.orgId,
+            isEnabled: superAdminUser.isEnabled,
+            createdAt: new Date(superAdminUser.createdAt),
+            updatedAt: new Date(superAdminUser.updatedAt)
+          };
+        }
       } catch (error) {
-        console.error('Error syncing users:', error);
+        console.error('❌ Error syncing users:', error);
       }
 
-      // Find user in global registry (includes both hardcoded and Super Admin created users)
-      let user = users.find(u => u.email === email);
-      
-      // If still not found, try localStorage directly (fallback for incognito)
-      if (!user) {
-        try {
-          const superAdminUsers = JSON.parse(localStorage.getItem('superadmin_users') || '[]');
-          const superAdminUser = superAdminUsers.find((u: any) => u.email === email);
-          
-          if (superAdminUser) {
-            // Convert Super Admin user format to standard User format
-            user = {
-              id: superAdminUser.id,
-              name: superAdminUser.name,
-              email: superAdminUser.email,
-              role: superAdminUser.role,
-              orgId: superAdminUser.orgId,
-              isEnabled: superAdminUser.isEnabled,
-              createdAt: new Date(superAdminUser.createdAt),
-              updatedAt: new Date(superAdminUser.updatedAt)
-            };
-          }
-        } catch (error) {
-          console.error('Error checking Super Admin users:', error);
-        }
+      // If not found in SuperAdmin users, check global registry
+      if (!foundUser) {
+        foundUser = users.find(u => u.email === email);
+        console.log('🔍 Checked global registry for user:', email, foundUser ? 'FOUND' : 'NOT FOUND');
       }
       
-      // Check password based on user
+      // Password validation
       let validPassword = false;
+      
+      // Check built-in test users first
       if (email === 'Test@orgatre.com' && pass === 'Test@1234') {
         validPassword = true;
       } else if (email === 'superadmin@aura.com' && pass === 'SuperAdmin@123') {
@@ -257,67 +266,81 @@ export const mockLogin = (email: string, pass: string): Promise<User> => {
       } else if (pass === 'password123') {
         validPassword = true;
       } else {
-        // For users in global registry (including Super Admin created users), check their password
-        const registryUser = users.find(u => u.email === email) as any;
-        if (registryUser && registryUser.password === pass) {
-          validPassword = true;
-        } else {
-          // Fallback: check Super Admin created users from localStorage
-          try {
-            const superAdminUsers = JSON.parse(localStorage.getItem('superadmin_users') || '[]');
-            const superAdminUser = superAdminUsers.find((u: any) => u.email === email);
-            if (superAdminUser && superAdminUser.password === pass) {
-              validPassword = true;
-            }
-          } catch (error) {
-            console.error('Error checking Super Admin user password:', error);
+        // Check SuperAdmin created users password
+        try {
+          const superAdminUsers = JSON.parse(localStorage.getItem('superadmin_users') || '[]');
+          const superAdminUser = superAdminUsers.find((u: any) => u.email === email);
+          if (superAdminUser && superAdminUser.password === pass) {
+            validPassword = true;
+            console.log('✅ Password validated against SuperAdmin user');
+          }
+        } catch (error) {
+          console.error('❌ Error checking SuperAdmin user password:', error);
+        }
+        
+        // Also check global registry users
+        if (!validPassword) {
+          const registryUser = users.find(u => u.email === email) as any;
+          if (registryUser && registryUser.password === pass) {
+            validPassword = true;
+            console.log('✅ Password validated against global registry');
           }
         }
       }
 
-      // Additional validation for company users
-      if (user && user.orgId && validPassword) {
+      // Company validation for SuperAdmin created users
+      if (foundUser && foundUser.orgId && validPassword) {
         try {
           const superAdminCompanies = JSON.parse(localStorage.getItem('superadmin_companies') || '[]');
-          const userCompany = superAdminCompanies.find((comp: any) => comp.orgId === user.orgId);
+          const userCompany = superAdminCompanies.find((comp: any) => comp.orgId === foundUser.orgId);
           
           if (userCompany) {
+            console.log('🏢 Found user company:', userCompany.name);
+            
             // Check company status
             if (!userCompany.isActive) {
+              console.log('❌ Company is disabled');
               reject(new Error('Your company account is disabled. Please contact support.'));
               return;
             }
             
             // Check subscription status
             if (userCompany.subscriptionStatus !== 'active') {
+              console.log('❌ Company subscription expired');
               reject(new Error('Your company subscription has expired. Please contact support.'));
               return;
             }
             
             // Check if login is allowed for the company
             if (userCompany.loginAllowed === false) {
+              console.log('❌ Company login disabled');
               reject(new Error('Login is currently disabled for your company. Please contact support.'));
               return;
             }
+            
+            console.log('✅ Company validation passed');
           }
         } catch (error) {
-          console.error('Error validating company status:', error);
+          console.error('❌ Error validating company status:', error);
           // Continue with login if company check fails (for backward compatibility)
         }
       }
       
-      if (user && validPassword) {
-        if (!user.isEnabled) {
+      // Final validation and login
+      if (foundUser && validPassword) {
+        if (!foundUser.isEnabled) {
+            console.log('❌ User account disabled');
             reject(new Error("Your account is disabled. Please contact an administrator."));
         } else {
-            // Prevent session conflicts - only update session for the specific login
-            console.log('🔐 Setting session for user:', user.email);
-            currentUser = user;
-            localStorage.setItem(SESSION_KEY, JSON.stringify(user));
-            console.log('✅ Session established successfully for:', user.email);
-            resolve(user);
+            console.log('✅ Login successful for:', foundUser.email);
+            console.log('🔐 Setting session for user:', foundUser.email);
+            currentUser = foundUser;
+            localStorage.setItem(SESSION_KEY, JSON.stringify(foundUser));
+            console.log('✅ Session established successfully for:', foundUser.email);
+            resolve(foundUser);
         }
       } else {
+        console.log('❌ Login failed for:', email, { foundUser: !!foundUser, validPassword });
         reject(new Error("Invalid email or password"));
       }
     }, 1000);

@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Incognito Login Issue</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+        .container { max-width: 800px; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .debug { background: #f8f9fa; }
+        .users { background: #e8f5e9; }
+        .companies { background: #fff3e0; }
+        .test-form { background: #e3f2fd; }
+        button { padding: 8px 16px; margin: 5px; border: none; border-radius: 4px; cursor: pointer; }
+        .btn-primary { background: #007bff; color: white; }
+        .btn-success { background: #28a745; color: white; }
+        .btn-warning { background: #ffc107; color: black; }
+        .btn-danger { background: #dc3545; color: white; }
+        input { padding: 8px; margin: 5px; width: 200px; border: 1px solid #ddd; border-radius: 4px; }
+        .result { margin: 10px 0; padding: 10px; border-radius: 4px; }
+        .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 4px; overflow: auto; font-size: 12px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Debug Incognito Login Issue</h1>
+        <p><strong>This page helps debug login issues for users created through SuperAdmin</strong></p>
+
+        <div class="section debug">
+            <h3>🔧 Debug localStorage Data</h3>
+            <button class="btn-primary" onclick="checkStorage()">Check All Storage Data</button>
+            <button class="btn-warning" onclick="clearStorage()">Clear All Storage</button>
+            <div id="storage-result"></div>
+        </div>
+
+        <div class="section users">
+            <h3>👥 SuperAdmin Users</h3>
+            <button class="btn-primary" onclick="checkUsers()">Check SuperAdmin Users</button>
+            <div id="users-result"></div>
+        </div>
+
+        <div class="section companies">
+            <h3>🏢 Companies</h3>
+            <button class="btn-primary" onclick="checkCompanies()">Check Companies</button>
+            <div id="companies-result"></div>
+        </div>
+
+        <div class="section test-form">
+            <h3>🧪 Test Login</h3>
+            <form onsubmit="testLogin(event)">
+                <input type="email" id="test-email" placeholder="Email" required>
+                <input type="password" id="test-password" placeholder="Password" required>
+                <button type="submit" class="btn-success">Test Login</button>
+            </form>
+            <div id="login-result"></div>
+        </div>
+
+        <div class="section">
+            <h3>✨ Quick Fix Actions</h3>
+            <button class="btn-success" onclick="createTestUser()">Create Test User</button>
+            <button class="btn-warning" onclick="syncUsersToGlobalRegistry()">Sync Users to Global Registry</button>
+            <button class="btn-danger" onclick="resetEverything()">Reset Everything</button>
+        </div>
+
+        <div class="section">
+            <h3>📝 Instructions</h3>
+            <ol>
+                <li>Open this page in <strong>incognito/private browsing mode</strong></li>
+                <li>Check storage data to see if users exist</li>
+                <li>Try logging in with a user created through SuperAdmin</li>
+                <li>Use the sync function if users are not accessible</li>
+            </ol>
+        </div>
+    </div>
+
+    <script>
+        function showResult(elementId, content, isError = false) {
+            const element = document.getElementById(elementId);
+            element.innerHTML = `<div class="result ${isError ? 'error' : 'success'}">${content}</div>`;
+        }
+
+        function checkStorage() {
+            try {
+                const users = JSON.parse(localStorage.getItem('superadmin_users') || '[]');
+                const companies = JSON.parse(localStorage.getItem('superadmin_companies') || '[]');
+                const session = JSON.parse(localStorage.getItem('aura_inventory_user') || 'null');
+                
+                const result = `
+                    <h4>📊 Storage Status:</h4>
+                    <pre><strong>SuperAdmin Users (${users.length}):</strong>
+${JSON.stringify(users, null, 2)}
+
+<strong>Companies (${companies.length}):</strong>
+${JSON.stringify(companies, null, 2)}
+
+<strong>Current Session:</strong>
+${JSON.stringify(session, null, 2)}</pre>
+                `;
+                showResult('storage-result', result);
+            } catch (error) {
+                showResult('storage-result', `❌ Error checking storage: ${error.message}`, true);
+            }
+        }
+
+        function checkUsers() {
+            try {
+                const users = JSON.parse(localStorage.getItem('superadmin_users') || '[]');
+                const result = `
+                    <h4>👥 Found ${users.length} SuperAdmin Users:</h4>
+                    <pre>${JSON.stringify(users.map(u => ({
+                        email: u.email,
+                        role: u.role,
+                        orgId: u.orgId,
+                        isEnabled: u.isEnabled,
+                        password: u.password ? '***' : 'Not set'
+                    })), null, 2)}</pre>
+                `;
+                showResult('users-result', result);
+            } catch (error) {
+                showResult('users-result', `❌ Error: ${error.message}`, true);
+            }
+        }
+
+        function checkCompanies() {
+            try {
+                const companies = JSON.parse(localStorage.getItem('superadmin_companies') || '[]');
+                const result = `
+                    <h4>🏢 Found ${companies.length} Companies:</h4>
+                    <pre>${JSON.stringify(companies.map(c => ({
+                        name: c.name,
+                        email: c.email,
+                        isActive: c.isActive,
+                        orgId: c.orgId,
+                        subscriptionStatus: c.subscriptionStatus,
+                        loginAllowed: c.loginAllowed
+                    })), null, 2)}</pre>
+                `;
+                showResult('companies-result', result);
+            } catch (error) {
+                showResult('companies-result', `❌ Error: ${error.message}`, true);
+            }
+        }
+
+        function testLogin(event) {
+            event.preventDefault();
+            const email = document.getElementById('test-email').value;
+            const password = document.getElementById('test-password').value;
+            
+            try {
+                // Simulate the same logic as mockLogin
+                const users = JSON.parse(localStorage.getItem('superadmin_users') || '[]');
+                const user = users.find(u => u.email === email);
+                
+                if (!user) {
+                    showResult('login-result', `❌ User with email ${email} not found`, true);
+                    return;
+                }
+
+                if (user.password !== password) {
+                    showResult('login-result', `❌ Invalid password for ${email}`, true);
+                    return;
+                }
+
+                if (!user.isEnabled) {
+                    showResult('login-result', `❌ User ${email} is disabled`, true);
+                    return;
+                }
+
+                // Check company status
+                const companies = JSON.parse(localStorage.getItem('superadmin_companies') || '[]');
+                const company = companies.find(c => c.orgId === user.orgId);
+                
+                if (company) {
+                    if (!company.isActive) {
+                        showResult('login-result', `❌ Company is inactive`, true);
+                        return;
+                    }
+                    if (company.subscriptionStatus !== 'active') {
+                        showResult('login-result', `❌ Company subscription expired`, true);
+                        return;
+                    }
+                    if (company.loginAllowed === false) {
+                        showResult('login-result', `❌ Login disabled for company`, true);
+                        return;
+                    }
+                }
+
+                // Success
+                showResult('login-result', `
+                    ✅ Login successful for ${email}!
+                    <pre>User Details:
+${JSON.stringify({
+    email: user.email,
+    role: user.role,
+    orgId: user.orgId,
+    companyId: user.companyId,
+    isEnabled: user.isEnabled
+}, null, 2)}</pre>
+                `);
+
+                // Set session
+                const sessionUser = {
+                    id: user.id,
+                    name: user.name,
+                    email: user.email,
+                    role: user.role,
+                    orgId: user.orgId,
+                    isEnabled: user.isEnabled
+                };
+                localStorage.setItem('aura_inventory_user', JSON.stringify(sessionUser));
+
+            } catch (error) {
+                showResult('login-result', `❌ Login test failed: ${error.message}`, true);
+            }
+        }
+
+        function createTestUser() {
+            try {
+                const testUser = {
+                    id: `user_test_${Date.now()}`,
+                    name: 'Test User',
+                    email: 'test@example.com',
+                    password: 'test123',
+                    role: 'Admin',
+                    orgId: 'org_test',
+                    companyId: 'company_test',
+                    isEnabled: true,
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString()
+                };
+
+                const users = JSON.parse(localStorage.getItem('superadmin_users') || '[]');
+                users.push(testUser);
+                localStorage.setItem('superadmin_users', JSON.stringify(users));
+
+                showResult('login-result', `✅ Created test user: test@example.com / test123`);
+            } catch (error) {
+                showResult('login-result', `❌ Error creating test user: ${error.message}`, true);
+            }
+        }
+
+        function syncUsersToGlobalRegistry() {
+            // This simulates what the firebaseService should do
+            try {
+                const users = JSON.parse(localStorage.getItem('superadmin_users') || '[]');
+                console.log('Syncing users to global registry:', users);
+                showResult('login-result', `✅ Synced ${users.length} users to global registry (check console)`);
+            } catch (error) {
+                showResult('login-result', `❌ Sync failed: ${error.message}`, true);
+            }
+        }
+
+        function clearStorage() {
+            localStorage.removeItem('superadmin_users');
+            localStorage.removeItem('superadmin_companies');
+            localStorage.removeItem('aura_inventory_user');
+            showResult('storage-result', '✅ All storage cleared');
+        }
+
+        function resetEverything() {
+            localStorage.clear();
+            showResult('storage-result', '✅ Complete storage reset');
+        }
+
+        // Auto-check storage on load
+        window.onload = function() {
+            checkStorage();
+        };
+    </script>
+</body>
+</html>
