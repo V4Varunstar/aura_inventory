@@ -60,12 +60,25 @@ export const getSuperAdminStats = async (): Promise<SuperAdminStats> => {
 };
 
 export const getAllCompanies = async (): Promise<Company[]> => {
-  // Sort by creation date (newest first)
-  const sortedCompanies = [...companies].sort((a, b) => 
-    new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-  );
-  
-  return simulateApi(sortedCompanies);
+  try {
+    console.log('📊 getAllCompanies called');
+    
+    // Reload from localStorage in case data was updated in another tab
+    companies = loadFromStorage(SUPER_ADMIN_STORAGE_KEYS.COMPANIES, []);
+    console.log('📋 Loaded companies from storage:', companies.length);
+    
+    // Sort by creation date (newest first)
+    const sortedCompanies = [...companies].sort((a, b) => 
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+    
+    console.log('✅ Returning sorted companies:', sortedCompanies.length);
+    return simulateApi(sortedCompanies);
+  } catch (error) {
+    console.error('❌ Error in getAllCompanies:', error);
+    // Return empty array as fallback
+    return simulateApi([]);
+  }
 };
 
 export const createCompany = async (request: CreateCompanyRequest): Promise<Company> => {
@@ -147,6 +160,8 @@ export const createCompanyUser = async (
   companyId: string, 
   userData: { name: string; email: string; role: Role; orgId: string; password?: string }
 ): Promise<any> => {
+  console.log('🔧 createCompanyUser called:', { companyId, userData: { ...userData, password: '***' } });
+  
   const company = companies.find(c => c.id === companyId);
   if (!company) {
     throw new Error('Company not found');
@@ -162,9 +177,13 @@ export const createCompanyUser = async (
     throw new Error(`User limit exceeded. Maximum ${company.limits.maxUsers} users allowed.`);
   }
 
+  // Reload users from storage to check for existing users
+  superAdminUsers = loadFromStorage(SUPER_ADMIN_STORAGE_KEYS.USERS, []);
+  
   // Check if user already exists
   const existingUser = superAdminUsers.find(u => u.email === userData.email);
   if (existingUser) {
+    console.log('❌ User already exists:', userData.email);
     throw new Error('User with this email already exists');
   }
 
@@ -182,6 +201,8 @@ export const createCompanyUser = async (
     updatedAt: new Date()
   };
 
+  console.log('✅ Creating new user:', { ...newUser, password: '***' });
+
   // Store user in localStorage (for persistence)
   superAdminUsers.push(newUser);
   saveToStorage(SUPER_ADMIN_STORAGE_KEYS.USERS, superAdminUsers);
@@ -198,6 +219,7 @@ export const createCompanyUser = async (
   });
 
   // Update company user count
+  companies = loadFromStorage(SUPER_ADMIN_STORAGE_KEYS.COMPANIES, []);
   const companyIndex = companies.findIndex(c => c.id === companyId);
   if (companyIndex !== -1) {
     companies[companyIndex].usage.users += 1;
@@ -205,7 +227,7 @@ export const createCompanyUser = async (
     saveToStorage(SUPER_ADMIN_STORAGE_KEYS.COMPANIES, companies);
   }
 
-  console.log('✅ Created company user (NO AUTO-LOGIN):', {
+  console.log('✅ Created company user successfully:', {
     email: newUser.email,
     role: newUser.role,
     orgId: newUser.orgId,

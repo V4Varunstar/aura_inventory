@@ -56,6 +56,7 @@
                 <button type="submit" class="btn-success">Test Login</button>
             </form>
             <button class="btn-warning" onclick="testSuperAdminLogin()">Test SuperAdmin Login</button>
+            <button class="btn-success" onclick="testRohanLogin()">Test Rohan Login</button>
             <button class="btn-primary" onclick="testBuiltInUsers()">Test Built-in Users</button>
             <div id="login-result"></div>
         </div>
@@ -303,7 +304,13 @@ ${JSON.stringify({
         function testSuperAdminLogin() {
             document.getElementById('test-email').value = 'superadmin@aura.com';
             document.getElementById('test-password').value = 'SuperAdmin@123';
-            document.querySelector('#test-form form').dispatchEvent(new Event('submit'));
+            document.querySelector('form').dispatchEvent(new Event('submit'));
+        }
+
+        function testRohanLogin() {
+            document.getElementById('test-email').value = 'Rohan@orgatre.com';
+            document.getElementById('test-password').value = 'Rohan@1234';
+            document.querySelector('form').dispatchEvent(new Event('submit'));
         }
 
         function testBuiltInUsers() {

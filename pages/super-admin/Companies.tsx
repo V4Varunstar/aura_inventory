@@ -78,11 +78,15 @@ const SuperAdminCompanies: React.FC = () => {
   const fetchCompanies = async () => {
     try {
       setLoading(true);
+      console.log('🔄 Fetching companies...');
       const companiesData = await getAllCompanies();
+      console.log('✅ Companies loaded:', companiesData.length);
       setCompanies(companiesData);
     } catch (error) {
-      console.error('Error fetching companies:', error);
-      addToast('Failed to fetch companies', 'error');
+      console.error('❌ Error fetching companies:', error);
+      addToast('Failed to fetch companies. Please try again.', 'error');
+      // Set empty array as fallback
+      setCompanies([]);
     } finally {
       setLoading(false);
     }
@@ -315,12 +319,21 @@ const SuperAdminCompanies: React.FC = () => {
         <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-200">
           Companies Management
         </h1>
-        <Button
-          onClick={() => setShowCreateModal(true)}
-          leftIcon={<Plus />}
-        >
-          Create Company
-        </Button>
+        <div className="flex space-x-2">
+          <Button
+            variant="outline"
+            onClick={fetchCompanies}
+            disabled={loading}
+          >
+            {loading ? 'Refreshing...' : 'Refresh'}
+          </Button>
+          <Button
+            onClick={() => setShowCreateModal(true)}
+            leftIcon={<Plus />}
+          >
+            Create Company
+          </Button>
+        </div>
       </div>
 
       <Card>
