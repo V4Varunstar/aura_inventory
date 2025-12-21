@@ -68,7 +68,7 @@ setInterval(() => cache.cleanup(), 10 * 60 * 1000);
 
 // --- MOCK DATABASE ---
 const users: User[] = [
-  { id: '1', name: 'Super Admin', email: 'superadmin@aura.com', role: Role.SuperAdmin, isEnabled: true, createdAt: new Date(), updatedAt: new Date() },
+  { id: '1', name: 'Super Admin', email: 'superadmin@aura.com', role: 'SuperAdmin' as any, isEnabled: true, createdAt: new Date(), updatedAt: new Date() },
 ];
 
 // Optimized localStorage operations with batching
@@ -140,7 +140,7 @@ const initializeVercelProduction = () => {
         id: 'superadmin-production',
         name: 'Super Admin',
         email: 'superadmin@aura.com',
-        role: Role.SuperAdmin,
+        role: 'SuperAdmin' as any,
         isEnabled: true,
         createdAt: new Date(),
         updatedAt: new Date()
