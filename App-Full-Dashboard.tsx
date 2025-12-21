@@ -132,31 +132,70 @@ const App: React.FC = () => {
 
   // Dashboard Screen
   return (
-    <div className="flex h-screen w-full overflow-hidden bg-background-light dark:bg-background-dark font-sans">
+    <div style={{ display: 'flex', height: '100vh', width: '100%', overflow: 'hidden', background: '#112117', fontFamily: 'system-ui' }}>
       <Sidebar onLogout={handleLogout} />
       
-      <main className="flex-1 flex flex-col h-full overflow-hidden relative">
+      <main style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', position: 'relative' }}>
         {/* Top Bar */}
-        <header className="h-20 flex items-center justify-between px-6 lg:px-8 py-4 border-b border-gray-200 dark:border-border-dark bg-white/50 dark:bg-[#112117]/80 backdrop-blur-md sticky top-0 z-20 transition-colors">
-          <div className="flex items-center gap-4 lg:hidden">
-            <button 
-              className="text-gray-500 dark:text-gray-300"
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            >
-              <span>☰</span>
-            </button>
-            <h1 className="text-xl font-bold dark:text-white">Dashboard</h1>
-          </div>
-          
-          <div className="hidden lg:flex flex-col">
-            <h2 className="text-2xl font-bold dark:text-white tracking-tight">Dashboard Overview</h2>
-            <p className="text-sm text-gray-500 dark:text-gray-400">Welcome back, here's what's happening today.</p>
+        <header style={{
+          height: '80px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '0 32px',
+          borderBottom: '1px solid #2a4034',
+          background: '#112117',
+          position: 'sticky',
+          top: 0,
+          zIndex: 20
+        }}>
+          <div style={{ flex: 1, maxWidth: '500px' }}>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              background: '#182820',
+              border: '1px solid #2a4034',
+              borderRadius: '12px',
+              padding: '12px 16px',
+              gap: '12px'
+            }}>
+              <span style={{ color: '#64748b' }}>🔍</span>
+              <input
+                type="text"
+                placeholder="Search..."
+                style={{
+                  flex: 1,
+                  background: 'transparent',
+                  border: 'none',
+                  outline: 'none',
+                  color: 'white',
+                  fontSize: '14px'
+                }}
+              />
+            </div>
           </div>
 
-          <div className="flex items-center gap-4 lg:gap-6">
-            <button className="relative p-2 rounded-full text-gray-500 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-surface-highlight transition-colors">
-              <span className="text-xl">🔔</span>
-              <span className="absolute top-2 right-2 w-2 h-2 bg-primary rounded-full border-2 border-white dark:border-background-dark"></span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <button style={{
+              position: 'relative',
+              padding: '12px',
+              borderRadius: '12px',
+              background: '#182820',
+              border: '1px solid #2a4034',
+              cursor: 'pointer',
+              color: '#94a3b8'
+            }}>
+              <span style={{ fontSize: '20px' }}>🔔</span>
+              <span style={{
+                position: 'absolute',
+                top: '8px',
+                right: '8px',
+                width: '8px',
+                height: '8px',
+                background: '#36e27b',
+                borderRadius: '50%',
+                border: '2px solid #112117'
+              }} />
             </button>
           </div>
         </header>
@@ -166,11 +205,22 @@ const App: React.FC = () => {
         {/* Mobile Sidebar Overlay */}
         {isMobileMenuOpen && (
           <div 
-            className="fixed inset-0 bg-black/50 z-50 lg:hidden flex"
+            style={{
+              position: 'fixed',
+              inset: 0,
+              background: 'rgba(0,0,0,0.5)',
+              zIndex: 50,
+              display: 'flex'
+            }}
             onClick={() => setIsMobileMenuOpen(false)}
           >
             <div 
-              className="w-72 bg-white dark:bg-[#0d1812] h-full shadow-2xl"
+              style={{
+                width: '288px',
+                background: '#0d1812',
+                height: '100%',
+                boxShadow: '0 0 50px rgba(0,0,0,0.5)'
+              }}
               onClick={e => e.stopPropagation()}
             >
               <Sidebar onLogout={handleLogout} />

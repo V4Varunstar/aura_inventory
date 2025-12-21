@@ -47,6 +47,11 @@ const Sidebar: React.FC<{ onLogout?: () => void }> = ({ onLogout }) => {
         {menuItems.map((item) => (
           <button
             key={item.label}
+            onClick={() => {
+              if (item.label !== 'Dashboard') {
+                alert(`${item.label} page coming soon!`);
+              }
+            }}
             style={{
               display: 'flex',
               alignItems: 'center',
