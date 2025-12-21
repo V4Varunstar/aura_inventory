@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import Sidebar from './components-dashboard/Sidebar';
 import Dashboard from './components-dashboard/Dashboard';
+import CompaniesPage from './components-dashboard/CompaniesPage';
 
 const App: React.FC = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -202,14 +203,7 @@ const App: React.FC = () => {
         </header>
 
         {activePage === 'Dashboard' && <Dashboard />}
-        {activePage === 'Companies' && (
-          <div style={{ flex: 1, overflowY: 'auto', padding: '32px', background: '#112117' }}>
-            <div style={{ background: '#182820', border: '1px solid #2a4034', borderRadius: '16px', padding: '48px', textAlign: 'center' }}>
-              <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: 'white', marginBottom: '16px' }}>Companies Management</h2>
-              <p style={{ fontSize: '16px', color: '#94a3b8' }}>Company management features coming soon...</p>
-            </div>
-          </div>
-        )}
+        {activePage === 'Companies' && <CompaniesPage />}
         {activePage === 'Users' && (
           <div style={{ flex: 1, overflowY: 'auto', padding: '32px', background: '#112117' }}>
             <div style={{ background: '#182820', border: '1px solid #2a4034', borderRadius: '16px', padding: '48px', textAlign: 'center' }}>
