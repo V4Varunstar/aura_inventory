@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>Outward Inventory Form - Test</title>
+    
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com" rel="preconnect"/>
+    <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#1313ec",
+                        "background-light": "#f8f8fc",
+                        "background-dark": "#101022",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "2xl": "1rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-[#0d0d1b] dark:text-white font-display overflow-hidden">
+    <div id="root">
+        <!-- React app will mount here -->
+    </div>
+    
+    <!-- Note: This is a test file. In the actual app, the React components would be rendered here -->
+    <!-- For testing, you can copy the HTML structure from your original design -->
+    
+    <div class="flex h-screen w-full">
+        <!-- Sidebar -->
+        <aside class="w-64 flex-shrink-0 h-full bg-white dark:bg-[#15152a] border-r border-[#e7e7f3] dark:border-gray-800 flex flex-col justify-between p-4 hidden md:flex">
+            <div class="flex flex-col gap-4">
+                <div class="flex gap-3 px-2 mb-4">
+                    <div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10 bg-primary/10 flex items-center justify-center text-primary">
+                        <span class="material-symbols-outlined text-2xl">inventory_2</span>
+                    </div>
+                    <div class="flex flex-col">
+                        <h1 class="text-[#0d0d1b] dark:text-white text-base font-bold leading-normal">InventoryApp</h1>
+                        <p class="text-[#4c4c9a] dark:text-gray-400 text-sm font-normal leading-normal">SaaS Platform</p>
+                    </div>
+                </div>
+                
+                <div class="flex flex-col gap-2">
+                    <a class="flex items-center gap-3 px-3 py-2 rounded-lg text-[#0d0d1b] dark:text-gray-300 hover:bg-[#f0f0f5] dark:hover:bg-white/5 transition-colors group" href="#">
+                        <span class="material-symbols-outlined text-[24px] group-hover:text-primary transition-colors">dashboard</span>
+                        <p class="text-sm font-medium leading-normal">Dashboard</p>
+                    </a>
+                    <!-- Active State -->
+                    <a class="flex items-center gap-3 px-3 py-2 rounded-lg bg-primary/10 text-primary" href="#">
+                        <span class="material-symbols-outlined text-[24px] fill-1">inventory_2</span>
+                        <p class="text-sm font-bold leading-normal">Inventory</p>
+                    </a>
+                    <a class="flex items-center gap-3 px-3 py-2 rounded-lg text-[#0d0d1b] dark:text-gray-300 hover:bg-[#f0f0f5] dark:hover:bg-white/5 transition-colors group" href="#">
+                        <span class="material-symbols-outlined text-[24px] group-hover:text-primary transition-colors">shopping_cart</span>
+                        <p class="text-sm font-medium leading-normal">Orders</p>
+                    </a>
+                    <a class="flex items-center gap-3 px-3 py-2 rounded-lg text-[#0d0d1b] dark:text-gray-300 hover:bg-[#f0f0f5] dark:hover:bg-white/5 transition-colors group" href="#">
+                        <span class="material-symbols-outlined text-[24px] group-hover:text-primary transition-colors">bar_chart</span>
+                        <p class="text-sm font-medium leading-normal">Reports</p>
+                    </a>
+                    <a class="flex items-center gap-3 px-3 py-2 rounded-lg text-[#0d0d1b] dark:text-gray-300 hover:bg-[#f0f0f5] dark:hover:bg-white/5 transition-colors group" href="#">
+                        <span class="material-symbols-outlined text-[24px] group-hover:text-primary transition-colors">settings</span>
+                        <p class="text-sm font-medium leading-normal">Settings</p>
+                    </a>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-3 px-3 py-2 mt-auto border-t border-[#e7e7f3] dark:border-gray-800 pt-4">
+                <div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-8" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuAhnImgxwv0-Uy0MMe_zIRvPE-hpRgRWUQ7O5p_xtSAEpcIheO_ZJvEeByeXRKEXXmItSKMPRGdleSaW0tVJHYhnY198ocAlgyb4uLFqftAjr85vcXJ79L_hP5wXgoWtloDEbZdQJ6xgdHo4vTdtP0IvdceWatBaq7WMFiAWMHfA-Gb3x3_6eLz7j1KRY8dWglt8YFSNAYYZEmCgzbmn6O6o6MeW0m8hYhQyffudv5VqwAx8S9e9oN_jm44yytp_NIftywS1XADp_k");'></div>
+                <div class="flex flex-col">
+                    <p class="text-[#0d0d1b] dark:text-white text-sm font-medium leading-normal">Alex Morgan</p>
+                    <p class="text-[#4c4c9a] dark:text-gray-400 text-xs font-normal leading-normal">Warehouse Manager</p>
+                </div>
+            </div>
+        </aside>
+        
+        <!-- Main Content Area -->
+        <div class="flex-1 flex flex-col h-full overflow-hidden relative">
+            <!-- Top Navigation -->
+            <header class="flex items-center justify-between whitespace-nowrap border-b border-solid border-b-[#e7e7f3] dark:border-b-gray-800 px-6 py-3 bg-white dark:bg-[#15152a] flex-shrink-0 z-20">
+                <div class="flex items-center gap-4 text-[#0d0d1b] dark:text-white md:hidden">
+                    <button class="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800">
+                        <span class="material-symbols-outlined">menu</span>
+                    </button>
+                    <h2 class="text-lg font-bold leading-tight">InventoryApp</h2>
+                </div>
+                
+                <div class="hidden md:flex items-center gap-4 text-[#0d0d1b] dark:text-white">
+                    <div class="flex items-center gap-2 px-3 py-1.5 bg-[#f8f8fc] dark:bg-gray-800 rounded-lg border border-transparent focus-within:border-primary/50 transition-colors">
+                        <span class="material-symbols-outlined text-gray-500 text-[20px]">warehouse</span>
+                        <select class="bg-transparent border-none text-sm font-medium focus:ring-0 p-0 pr-6 text-[#0d0d1b] dark:text-white cursor-pointer">
+                            <option>Main Warehouse (NYC)</option>
+                            <option>West Coast Hub (LA)</option>
+                            <option>European Center (Berlin)</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="flex flex-1 justify-end gap-4 items-center">
+                    <div class="flex gap-2">
+                        <button class="flex items-center justify-center rounded-lg size-10 text-[#0d0d1b] dark:text-white hover:bg-[#e7e7f3] dark:hover:bg-gray-800 transition-colors relative">
+                            <span class="material-symbols-outlined text-[20px]">notifications</span>
+                            <span class="absolute top-2 right-2 size-2 bg-red-500 rounded-full border-2 border-white dark:border-[#15152a]"></span>
+                        </button>
+                        <button class="flex items-center justify-center rounded-lg size-10 text-[#0d0d1b] dark:text-white hover:bg-[#e7e7f3] dark:hover:bg-gray-800 transition-colors">
+                            <span class="material-symbols-outlined text-[20px]">help</span>
+                        </button>
+                    </div>
+                </div>
+            </header>
+            
+            <!-- Content Message -->
+            <main class="flex-1 overflow-y-auto bg-background-light dark:bg-background-dark p-6 md:px-10 lg:px-20 scroll-smooth">
+                <div class="max-w-[1000px] mx-auto flex flex-col gap-6 pb-20">
+                    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-8 text-center">
+                        <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-4">React Components Created!</h2>
+                        <p class="text-gray-600 dark:text-gray-300 mb-6">
+                            I've successfully created React components based on your HTML design:
+                        </p>
+                        <div class="grid gap-4 text-left">
+                            <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
+                                <h3 class="font-semibold text-gray-900 dark:text-white">OutwardStockForm.tsx</h3>
+                                <p class="text-sm text-gray-600 dark:text-gray-300">A reusable form component with all the functionality</p>
+                            </div>
+                            <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
+                                <h3 class="font-semibold text-gray-900 dark:text-white">OutwardInventoryPage.tsx</h3>
+                                <p class="text-sm text-gray-600 dark:text-gray-300">A complete page with sidebar and header matching your design</p>
+                            </div>
+                            <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
+                                <h3 class="font-semibold text-gray-900 dark:text-white">OutwardStockPage.tsx</h3>
+                                <p class="text-sm text-gray-600 dark:text-gray-300">A page that works with your existing Layout component</p>
+                            </div>
+                        </div>
+                        <div class="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                            <p class="text-sm text-blue-800 dark:text-blue-200">
+                                Routes have been added to App.tsx:<br>
+                                • <code>/outward-stock</code> - Uses existing layout<br>
+                                • <code>/outward-inventory</code> - Standalone page matching your design
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,4 +1,5 @@
 {
+  "version": 2,
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "devCommand": "npm run dev",
@@ -30,14 +31,39 @@
   ],
   "rewrites": [
     {
+      "source": "/",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/simple",
+      "destination": "/simple-app.html"
+    },
+    {
+      "source": "/landing",
+      "destination": "/landing.html"
+    },
+    {
+      "source": "/app",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/dashboard",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/login",
+      "destination": "/index.html"
+    },
+    {
       "source": "/super-admin/(.*)",
       "destination": "/index.html"
     },
     {
-      "source": "/(.*)",
-      "destination": "/index.html"
+      "source": "/test",
+      "destination": "/simple.html"
     }
   ],
   "cleanUrls": true,
-  "trailingSlash": false
+  "trailingSlash": false,
+  "alias": ["aura-inventory.vercel.app"]
 }

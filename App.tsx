@@ -1,60 +1,83 @@
 
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { CompanyProvider } from './context/CompanyContext';
 import { ToastProvider } from './context/ToastContext';
 
 import Layout from './components/layout/Layout';
+// Eager load critical components
 import Landing from './pages/Landing';
-import Pricing from './pages/Pricing';
-import PrivacyPolicy from './pages/PrivacyPolicy';
-import Terms from './pages/Terms';
-import RefundPolicy from './pages/RefundPolicy';
 import Login from './pages/Login';
-import Dashboard from './pages/Dashboard';
-import Products from './pages/Products';
-import Inward from './pages/Inward';
-import Outward from './pages/Outward';
-import Adjustments from './pages/Adjustments';
-import Audit from './pages/Audit';
-import Warehouses from './pages/Warehouses';
-import Users from './pages/Users';
-import Reports from './pages/Reports';
-import Settings from './pages/Settings';
-import FbaShipments from './pages/amazon-fba';
-import CreateAmazonFbaShipment from './pages/amazon-fba/create';
-import FlipkartFbfShipments from './pages/flipkart-fbf';
-import CreateFlipkartFbfShipment from './pages/flipkart-fbf/create';
-import MyntraSjitShipments from './pages/myntra-sjit';
-import CreateMyntraSjitShipment from './pages/myntra-sjit/create';
-import ZeptoPoShipments from './pages/zepto-po';
-import CreateZeptoPoShipment from './pages/zepto-po/create';
-import NykaaPoShipments from './pages/nykaa-po';
-import CreateNykaaPoShipment from './pages/nykaa-po/create';
-import ProductMapping from './pages/ProductMapping';
-import Sources from './pages/settings/Sources';
-import Demo from './pages/Demo';
-import NotFound from './pages/NotFound';
-import ExpiringProducts from './pages/ExpiringProducts';
-import CategorySalesAnalytics from './pages/CategorySalesAnalytics';
 
-// Super Admin imports
+// Lazy load non-critical pages for better performance
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const Products = lazy(() => import('./pages/Products'));
+const Inward = lazy(() => import('./pages/Inward'));
+const Outward = lazy(() => import('./pages/Outward'));
+const Adjustments = lazy(() => import('./pages/Adjustments'));
+const Audit = lazy(() => import('./pages/Audit'));
+const Warehouses = lazy(() => import('./pages/Warehouses'));
+const Users = lazy(() => import('./pages/Users'));
+const Reports = lazy(() => import('./pages/Reports'));
+const Settings = lazy(() => import('./pages/Settings'));
+
+// Lazy load platform pages
+const FbaShipments = lazy(() => import('./pages/amazon-fba'));
+const CreateAmazonFbaShipment = lazy(() => import('./pages/amazon-fba/create'));
+const FlipkartFbfShipments = lazy(() => import('./pages/flipkart-fbf'));
+const CreateFlipkartFbfShipment = lazy(() => import('./pages/flipkart-fbf/create'));
+const MyntraSjitShipments = lazy(() => import('./pages/myntra-sjit'));
+const CreateMyntraSjitShipment = lazy(() => import('./pages/myntra-sjit/create'));
+
+// Lazy load marketing pages
+const Pricing = lazy(() => import('./pages/Pricing'));
+const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'));
+const Terms = lazy(() => import('./pages/Terms'));
+const RefundPolicy = lazy(() => import('./pages/RefundPolicy'));
+// Lazy load remaining platform pages
+const ZeptoPoShipments = lazy(() => import('./pages/zepto-po'));
+const CreateZeptoPoShipment = lazy(() => import('./pages/zepto-po/create'));
+const NykaaPoShipments = lazy(() => import('./pages/nykaa-po'));
+const CreateNykaaPoShipment = lazy(() => import('./pages/nykaa-po/create'));
+
+// Lazy load utility pages
+const ProductMapping = lazy(() => import('./pages/ProductMapping'));
+const Sources = lazy(() => import('./pages/settings/Sources'));
+const Demo = lazy(() => import('./pages/Demo'));
+const NotFound = lazy(() => import('./pages/NotFound'));
+const ExpiringProducts = lazy(() => import('./pages/ExpiringProducts'));
+const CategorySalesAnalytics = lazy(() => import('./pages/CategorySalesAnalytics'));
+const DashboardHTML = lazy(() => import('./pages/DashboardHTML'));
+
+// Lazy load new outward stock pages
+const OutwardStockPage = lazy(() => import('./pages/OutwardStockPage'));
+const OutwardInventoryPage = lazy(() => import('./pages/OutwardInventoryPage'));
+
+// Critical components that should NOT be lazy loaded
 import SuperAdminRoute from './components/auth/SuperAdminRoute';
-import SuperAdminLayout from './components/layout/SuperAdminLayout';
-import SuperAdminDashboard from './pages/super-admin/Dashboard';
-import SuperAdminCompanies from './pages/super-admin/Companies';
 
-// ProtectedRoute component - simplified since we're using PermissionGate components in pages
+// Lazy load Super Admin pages (but not the route guard)
+const SuperAdminLayout = lazy(() => import('./components/layout/SuperAdminLayout'));
+const SuperAdminDashboard = lazy(() => import('./pages/super-admin/Dashboard'));
+const SuperAdminCompanies = lazy(() => import('./pages/super-admin/Companies'));
+
+// Optimized Loading Component
+const LoadingSpinner: React.FC = () => (
+  <div className="flex items-center justify-center h-screen bg-gray-50">
+    <div className="text-center">
+      <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-500 border-t-transparent mx-auto mb-4"></div>
+      <p className="text-gray-600 text-sm">Loading...</p>
+    </div>
+  </div>
+);
+
+// ProtectedRoute component - optimized with loading state
 const ProtectedRoute: React.FC<{ children: React.ReactElement }> = ({ children }) => {
   const { user, loading } = useAuth();
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="animate-spin rounded-full h-32 w-32 border-t-2 border-b-2 border-primary-500"></div>
-      </div>
-    );
+    return <LoadingSpinner />;
   }
 
   if (!user) {
@@ -74,34 +97,38 @@ const AppRoutes: React.FC = () => {
     const { user } = useAuth();
 
     return(
-        <Routes>
-            {/* Public Routes */}
-            <Route path="/" element={
-                user ? (
-                    user.role === 'SuperAdmin' ? 
-                    <Navigate to="/super-admin/dashboard" /> : 
-                    <Navigate to="/dashboard" />
-                ) : <Landing />
-            } />
-            <Route path="/demo" element={<Demo />} />
-            <Route path="/pricing" element={<Pricing />} />
-            <Route path="/privacy" element={<PrivacyPolicy />} />
-            <Route path="/terms" element={<Terms />} />
-            <Route path="/refund" element={<RefundPolicy />} />
-            <Route path="/login" element={
-                user ? (
-                    user.role === 'SuperAdmin' ?
-                    <Navigate to="/super-admin/dashboard" /> :
-                    <Navigate to="/dashboard" />
-                ) : <Login />
-            } />
-            
-            {/* Protected Routes */}
-            <Route path="/dashboard" element={<ProtectedRoute><Layout><Dashboard /></Layout></ProtectedRoute>} />
-            <Route path="/products" element={<ProtectedRoute><Layout><Products /></Layout></ProtectedRoute>} />
-            <Route path="/inward" element={<ProtectedRoute><Layout><Inward /></Layout></ProtectedRoute>} />
-            <Route path="/outward" element={<ProtectedRoute><Layout><Outward /></Layout></ProtectedRoute>} />
-            <Route path="/adjustments" element={<ProtectedRoute><Layout><Adjustments /></Layout></ProtectedRoute>} />
+        <Suspense fallback={<LoadingSpinner />}>
+            <Routes>
+                {/* Public Routes */}
+                <Route path="/" element={
+                    user ? (
+                        user.role === 'SuperAdmin' ? 
+                        <Navigate to="/super-admin/dashboard" /> : 
+                        <Navigate to="/dashboard" />
+                    ) : <Landing />
+                } />
+                <Route path="/demo" element={<Demo />} />
+                <Route path="/pricing" element={<Pricing />} />
+                <Route path="/privacy" element={<PrivacyPolicy />} />
+                <Route path="/terms" element={<Terms />} />
+                <Route path="/refund" element={<RefundPolicy />} />
+                <Route path="/login" element={
+                    user ? (
+                        user.role === 'SuperAdmin' ?
+                        <Navigate to="/super-admin/dashboard" /> :
+                        <Navigate to="/dashboard" />
+                    ) : <Login />
+                } />
+                
+                {/* Protected Routes */}
+                <Route path="/dashboard" element={<ProtectedRoute><Layout><Dashboard /></Layout></ProtectedRoute>} />
+                <Route path="/dashboard-html" element={<ProtectedRoute><DashboardHTML /></ProtectedRoute>} />
+                <Route path="/products" element={<ProtectedRoute><Layout><Products /></Layout></ProtectedRoute>} />
+                <Route path="/inward" element={<ProtectedRoute><Layout><Inward /></Layout></ProtectedRoute>} />
+                <Route path="/outward" element={<ProtectedRoute><Layout><Outward /></Layout></ProtectedRoute>} />
+                <Route path="/outward-stock" element={<ProtectedRoute><Layout><OutwardStockPage /></Layout></ProtectedRoute>} />
+                <Route path="/outward-inventory" element={<OutwardInventoryPage />} />
+                <Route path="/adjustments" element={<ProtectedRoute><Layout><Adjustments /></Layout></ProtectedRoute>} />
             <Route path="/audit" element={<ProtectedRoute><Layout><Audit /></Layout></ProtectedRoute>} />
             <Route path="/warehouses" element={<ProtectedRoute><Layout><Warehouses /></Layout></ProtectedRoute>} />
             <Route path="/amazon-fba" element={<ProtectedRoute><Layout><FbaShipments /></Layout></ProtectedRoute>} />
@@ -125,32 +152,79 @@ const AppRoutes: React.FC = () => {
             {/* Super Admin Routes */}
             <Route path="/super-admin/*" element={
                 <SuperAdminRoute>
-                    <SuperAdminLayout>
-                        <Routes>
-                            <Route index element={<Navigate to="dashboard" replace />} />
-                            <Route path="dashboard" element={<SuperAdminDashboard />} />
-                            <Route path="companies" element={<SuperAdminCompanies />} />
-                        </Routes>
-                    </SuperAdminLayout>
+                    <Suspense fallback={<LoadingSpinner />}>
+                        <SuperAdminLayout>
+                            <Routes>
+                                <Route index element={<Navigate to="dashboard" replace />} />
+                                <Route path="dashboard" element={<SuperAdminDashboard />} />
+                                <Route path="companies" element={<SuperAdminCompanies />} />
+                            </Routes>
+                        </SuperAdminLayout>
+                    </Suspense>
                 </SuperAdminRoute>
             } />
             
             <Route path="*" element={<NotFound />} />
-        </Routes>
+            </Routes>
+        </Suspense>
     )
 }
 
+// Error Boundary Component
+class ErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean; error?: Error }
+> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error('App Error:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="flex items-center justify-center h-screen bg-gray-50">
+          <div className="text-center p-8">
+            <h1 className="text-2xl font-bold text-red-600 mb-4">Something went wrong</h1>
+            <p className="text-gray-600 mb-4">Please refresh the page or try again later.</p>
+            <button 
+              onClick={() => window.location.reload()} 
+              className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+            >
+              Refresh Page
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
 function App() {
+  console.log('🎯 App component rendering...');
+  
   return (
-    <ToastProvider>
-      <AuthProvider>
-        <CompanyProvider>
-          <BrowserRouter>
-             <AppRoutes />
-          </BrowserRouter>
-        </CompanyProvider>
-      </AuthProvider>
-    </ToastProvider>
+    <ErrorBoundary>
+      <ToastProvider>
+        <AuthProvider>
+          <CompanyProvider>
+            <BrowserRouter>
+               <AppRoutes />
+            </BrowserRouter>
+          </CompanyProvider>
+        </AuthProvider>
+      </ToastProvider>
+    </ErrorBoundary>
   );
 }
 

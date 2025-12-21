@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Super Admin Dashboard - Inventory SaaS</title>
+    
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Spline+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script>
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "primary": "#36e27b",
+              "background-light": "#f6f8f7",
+              "background-dark": "#112117",
+              "surface-dark": "#182820",
+              "surface-highlight": "#23362b",
+              "border-dark": "#2a4034",
+            },
+            fontFamily: {
+              "display": ["Spline Sans", "sans-serif"]
+            },
+            borderRadius: {
+              "DEFAULT": "1rem",
+              "lg": "1.5rem",
+              "xl": "2rem",
+            },
+          },
+        },
+      }
+    </script>
+    <style>
+      /* Custom scrollbar for better aesthetics in dark mode */
+      ::-webkit-scrollbar {
+          width: 8px;
+          height: 8px;
+      }
+      ::-webkit-scrollbar-track {
+          background: #112117; 
+      }
+      ::-webkit-scrollbar-thumb {
+          background: #2a4034; 
+          border-radius: 4px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+          background: #36e27b; 
+      }
+      body {
+        margin: 0;
+        overflow: hidden; /* Prevent body scroll, handle in main container */
+      }
+    </style>
+
+  <script type="importmap">
+{
+  "imports": {
+    "recharts": "https://esm.sh/recharts@^3.6.0",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "react/": "https://esm.sh/react@^19.2.3/",
+    "react": "https://esm.sh/react@^19.2.3"
+  }
+}
+</script>
+  <script type="module" crossorigin src="/assets/index-DwVn74HP.js"></script>
+  <link rel="modulepreload" crossorigin href="/assets/vendor-misc-Ci6Odffn.js">
+  <link rel="modulepreload" crossorigin href="/assets/vendor-CvwO30Kb.js">
+  <link rel="modulepreload" crossorigin href="/assets/charts-BMOWtbaq.js">
+  <link rel="modulepreload" crossorigin href="/assets/components-Dq7Sb9M9.js">
+  <link rel="stylesheet" crossorigin href="/assets/index-Bf6DZ9h3.css">
+</head>
+  <body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-white antialiased">
+    <div id="root" class="h-screen w-full flex"></div>
+  </body>
+</html>
+        color: white;
+        text-align: center;
+      }
+    </style>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              primary: {
+                50: '#f0fdf4',
+                100: '#dcfce7',
+                200: '#bbf7d0',
+                300: '#86efac',
+                400: '#4ade80',
+                500: '#22c55e',
+                600: '#16a34a',
+                700: '#15803d',
+                800: '#166534',
+                900: '#14532d'
+              }
+            }
+          }
+        }
+      }
+    </script>
+  </head>
+  
+  <body>
+    <div id="root">
+      <div class="app-loading">
+        <div>
+          <div style="font-size: 48px; margin-bottom: 20px;">🚀</div>
+          <h1 style="font-size: 28px; margin-bottom: 10px;">Aura Inventory</h1>
+          <p style="opacity: 0.9;">Loading application...</p>
+          <div class="spinner"></div>
+        </div>
+      </div>
+    </div>
+    
+    <script>
+      console.log('🎯 Starting Aura Inventory...');
+      
+      // Add Tailwind CSS
+      const tailwindScript = document.createElement('script');
+      tailwindScript.src = 'https://cdn.tailwindcss.com';
+      document.head.appendChild(tailwindScript);
+      
+      // Add custom CSS
+      const customCSS = document.createElement('link');
+      customCSS.rel = 'stylesheet';
+      customCSS.href = '/index.css';
+      document.head.appendChild(customCSS);
+      
+      // Enhanced error handling
+      let loadAttempts = 0;
+      const maxAttempts = 3;
+      
+      function showError(message) {
+        console.error('❌ Error:', message);
+        document.getElementById('root').innerHTML = `
+          <div class="error-page">
+            <div>
+              <div style="font-size: 48px; margin-bottom: 20px;">⚠️</div>
+              <h1 style="font-size: 24px; margin-bottom: 10px;">Error Loading App</h1>
+              <p style="opacity: 0.9; margin-bottom: 20px;">${message}</p>
+              <button onclick="location.reload()" style="margin-top:20px; padding:12px 24px; background:#4CAF50; color:white; border:none; border-radius:6px; cursor:pointer; font-size:16px;">
+                Refresh Page
+              </button>
+              <br/>
+              <button onclick="window.location.href='/landing'" style="margin-top:10px; padding:8px 16px; background:transparent; color:white; border:1px solid white; border-radius:6px; cursor:pointer; font-size:14px;">
+                Go to Landing Page
+              </button>
+            </div>
+          </div>
+        `;
+      }
+      
+      window.addEventListener('error', (e) => {
+        showError(`JavaScript Error: ${e.message}`);
+      });
+      
+      window.addEventListener('unhandledrejection', (e) => {
+        showError(`Promise Rejection: ${e.reason}`);
+      });
+      
+      // Timeout fallback
+      setTimeout(() => {
+        if (document.getElementById('root').innerHTML.includes('Loading application')) {
+          showError('Application took too long to load');
+        }
+      }, 15000);
+    </script>
+    
+  </body>
+</html>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, memo } from 'react';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
@@ -21,7 +21,7 @@ import {
   createCompanyUser
 } from '../../services/superAdminService';
 
-const SuperAdminCompanies: React.FC = () => {
+const SuperAdminCompanies: React.FC = memo(() => {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -29,7 +29,9 @@ const SuperAdminCompanies: React.FC = () => {
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
   const [showAssignUserModal, setShowAssignUserModal] = useState(false);
   const [showAdminAssignModal, setShowAdminAssignModal] = useState(false);
+  const [showCompanyUsersModal, setShowCompanyUsersModal] = useState(false);
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
+  const [companyUsers, setCompanyUsers] = useState<any[]>([]);
   const [creating, setCreating] = useState(false);
   const { addToast } = useToast();
 
@@ -75,7 +77,7 @@ const SuperAdminCompanies: React.FC = () => {
     fetchCompanies();
   }, []);
 
-  const fetchCompanies = async () => {
+  const fetchCompanies = useCallback(async () => {
     try {
       setLoading(true);
       console.log('🔄 Fetching companies...');
@@ -90,9 +92,9 @@ const SuperAdminCompanies: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [addToast]);
 
-  const handleCreateCompany = async (e: React.FormEvent) => {
+  const handleCreateCompany = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     if (!createForm.name || !createForm.email) {
       addToast('Please fill in required fields', 'error');
@@ -119,9 +121,9 @@ const SuperAdminCompanies: React.FC = () => {
     } finally {
       setCreating(false);
     }
-  };
+  }, [createForm, addToast, fetchCompanies]);
 
-  const handleToggleStatus = async (company: Company) => {
+  const handleToggleStatus = useCallback(async (company: Company) => {
     try {
       await toggleCompanyStatus(company.id, !company.isActive);
       addToast(`Company ${!company.isActive ? 'activated' : 'deactivated'} successfully`, 'success');
@@ -130,18 +132,100 @@ const SuperAdminCompanies: React.FC = () => {
       console.error('Error toggling company status:', error);
       addToast('Failed to update company status', 'error');
     }
-  };
+  }, [addToast, fetchCompanies]);
 
-  const openUserModal = (company: Company) => {
+  const openUserModal = useCallback((company: Company) => {
     setSelectedCompany(company);
     setUserForm({ name: '', email: '', role: Role.Admin });
     setShowUserModal(true);
+  }, []);
+
+  const handleUserAssign = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedCompany) {
+      addToast('No company selected', 'error');
+      return;
+    }
+    
+    if (!userForm.name || !userForm.email) {
+      addToast('Please fill in all required fields', 'error');
+      return;
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(userForm.email)) {
+      addToast('Please enter a valid email address', 'error');
+      return;
+    }
+    
+    try {
+      setCreating(true);
+      console.log('Creating company user via User Modal:', {
+        name: userForm.name,
+        email: userForm.email,
+        role: userForm.role,
+        companyId: selectedCompany.id,
+        orgId: selectedCompany.orgId
+      });
+      
+      // Generate a default password
+      const defaultPassword = 'user123';
+      
+      const result = await createCompanyUser(selectedCompany.id, {
+        name: userForm.name,
+        email: userForm.email,
+        password: defaultPassword,
+        role: userForm.role,
+        orgId: selectedCompany.orgId
+      });
+      
+      setShowUserModal(false);
+      const assignedCredentials = {
+        email: userForm.email,
+        password: defaultPassword,
+        name: userForm.name,
+        role: userForm.role
+      };
+      setUserForm({ name: '', email: '', role: Role.Admin });
+      
+      // Success message
+      addToast(
+        `✅ User created successfully!\n` +
+        `📧 Email: ${assignedCredentials.email}\n` +
+        `🔑 Password: ${assignedCredentials.password}\n` +
+        `👤 Role: ${assignedCredentials.role}`,
+        'success'
+      );
+      
+    } catch (error: any) {
+      console.error('Error creating company user:', error);
+      addToast(error.message || 'Failed to create user', 'error');
+    } finally {
+      setCreating(false);
+    }
   };
 
   const openAdminAssignModal = (company: Company) => {
     setSelectedCompany(company);
     setAdminAssignForm({ name: '', email: '', password: '', role: Role.Admin });
     setShowAdminAssignModal(true);
+  };
+
+  const viewCompanyUsers = (company: Company) => {
+    setSelectedCompany(company);
+    
+    // Get users from localStorage
+    try {
+      const superAdminUsers = JSON.parse(localStorage.getItem('superadmin_users') || '[]');
+      const companySpecificUsers = superAdminUsers.filter((user: any) => user.orgId === company.orgId);
+      setCompanyUsers(companySpecificUsers);
+      setShowCompanyUsersModal(true);
+      console.log('📋 Found users for company:', company.name, companySpecificUsers);
+    } catch (error) {
+      console.error('❌ Error loading company users:', error);
+      addToast('Error loading users', 'error');
+    }
   };
 
   const handleAdminAssign = async (e: React.FormEvent) => {
@@ -223,7 +307,7 @@ const SuperAdminCompanies: React.FC = () => {
     }
   };
 
-  const columns = [
+  const columns = useMemo(() => [
     {
       key: 'name',
       label: 'Company Name',
@@ -308,10 +392,23 @@ const SuperAdminCompanies: React.FC = () => {
           >
             <Settings className="w-4 h-4" />
           </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => viewCompanyUsers(company)}
+            className="text-green-600 hover:text-green-700"
+            title="View Company Users"
+          >
+            <Eye className="w-4 h-4" />
+          </Button>
         </div>
       )
     }
-  ];
+  ], [handleToggleStatus, openUserModal, openAdminAssignModal, viewCompanyUsers]);
+
+  useEffect(() => {
+    fetchCompanies();
+  }, [fetchCompanies]);
 
   return (
     <div className="space-y-6">
@@ -423,6 +520,81 @@ const SuperAdminCompanies: React.FC = () => {
         </form>
       </Modal>
 
+      {/* Add User Modal */}
+      <Modal
+        isOpen={showUserModal}
+        onClose={() => setShowUserModal(false)}
+        title="Add User to Company"
+        size="medium"
+      >
+        <form onSubmit={handleUserAssign} className="space-y-4">
+          <div className="bg-blue-50 p-4 rounded-lg mb-4">
+            <p className="text-sm text-blue-800">
+              Add a new user to <strong>{selectedCompany?.name}</strong>. 
+              A default password will be assigned which the user can change later.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Input
+              label="Name *"
+              value={userForm.name}
+              onChange={(e) => setUserForm({ ...userForm, name: e.target.value })}
+              placeholder="Enter user name"
+              required
+            />
+            <Input
+              label="Email *"
+              type="email"
+              value={userForm.email}
+              onChange={(e) => setUserForm({ ...userForm, email: e.target.value })}
+              placeholder="Enter user email"
+              required
+            />
+          </div>
+
+          <Select
+            label="Role *"
+            value={userForm.role}
+            onChange={(e) => setUserForm({ ...userForm, role: e.target.value as Role })}
+            required
+          >
+            <option value={Role.Admin}>Admin</option>
+            <option value={Role.Manager}>Manager</option>
+            <option value={Role.Employee}>Employee</option>
+            <option value={Role.Viewer}>Viewer</option>
+          </Select>
+
+          <div className="bg-yellow-50 p-3 rounded-lg">
+            <p className="text-sm text-yellow-800">
+              <strong>Note:</strong> User will be assigned default password: <code>user123</code>
+            </p>
+          </div>
+
+          <div className="flex justify-end space-x-3 pt-4">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => {
+                setShowUserModal(false);
+                setSelectedCompany(null);
+                setUserForm({ name: '', email: '', role: Role.Admin });
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              isLoading={creating}
+              leftIcon={<UserPlus />}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              Add User
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
       {/* Admin Assignment Modal */}
       <Modal
         isOpen={showAdminAssignModal}
@@ -501,8 +673,101 @@ const SuperAdminCompanies: React.FC = () => {
           </div>
         </form>
       </Modal>
+
+      {/* Company Users Modal */}
+      <Modal
+        isOpen={showCompanyUsersModal}
+        onClose={() => setShowCompanyUsersModal(false)}
+        title={`Users in ${selectedCompany?.name || 'Company'}`}
+        size="large"
+      >
+        <div className="space-y-4">
+          {companyUsers.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              <UserPlus className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+              <p>No users found for this company</p>
+              <p className="text-sm">Add users using the "Add User" or "Assign Admin" buttons</p>
+            </div>
+          ) : (
+            <>
+              <div className="bg-blue-50 p-4 rounded-lg mb-4">
+                <p className="text-sm text-blue-800">
+                  <strong>Total Users:</strong> {companyUsers.length} | 
+                  <strong> Company:</strong> {selectedCompany?.name}
+                </p>
+              </div>
+              
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Name
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Email
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Role
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Password
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Status
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {companyUsers.map((user, index) => (
+                      <tr key={index} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                          {user.name}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {user.email}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                            user.role === 'Admin' ? 'bg-red-100 text-red-800' :
+                            user.role === 'Manager' ? 'bg-yellow-100 text-yellow-800' :
+                            'bg-blue-100 text-blue-800'
+                          }`}>
+                            {user.role}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          <code className="bg-gray-100 px-2 py-1 rounded text-xs">
+                            {user.password || 'user123'}
+                          </code>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
+                            Active
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+          
+          <div className="flex justify-end pt-4">
+            <Button
+              variant="secondary"
+              onClick={() => setShowCompanyUsersModal(false)}
+            >
+              Close
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
-};
+});
+
+SuperAdminCompanies.displayName = 'SuperAdminCompanies';
 
 export default SuperAdminCompanies;

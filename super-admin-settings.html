@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Super Admin Settings</title>
+<!-- Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Theme Config -->
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#1111d4",
+                        "primary-hover": "#0e0eb8",
+                        "background-light": "#f6f6f8",
+                        "background-dark": "#111118", // Matches the provided component bg
+                        "surface-dark": "#1e1e2d", // Slightly lighter for cards
+                        "border-dark": "#282839", // Matches the provided component borders
+                        "text-secondary": "#9d9db9", // Matches provided text color
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"],
+                        "body": ["Inter", "sans-serif"],
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "2xl": "1rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Custom scrollbar for dark mode feeling */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #111118; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #282839; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #3b3b54; 
+        }
+    </style>
+</head>
+<body class="bg-background-dark text-white overflow-hidden h-screen flex">
+<!-- Sidebar -->
+<aside class="w-64 flex-shrink-0 border-r border-border-dark flex flex-col bg-[#111118]">
+<div class="p-6 flex items-center gap-3">
+<div class="size-8 rounded bg-primary flex items-center justify-center text-white">
+<span class="material-symbols-outlined text-xl">admin_panel_settings</span>
+</div>
+<h1 class="text-white text-lg font-bold tracking-tight">Admin<span class="text-primary">Panel</span></h1>
+</div>
+<div class="flex flex-col gap-1 px-4 flex-1 overflow-y-auto">
+<div class="mb-4">
+<p class="text-text-secondary text-xs font-semibold uppercase tracking-wider mb-2 px-3">Main Menu</p>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-text-secondary hover:bg-border-dark hover:text-white transition-colors group" href="#">
+<span class="material-symbols-outlined group-hover:text-white transition-colors">dashboard</span>
+<span class="text-sm font-medium">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-text-secondary hover:bg-border-dark hover:text-white transition-colors group" href="#">
+<span class="material-symbols-outlined group-hover:text-white transition-colors">inventory_2</span>
+<span class="text-sm font-medium">Inventory</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-text-secondary hover:bg-border-dark hover:text-white transition-colors group" href="#">
+<span class="material-symbols-outlined group-hover:text-white transition-colors">shopping_cart</span>
+<span class="text-sm font-medium">Orders</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-text-secondary hover:bg-border-dark hover:text-white transition-colors group" href="#">
+<span class="material-symbols-outlined group-hover:text-white transition-colors">bar_chart</span>
+<span class="text-sm font-medium">Reports</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-text-secondary hover:bg-border-dark hover:text-white transition-colors group" href="#">
+<span class="material-symbols-outlined group-hover:text-white transition-colors">group</span>
+<span class="text-sm font-medium">Users</span>
+</a>
+</div>
+<div>
+<p class="text-text-secondary text-xs font-semibold uppercase tracking-wider mb-2 px-3">System</p>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-primary/10 text-white border border-primary/20" href="#">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">settings</span>
+<span class="text-sm font-medium">Settings</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-text-secondary hover:bg-border-dark hover:text-white transition-colors group" href="#">
+<span class="material-symbols-outlined group-hover:text-white transition-colors">shield</span>
+<span class="text-sm font-medium">Security Logs</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-text-secondary hover:bg-border-dark hover:text-white transition-colors group" href="#">
+<span class="material-symbols-outlined group-hover:text-white transition-colors">api</span>
+<span class="text-sm font-medium">API Keys</span>
+</a>
+</div>
+</div>
+<div class="p-4 border-t border-border-dark">
+<div class="flex items-center gap-3 p-2 rounded-lg bg-border-dark">
+<div class="size-9 rounded-full bg-cover bg-center" data-alt="User avatar placeholder" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuD_gZrahSjJ2BHZflJzn4QEJWzpItTzdNaD426qRwXPNoxlGkz-jOaWfCAJbBoodYZrkExQXUQKBRwvm5zAdmZXBxROmujNsub_j3Sd01T_rB9ezYVLoB6tfrJwsPradEGD8laoxz207-VI1lHrIhK9WhzIJuhn6gq9t81_9r6bGCsV4K0WjToaonvcY86XAyejS1dTVrZYW_NIHauygUnC749yguPvduPrQOj_pxXEiYRrzonaBaAxp7gUdV_16xt3hKaxiGqDi40');"></div>
+<div class="flex flex-col overflow-hidden">
+<span class="text-sm font-medium text-white truncate">Super Admin</span>
+<span class="text-xs text-text-secondary truncate">admin@saas-inventory.com</span>
+</div>
+</div>
+</div>
+</aside>
+<!-- Main Content -->
+<main class="flex-1 flex flex-col h-full overflow-hidden relative">
+<!-- Top Header -->
+<header class="h-16 border-b border-border-dark flex items-center justify-between px-8 bg-[#111118] shrink-0">
+<!-- Breadcrumbs -->
+<div class="flex items-center gap-2">
+<a class="text-text-secondary text-sm font-medium hover:text-white transition-colors" href="#">Home</a>
+<span class="text-text-secondary text-sm">/</span>
+<a class="text-text-secondary text-sm font-medium hover:text-white transition-colors" href="#">Admin Panel</a>
+<span class="text-text-secondary text-sm">/</span>
+<span class="text-white text-sm font-medium">Platform Settings</span>
+</div>
+<div class="flex items-center gap-6">
+<!-- Search -->
+<div class="hidden md:flex items-center relative">
+<span class="material-symbols-outlined absolute left-3 text-text-secondary text-[20px]">search</span>
+<input class="bg-border-dark border-none rounded-lg py-2 pl-10 pr-4 text-sm text-white focus:ring-1 focus:ring-primary placeholder:text-text-secondary w-64" placeholder="Search settings..." type="text"/>
+</div>
+<!-- Notification Bell -->
+<button class="relative text-text-secondary hover:text-white transition-colors">
+<span class="material-symbols-outlined">notifications</span>
+<span class="absolute top-0 right-0 size-2 bg-red-500 rounded-full border-2 border-[#111118]"></span>
+</button>
+</div>
+</header>
+<!-- Scrollable Content Area -->
+<div class="flex-1 overflow-y-auto p-8">
+<div class="max-w-6xl mx-auto flex flex-col gap-8">
+<!-- Page Heading -->
+<div class="flex flex-col gap-2">
+<h2 class="text-3xl font-bold text-white tracking-tight">Platform Settings</h2>
+<p class="text-text-secondary">Manage global configurations, branding, billing, and system preferences.</p>
+</div>
+<!-- Settings Layout: Grid with Secondary Sidebar & Main Form -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+<!-- Secondary Sidebar (Settings Nav) -->
+<div class="lg:col-span-3 flex flex-col gap-1 sticky top-0">
+<button class="flex items-center justify-between p-3 rounded-lg bg-primary text-white font-medium text-sm">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-[20px]">tune</span>
+                                General
+                            </div>
+<span class="material-symbols-outlined text-[16px]">chevron_right</span>
+</button>
+<button class="flex items-center justify-between p-3 rounded-lg text-text-secondary hover:bg-border-dark hover:text-white transition-colors font-medium text-sm">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-[20px]">manage_accounts</span>
+                                User Management
+                            </div>
+</button>
+<button class="flex items-center justify-between p-3 rounded-lg text-text-secondary hover:bg-border-dark hover:text-white transition-colors font-medium text-sm">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-[20px]">credit_card</span>
+                                Billing &amp; Plans
+                            </div>
+</button>
+<button class="flex items-center justify-between p-3 rounded-lg text-text-secondary hover:bg-border-dark hover:text-white transition-colors font-medium text-sm">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-[20px]">notifications_active</span>
+                                Notifications
+                            </div>
+</button>
+<button class="flex items-center justify-between p-3 rounded-lg text-text-secondary hover:bg-border-dark hover:text-white transition-colors font-medium text-sm">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-[20px]">extension</span>
+                                Integrations
+                            </div>
+</button>
+<div class="h-px bg-border-dark my-2 mx-3"></div>
+<button class="flex items-center justify-between p-3 rounded-lg text-red-400 hover:bg-red-400/10 transition-colors font-medium text-sm">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-[20px]">warning</span>
+                                Danger Zone
+                            </div>
+</button>
+</div>
+<!-- Main Form Area -->
+<div class="lg:col-span-9 flex flex-col gap-6">
+<!-- Card: Platform Identity -->
+<div class="bg-surface-dark border border-border-dark rounded-xl p-6 shadow-sm">
+<div class="mb-6 pb-4 border-b border-border-dark">
+<h3 class="text-lg font-semibold text-white">Platform Identity</h3>
+<p class="text-sm text-text-secondary mt-1">Configure how the platform appears to your tenants and users.</p>
+</div>
+<div class="space-y-6">
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<div class="flex flex-col gap-2">
+<label class="text-sm font-medium text-text-secondary">Platform Name</label>
+<input class="bg-[#111118] border border-border-dark rounded-lg px-4 py-2.5 text-white focus:border-primary focus:ring-1 focus:ring-primary outline-none placeholder:text-text-secondary transition-all" type="text" value="Inventory SaaS"/>
+</div>
+<div class="flex flex-col gap-2">
+<label class="text-sm font-medium text-text-secondary">Support Email</label>
+<input class="bg-[#111118] border border-border-dark rounded-lg px-4 py-2.5 text-white focus:border-primary focus:ring-1 focus:ring-primary outline-none placeholder:text-text-secondary transition-all" type="email" value="help@saas-inventory.com"/>
+</div>
+</div>
+<div class="flex flex-col gap-2">
+<label class="text-sm font-medium text-text-secondary">Platform Logo</label>
+<div class="flex items-center gap-6">
+<div class="size-20 rounded-lg border border-border-dark bg-[#111118] flex items-center justify-center overflow-hidden relative group">
+<div class="size-10 bg-gradient-to-tr from-primary to-purple-600 rounded-md" data-alt="Abstract logo shape gradient"></div>
+<div class="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+<span class="material-symbols-outlined text-white">edit</span>
+</div>
+</div>
+<div class="flex-1 border-2 border-dashed border-border-dark rounded-lg p-6 flex flex-col items-center justify-center text-center hover:border-text-secondary hover:bg-[#111118] transition-all cursor-pointer">
+<span class="material-symbols-outlined text-text-secondary text-3xl mb-2">cloud_upload</span>
+<p class="text-sm text-white font-medium">Click to upload or drag and drop</p>
+<p class="text-xs text-text-secondary mt-1">SVG, PNG, JPG (max. 800x400px)</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Card: Regional Settings -->
+<div class="bg-surface-dark border border-border-dark rounded-xl p-6 shadow-sm">
+<div class="mb-6 pb-4 border-b border-border-dark">
+<h3 class="text-lg font-semibold text-white">Regional Settings</h3>
+<p class="text-sm text-text-secondary mt-1">Set the defaults for new accounts and system logs.</p>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+<div class="flex flex-col gap-2">
+<label class="text-sm font-medium text-text-secondary">Default Timezone</label>
+<div class="relative">
+<select class="w-full bg-[#111118] border border-border-dark rounded-lg px-4 py-2.5 text-white focus:border-primary focus:ring-1 focus:ring-primary outline-none appearance-none">
+<option>(UTC-08:00) Pacific Time</option>
+<option selected="">(UTC+00:00) UTC</option>
+<option>(UTC+01:00) London</option>
+</select>
+<span class="material-symbols-outlined absolute right-3 top-2.5 text-text-secondary pointer-events-none">expand_more</span>
+</div>
+</div>
+<div class="flex flex-col gap-2">
+<label class="text-sm font-medium text-text-secondary">Currency Symbol</label>
+<div class="relative">
+<select class="w-full bg-[#111118] border border-border-dark rounded-lg px-4 py-2.5 text-white focus:border-primary focus:ring-1 focus:ring-primary outline-none appearance-none">
+<option selected="">USD ($)</option>
+<option>EUR (€)</option>
+<option>GBP (£)</option>
+</select>
+<span class="material-symbols-outlined absolute right-3 top-2.5 text-text-secondary pointer-events-none">expand_more</span>
+</div>
+</div>
+<div class="flex flex-col gap-2">
+<label class="text-sm font-medium text-text-secondary">Date Format</label>
+<div class="relative">
+<select class="w-full bg-[#111118] border border-border-dark rounded-lg px-4 py-2.5 text-white focus:border-primary focus:ring-1 focus:ring-primary outline-none appearance-none">
+<option>MM/DD/YYYY</option>
+<option selected="">YYYY-MM-DD</option>
+<option>DD/MM/YYYY</option>
+</select>
+<span class="material-symbols-outlined absolute right-3 top-2.5 text-text-secondary pointer-events-none">expand_more</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Card: System Controls -->
+<div class="bg-surface-dark border border-border-dark rounded-xl p-6 shadow-sm">
+<div class="mb-6 pb-4 border-b border-border-dark">
+<h3 class="text-lg font-semibold text-white">System Controls</h3>
+<p class="text-sm text-text-secondary mt-1">Manage access and availability of the platform.</p>
+</div>
+<div class="flex flex-col gap-4">
+<div class="flex items-center justify-between p-4 rounded-lg border border-border-dark bg-[#111118]">
+<div class="flex items-start gap-3">
+<span class="material-symbols-outlined text-text-secondary mt-0.5">app_registration</span>
+<div class="flex flex-col">
+<span class="text-sm font-medium text-white">Allow Public Signups</span>
+<span class="text-xs text-text-secondary">If disabled, only admins can invite new users.</span>
+</div>
+</div>
+<label class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox" value=""/>
+<div class="w-11 h-6 bg-border-dark peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+</label>
+</div>
+<div class="flex items-center justify-between p-4 rounded-lg border border-border-dark bg-[#111118]">
+<div class="flex items-start gap-3">
+<span class="material-symbols-outlined text-text-secondary mt-0.5">build</span>
+<div class="flex flex-col">
+<span class="text-sm font-medium text-white">Maintenance Mode</span>
+<span class="text-xs text-text-secondary">Restricts access to Super Admins only. Displays a maintenance page to users.</span>
+</div>
+</div>
+<label class="relative inline-flex items-center cursor-pointer">
+<input class="sr-only peer" type="checkbox" value=""/>
+<div class="w-11 h-6 bg-border-dark peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+</label>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Spacer to push content above sticky footer -->
+<div class="h-24"></div>
+</div>
+<!-- Sticky Action Footer -->
+<div class="absolute bottom-0 left-0 right-0 p-4 border-t border-border-dark bg-[#111118]/90 backdrop-blur-sm flex justify-end gap-4 z-10">
+<div class="flex items-center gap-4">
+<span class="text-sm text-text-secondary">Unsaved changes in <span class="text-white font-medium">Platform Identity</span></span>
+<button class="px-5 py-2 rounded-lg text-sm font-medium text-white border border-border-dark hover:bg-border-dark transition-colors">Discard</button>
+<button class="px-5 py-2 rounded-lg text-sm font-medium text-white bg-primary hover:bg-primary-hover shadow-[0_0_15px_rgba(17,17,212,0.4)] transition-all">Save Changes</button>
+</div>
+</div>
+</main>
+</body></html>

@@ -1,0 +1,40 @@
+import React from 'react';
+import { KPIData } from '../types';
+
+interface KPICardProps {
+  data: KPIData;
+}
+
+const KPICard: React.FC<KPICardProps> = ({ data }) => {
+  const { title, value, change, changeType, icon, iconColorClass, iconBgClass, changeLabel } = data;
+
+  const changeColorClass = changeType === 'positive' ? 'text-emerald-500' 
+                         : changeType === 'negative' ? 'text-red-500' 
+                         : 'text-orange-500';
+  
+  const hoverBorderClass = changeType === 'positive' ? 'hover:border-primary/50' 
+                         : changeType === 'negative' ? 'hover:border-red-500/50' 
+                         : 'hover:border-orange-500/50';
+
+  return (
+    <div className={`p-5 rounded-2xl bg-white dark:bg-surface-dark border border-gray-100 dark:border-border-dark shadow-sm flex flex-col justify-between h-32 ${hoverBorderClass} transition-colors cursor-default group`}>
+      <div className="flex items-center justify-between">
+        <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{title}</p>
+        <span className={`material-symbols-outlined ${iconColorClass} ${iconBgClass} p-1 rounded-lg text-[20px]`}>
+          {icon}
+        </span>
+      </div>
+      <div>
+        <p className="text-2xl font-bold text-gray-900 dark:text-white">{value}</p>
+        <p className={`text-xs font-medium ${changeColorClass} flex items-center gap-1 mt-1`}>
+          {changeType !== 'neutral' && (
+             <span className="material-symbols-outlined text-[16px]">trending_up</span>
+          )}
+          {change} {changeLabel}
+        </p>
+      </div>
+    </div>
+  );
+};
+
+export default KPICard;

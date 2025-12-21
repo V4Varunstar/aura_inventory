@@ -1,0 +1,964 @@
+<!DOCTYPE html>
+<html class="dark" lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <meta name="description" content="Manage products, inventory batches, and movement history." />
+    <meta name="theme-color" content="#101022" />
+    <title>Product Management - Enterprise Portal</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans:wght@400;500;700&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        primary: "#1111d4",
+                        "background-light": "#f6f6f8",
+                        "background-dark": "#101022",
+                        "surface-dark": "#1e1e2d",
+                        "surface-border": "#282839",
+                        "text-secondary": "#9d9db9",
+                    },
+                    fontFamily: {
+                        display: ["Inter", "sans-serif"],
+                        body: ["Noto Sans", "sans-serif"],
+                    },
+                    borderRadius: {
+                        DEFAULT: "0.25rem",
+                        lg: "0.5rem",
+                        xl: "0.75rem",
+                        "2xl": "1rem",
+                        full: "9999px",
+                    },
+                },
+            },
+        };
+    </script>
+    <style>
+        :focus-visible {
+            outline: 2px solid #6366f1;
+            outline-offset: 3px;
+        }
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+                scroll-behavior: auto !important;
+            }
+        }
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #111118;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #3b3b54;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #4b4b64;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 24;
+        }
+        .icon-fill {
+            font-variation-settings: "FILL" 1;
+        }
+        .skip-link {
+            position: absolute;
+            top: -40px;
+            left: 1rem;
+            padding: 0.5rem 0.75rem;
+            background: #1111d4;
+            color: #fff;
+            border-radius: 0.5rem;
+            transition: top 0.2s ease;
+            z-index: 50;
+        }
+        .skip-link:focus-visible {
+            top: 1rem;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display text-white h-screen overflow-hidden flex antialiased selection:bg-primary selection:text-white">
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+    <div class="sr-only" aria-live="polite" id="live-region"></div>
+    <!-- Sidebar Navigation -->
+    <aside aria-label="Primary" class="w-72 flex-shrink-0 bg-[#111118] border-r border-surface-border flex flex-col z-20 transition-all duration-300">
+        <div class="h-16 flex items-center px-6 border-b border-surface-border gap-3">
+            <img alt="TechCorp logo" loading="lazy" class="rounded-lg size-8 border border-white/10" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBKUoexB_NG3wUoEIwcmaP1mwxpx1v-f6a1KG05AQsoY3MWE6GDRuLnXjMCw7-eV_vuiYeMvOq61v73BrBesPv5xS-z9gd1FGrW_9k0wFKHp5H1T2y5VUVBVfIkOrxQosp0kfyRXFg9uWXhRPKBXxqfA2AE8CIsEqrHHzxALjy3EosEMTKkBq5x2ORuMDhxWYjhR5cMablr_kl6ZFhn-WcQap-U1EPZPW4AOEhf-Uqpgp55NVN8SwulqaUOBhgozk_M-cgDRvasd1c" />
+            <div class="flex flex-col">
+                <h1 class="text-white text-base font-bold leading-none tracking-tight">TechCorp Inc.</h1>
+                <p class="text-text-secondary text-xs font-normal mt-1">Enterprise Portal</p>
+            </div>
+        </div>
+        <nav aria-label="Main" class="flex-1 overflow-y-auto py-6 px-4 flex flex-col gap-2">
+            <a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-text-secondary hover:bg-surface-border hover:text-white transition-colors group" href="#">
+                <span class="material-symbols-outlined group-hover:text-white transition-colors">dashboard</span>
+                <span class="text-sm font-medium">Dashboard</span>
+            </a>
+            <a class="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-primary text-white shadow-lg shadow-primary/20" href="#" aria-current="page">
+                <span class="material-symbols-outlined icon-fill">inventory_2</span>
+                <span class="text-sm font-medium">Products</span>
+            </a>
+            <a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-text-secondary hover:bg-surface-border hover:text-white transition-colors group" href="#">
+                <span class="material-symbols-outlined group-hover:text-white transition-colors">shopping_cart</span>
+                <span class="text-sm font-medium">Orders</span>
+            </a>
+            <a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-text-secondary hover:bg-surface-border hover:text-white transition-colors group" href="#">
+                <span class="material-symbols-outlined group-hover:text-white transition-colors">description</span>
+                <span class="text-sm font-medium">Reports</span>
+            </a>
+            <a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-text-secondary hover:bg-surface-border hover:text-white transition-colors group" href="#">
+                <span class="material-symbols-outlined group-hover:text-white transition-colors">local_shipping</span>
+                <span class="text-sm font-medium">Shipments</span>
+            </a>
+            <div class="my-2 border-t border-surface-border/50"></div>
+            <p class="px-3 text-xs font-semibold text-text-secondary uppercase tracking-wider mb-1">System</p>
+            <a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-text-secondary hover:bg-surface-border hover:text-white transition-colors group" href="#">
+                <span class="material-symbols-outlined group-hover:text-white transition-colors">settings</span>
+                <span class="text-sm font-medium">Settings</span>
+            </a>
+            <a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-text-secondary hover:bg-surface-border hover:text-white transition-colors group" href="#">
+                <span class="material-symbols-outlined group-hover:text-white transition-colors">group</span>
+                <span class="text-sm font-medium">Users</span>
+            </a>
+        </nav>
+        <div class="p-4 border-t border-surface-border">
+            <div class="flex items-center gap-3 p-2 rounded-lg bg-surface-border/50 hover:bg-surface-border transition-colors">
+                <img alt="Alex Morgan" loading="lazy" class="rounded-full size-9 border border-white/10 object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB_fz_YEm4mF8t2A4Dbb4FBUOzgJsSaT4-HRvoPgU5ftW3OhFD_HLScXtRMt54iDJl26SgEvoFS8zalsHKsO0xFw49j2GEyZRXF3-2dLBd3xFcMjW8coF6HjSZfK9nrRlCJA6mGebtT31SYF_2dthkLq0N67CZSEhJs35Lv2GTv3ktsciinp2V0NgbBgl6NiGvKJrznX9BY0oMTn64Fb6n7ZLMW3XHNb6wbmVCsMcqyWNu04eY7hsKTMnzH3MeuUY1pJw4md-jg9NY" />
+                <div class="flex flex-col overflow-hidden">
+                    <p class="text-sm font-medium text-white truncate">Alex Morgan</p>
+                    <p class="text-xs text-text-secondary truncate">Warehouse Mgr.</p>
+                </div>
+                <span class="material-symbols-outlined ml-auto text-text-secondary text-[20px]" aria-hidden="true">expand_more</span>
+            </div>
+        </div>
+    </aside>
+    <!-- Main Content Area -->
+    <main id="main-content" class="flex-1 flex flex-col min-w-0 bg-background-dark overflow-hidden relative">
+        <!-- Header -->
+        <header class="h-16 flex items-center justify-between px-8 border-b border-surface-border bg-[#111118]/80 backdrop-blur-md sticky top-0 z-10" role="banner">
+            <div class="flex items-center gap-6">
+                <div class="relative group">
+                    <button class="flex items-center gap-2 text-sm font-medium text-white hover:text-primary transition-colors" aria-haspopup="listbox" aria-expanded="false">
+                        <span class="material-symbols-outlined text-text-secondary group-hover:text-primary" aria-hidden="true">warehouse</span>
+                        Main Warehouse (NY)
+                        <span class="material-symbols-outlined text-[18px] text-text-secondary" aria-hidden="true">expand_more</span>
+                    </button>
+                </div>
+                <div class="h-6 w-px bg-surface-border" aria-hidden="true"></div>
+                <div class="relative w-64 md:w-80" aria-label="Global search">
+                    <label for="globalSearch" class="sr-only">Search orders, products, SKU</label>
+                    <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary text-[20px]" aria-hidden="true">search</span>
+                    <input id="globalSearch" class="w-full bg-surface-border/50 hover:bg-surface-border focus:bg-surface-border text-white text-sm rounded-lg pl-10 pr-4 py-2 border-transparent focus:border-primary focus:ring-0 transition-all placeholder:text-text-secondary/70" placeholder="Search orders, products, SKU..." type="search" />
+                </div>
+            </div>
+            <div class="flex items-center gap-4">
+                <button class="relative p-2 rounded-lg hover:bg-surface-border text-text-secondary hover:text-white transition-colors" aria-label="Notifications">
+                    <span class="material-symbols-outlined">notifications</span>
+                    <span class="absolute top-2 right-2 size-2 bg-red-500 rounded-full border border-[#111118]"></span>
+                </button>
+                <button class="p-2 rounded-lg hover:bg-surface-border text-text-secondary hover:text-white transition-colors" aria-label="Help">
+                    <span class="material-symbols-outlined">help</span>
+                </button>
+            </div>
+        </header>
+        <!-- Scrollable Content -->
+        <div class="flex-1 overflow-y-auto p-6 md:p-8 scroll-smooth">
+            <div class="max-w-[1600px] mx-auto flex flex-col gap-6">
+                <nav class="flex items-center gap-2 text-sm" aria-label="Breadcrumb">
+                    <a class="text-text-secondary hover:text-white transition-colors" href="#">Home</a>
+                    <span class="text-text-secondary" aria-hidden="true">/</span>
+                    <span class="text-white font-medium" aria-current="page">Product Management</span>
+                </nav>
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div>
+                        <h2 class="text-3xl font-bold text-white tracking-tight">Product Management</h2>
+                        <p class="text-text-secondary mt-1">Track inventory, manage stock batches, and view movement history.</p>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <button id="exportBtn" class="flex items-center gap-2 px-4 py-2.5 bg-surface-border hover:bg-[#323246] text-white rounded-lg text-sm font-semibold transition-colors border border-white/5">
+                            <span class="material-symbols-outlined text-[20px]" aria-hidden="true">file_download</span>
+                            Export CSV
+                        </button>
+                        <button id="openAddProduct" class="flex items-center gap-2 px-4 py-2.5 bg-primary hover:bg-blue-700 text-white rounded-lg text-sm font-bold shadow-lg shadow-primary/25 transition-all active:scale-95">
+                            <span class="material-symbols-outlined text-[20px]" aria-hidden="true">add</span>
+                            Add Product
+                        </button>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4" aria-label="Inventory summary">
+                    <div class="bg-surface-border/30 border border-surface-border p-5 rounded-xl flex items-center justify-between">
+                        <div>
+                            <p class="text-text-secondary text-sm font-medium mb-1">Total Products</p>
+                            <div class="flex items-baseline gap-2">
+                                <h3 id="totalProducts" class="text-2xl font-bold text-white">0</h3>
+                                <span class="text-emerald-500 text-xs font-medium bg-emerald-500/10 px-1.5 py-0.5 rounded">updated</span>
+                            </div>
+                        </div>
+                        <div class="size-10 rounded-full bg-blue-500/10 flex items-center justify-center text-blue-500">
+                            <span class="material-symbols-outlined" aria-hidden="true">inventory_2</span>
+                        </div>
+                    </div>
+                    <div class="bg-surface-border/30 border border-surface-border p-5 rounded-xl flex items-center justify-between">
+                        <div>
+                            <p class="text-text-secondary text-sm font-medium mb-1">Low Stock Items</p>
+                            <div class="flex items-baseline gap-2">
+                                <h3 id="lowStock" class="text-2xl font-bold text-white">0</h3>
+                                <span class="text-red-500 text-xs font-medium bg-red-500/10 px-1.5 py-0.5 rounded">alert</span>
+                            </div>
+                        </div>
+                        <div class="size-10 rounded-full bg-red-500/10 flex items-center justify-center text-red-500">
+                            <span class="material-symbols-outlined" aria-hidden="true">warning</span>
+                        </div>
+                    </div>
+                    <div class="bg-surface-border/30 border border-surface-border p-5 rounded-xl flex items-center justify-between">
+                        <div>
+                            <p class="text-text-secondary text-sm font-medium mb-1">Total Inventory Value</p>
+                            <div class="flex items-baseline gap-2">
+                                <h3 id="inventoryValue" class="text-2xl font-bold text-white">$0</h3>
+                                <span class="text-emerald-500 text-xs font-medium bg-emerald-500/10 px-1.5 py-0.5 rounded">live</span>
+                            </div>
+                        </div>
+                        <div class="size-10 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-500">
+                            <span class="material-symbols-outlined" aria-hidden="true">attach_money</span>
+                        </div>
+                    </div>
+                </div>
+                <!-- Split Layout: Product List & Detail View -->
+                <div class="flex flex-col lg:flex-row gap-6 h-[800px]">
+                    <!-- Left: Product List (Flex Grow) -->
+                    <section class="flex-1 flex flex-col bg-[#16161e] border border-surface-border rounded-xl overflow-hidden shadow-xl" aria-label="Product list">
+                        <div class="p-4 border-b border-surface-border flex flex-col sm:flex-row gap-4 justify-between items-center bg-[#16161e]">
+                            <div class="relative w-full sm:w-64">
+                                <label for="productSearch" class="sr-only">Filter products</label>
+                                <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary text-[18px]" aria-hidden="true">search</span>
+                                <input id="productSearch" class="w-full bg-surface-border text-white text-sm rounded-lg pl-9 pr-4 py-2 border-transparent focus:border-primary focus:ring-0 placeholder:text-text-secondary/70" placeholder="Filter products..." type="search" />
+                            </div>
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 w-full sm:w-auto">
+                                <label class="sr-only" for="categoryFilter">Category</label>
+                                <select id="categoryFilter" class="bg-surface-border text-white text-sm rounded-lg px-3 py-2 border border-white/5 focus:border-primary">
+                                    <option value="all">All categories</option>
+                                </select>
+                                <label class="sr-only" for="statusFilter">Status</label>
+                                <select id="statusFilter" class="bg-surface-border text-white text-sm rounded-lg px-3 py-2 border border-white/5 focus:border-primary">
+                                    <option value="all">All status</option>
+                                    <option value="active">Active</option>
+                                    <option value="inactive">Inactive</option>
+                                    <option value="low">Low stock</option>
+                                </select>
+                                <label class="sr-only" for="sortSelect">Sort</label>
+                                <select id="sortSelect" class="bg-surface-border text-white text-sm rounded-lg px-3 py-2 border border-white/5 focus:border-primary">
+                                    <option value="name-asc">Sort: Name A→Z</option>
+                                    <option value="name-desc">Sort: Name Z→A</option>
+                                    <option value="stock-desc">Sort: Stock High→Low</option>
+                                    <option value="stock-asc">Sort: Stock Low→High</option>
+                                    <option value="value-desc">Sort: Value High→Low</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="flex-1 overflow-auto" role="table" aria-label="Products">
+                            <table class="w-full text-left border-collapse">
+                                <thead class="bg-[#1c1c26] sticky top-0 z-10 text-xs uppercase text-text-secondary font-semibold tracking-wider">
+                                    <tr>
+                                        <th scope="col" class="px-6 py-4 border-b border-surface-border">Product</th>
+                                        <th scope="col" class="px-6 py-4 border-b border-surface-border">SKU</th>
+                                        <th scope="col" class="px-6 py-4 border-b border-surface-border">Category</th>
+                                        <th scope="col" class="px-6 py-4 border-b border-surface-border">Stock</th>
+                                        <th scope="col" class="px-6 py-4 border-b border-surface-border">Status</th>
+                                        <th scope="col" class="px-6 py-4 border-b border-surface-border w-10" aria-hidden="true"></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="productTableBody" class="divide-y divide-surface-border"></tbody>
+                            </table>
+                            <div id="emptyState" class="hidden flex flex-col items-center justify-center py-16 text-center">
+                                <div class="bg-surface-border/50 p-4 rounded-full mb-4">
+                                    <span class="material-symbols-outlined text-4xl text-text-secondary" aria-hidden="true">search_off</span>
+                                </div>
+                                <p class="text-white font-medium">No products found</p>
+                                <p class="text-text-secondary text-sm">Try adjusting your filters</p>
+                            </div>
+                        </div>
+                        <div class="p-4 border-t border-surface-border bg-[#16161e] flex items-center justify-between" role="status">
+                            <span id="resultsMeta" class="text-sm text-text-secondary">Showing 0 items</span>
+                            <div class="flex gap-2 text-xs text-text-secondary">
+                                <span>Keyboard: ↑ ↓ to move • Enter to open</span>
+                            </div>
+                        </div>
+                    </section>
+                    <!-- Right: Details Panel -->
+                    <section aria-label="Product details" class="w-full lg:w-[480px] flex-shrink-0 flex flex-col bg-[#16161e] border border-surface-border rounded-xl shadow-2xl overflow-hidden">
+                        <div class="p-5 border-b border-surface-border bg-gradient-to-r from-[#16161e] to-surface-border/20">
+                            <div class="flex items-start justify-between gap-3 mb-4">
+                                <div class="flex gap-3" id="detailHeader">
+                                    <img id="detailImage" alt="Selected product" loading="lazy" class="size-16 rounded-lg border border-white/10 object-cover" src="" />
+                                    <div>
+                                        <h3 id="detailName" class="text-lg font-bold text-white leading-tight">Select a product</h3>
+                                        <p id="detailSku" class="text-sm text-text-secondary font-mono mt-1"></p>
+                                        <div class="flex gap-2 mt-2">
+                                            <span id="detailCategory" class="text-xs bg-surface-border px-2 py-0.5 rounded text-white border border-white/10"></span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <button id="closeDetails" class="text-text-secondary hover:text-white transition-colors" aria-label="Close details">
+                                    <span class="material-symbols-outlined" aria-hidden="true">close</span>
+                                </button>
+                            </div>
+                            <div class="grid grid-cols-2 gap-3 mt-4">
+                                <button id="editProduct" class="flex items-center justify-center gap-2 py-2 bg-primary text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-colors">
+                                    <span class="material-symbols-outlined text-[18px]" aria-hidden="true">edit</span> Edit
+                                </button>
+                                <button id="moreActions" class="flex items-center justify-center gap-2 py-2 bg-surface-border text-white text-sm font-semibold rounded-lg hover:bg-[#323246] transition-colors border border-white/5">
+                                    <span class="material-symbols-outlined text-[18px]" aria-hidden="true">more_horiz</span> Actions
+                                </button>
+                            </div>
+                        </div>
+                        <div class="flex border-b border-surface-border bg-[#16161e]" role="tablist" aria-label="Product detail tabs">
+                            <button class="flex-1 py-3 text-sm font-medium text-white border-b-2 border-primary" role="tab" aria-selected="true" data-tab="batches">Batches</button>
+                            <button class="flex-1 py-3 text-sm font-medium text-text-secondary hover:text-white border-b-2 border-transparent hover:border-surface-border transition-colors" role="tab" aria-selected="false" data-tab="history">History</button>
+                            <button class="flex-1 py-3 text-sm font-medium text-text-secondary hover:text-white border-b-2 border-transparent hover:border-surface-border transition-colors" role="tab" aria-selected="false" data-tab="suppliers">Suppliers</button>
+                        </div>
+                        <div id="tabContent" class="flex-1 overflow-y-auto p-5 space-y-6" role="tabpanel"></div>
+                        <div class="p-4 border-t border-surface-border bg-[#16161e] flex justify-between items-center text-xs text-text-secondary">
+                            <span id="lastUpdated">Last updated just now</span>
+                            <button id="addBatch" class="hover:text-primary transition-colors">Add batch</button>
+                        </div>
+                    </section>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Add Product Modal -->
+    <div id="modalRoot" class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden">
+        <div class="bg-[#111118] w-full max-w-lg rounded-xl border border-surface-border shadow-2xl" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+            <div class="flex items-center justify-between p-4 border-b border-surface-border">
+                <h3 id="modalTitle" class="text-lg font-bold text-white">Add Product</h3>
+                <button id="closeModal" aria-label="Close dialog" class="text-text-secondary hover:text-white">
+                    <span class="material-symbols-outlined" aria-hidden="true">close</span>
+                </button>
+            </div>
+            <form id="productForm" class="p-4 space-y-4" novalidate>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <label class="flex flex-col text-sm gap-2">
+                        <span class="text-text-secondary">Name</span>
+                        <input name="name" required class="bg-surface-border text-white rounded-lg px-3 py-2 border border-white/10 focus:border-primary" />
+                    </label>
+                    <label class="flex flex-col text-sm gap-2">
+                        <span class="text-text-secondary">SKU</span>
+                        <input name="sku" required class="bg-surface-border text-white rounded-lg px-3 py-2 border border-white/10 focus:border-primary" />
+                    </label>
+                    <label class="flex flex-col text-sm gap-2">
+                        <span class="text-text-secondary">Category</span>
+                        <input name="category" required class="bg-surface-border text-white rounded-lg px-3 py-2 border border-white/10 focus:border-primary" />
+                    </label>
+                    <label class="flex flex-col text-sm gap-2">
+                        <span class="text-text-secondary">Status</span>
+                        <select name="status" class="bg-surface-border text-white rounded-lg px-3 py-2 border border-white/10 focus:border-primary">
+                            <option value="Active">Active</option>
+                            <option value="Inactive">Inactive</option>
+                        </select>
+                    </label>
+                    <label class="flex flex-col text-sm gap-2">
+                        <span class="text-text-secondary">Stock</span>
+                        <input name="stock" type="number" min="0" value="0" class="bg-surface-border text-white rounded-lg px-3 py-2 border border-white/10 focus:border-primary" />
+                    </label>
+                    <label class="flex flex-col text-sm gap-2">
+                        <span class="text-text-secondary">Capacity</span>
+                        <input name="capacity" type="number" min="1" value="100" class="bg-surface-border text-white rounded-lg px-3 py-2 border border-white/10 focus:border-primary" />
+                    </label>
+                    <label class="flex flex-col text-sm gap-2">
+                        <span class="text-text-secondary">Unit Price ($)</span>
+                        <input name="price" type="number" min="0" step="0.01" value="50" class="bg-surface-border text-white rounded-lg px-3 py-2 border border-white/10 focus:border-primary" />
+                    </label>
+                    <label class="flex flex-col text-sm gap-2">
+                        <span class="text-text-secondary">Image URL</span>
+                        <input name="image" type="url" placeholder="https://..." class="bg-surface-border text-white rounded-lg px-3 py-2 border border-white/10 focus:border-primary" />
+                    </label>
+                </div>
+                <div class="flex justify-end gap-3 pt-2">
+                    <button type="button" id="cancelModal" class="px-4 py-2 rounded-lg bg-surface-border text-text-secondary hover:text-white">Cancel</button>
+                    <button type="submit" class="px-4 py-2 rounded-lg bg-primary text-white font-semibold hover:bg-blue-700">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add Batch Modal -->
+    <div id="batchModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden">
+        <div class="bg-[#111118] w-full max-w-md rounded-xl border border-surface-border shadow-2xl" role="dialog" aria-modal="true" aria-labelledby="batchModalTitle">
+            <div class="flex items-center justify-between p-4 border-b border-surface-border">
+                <h3 id="batchModalTitle" class="text-lg font-bold text-white">Add Batch</h3>
+                <button id="closeBatchModal" aria-label="Close batch dialog" class="text-text-secondary hover:text-white">
+                    <span class="material-symbols-outlined" aria-hidden="true">close</span>
+                </button>
+            </div>
+            <form id="batchForm" class="p-4 space-y-4" novalidate>
+                <label class="flex flex-col text-sm gap-2">
+                    <span class="text-text-secondary">Quantity</span>
+                    <input name="qty" type="number" min="1" value="50" class="bg-surface-border text-white rounded-lg px-3 py-2 border border-white/10 focus:border-primary" required />
+                </label>
+                <label class="flex flex-col text-sm gap-2">
+                    <span class="text-text-secondary">Location</span>
+                    <input name="location" value="Warehouse A" class="bg-surface-border text-white rounded-lg px-3 py-2 border border-white/10 focus:border-primary" required />
+                </label>
+                <label class="flex flex-col text-sm gap-2">
+                    <span class="text-text-secondary">Expiry (Month Year)</span>
+                    <input name="expiry" placeholder="Dec 2025" class="bg-surface-border text-white rounded-lg px-3 py-2 border border-white/10 focus:border-primary" />
+                </label>
+                <div class="flex justify-end gap-3 pt-2">
+                    <button type="button" id="cancelBatchModal" class="px-4 py-2 rounded-lg bg-surface-border text-text-secondary hover:text-white">Cancel</button>
+                    <button type="submit" class="px-4 py-2 rounded-lg bg-primary text-white font-semibold hover:bg-blue-700">Save Batch</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="toast" class="fixed bottom-4 right-4 px-4 py-3 rounded-lg bg-emerald-600 text-white shadow-lg hidden" role="status" aria-live="polite"></div>
+
+    <script>
+        const products = [
+            {
+                id: "prod-1",
+                name: "Wireless Pro Mouse",
+                sku: "MSE-2023-WL",
+                category: "Electronics",
+                status: "Active",
+                stock: 124,
+                capacity: 200,
+                price: 79,
+                image: "https://lh3.googleusercontent.com/aida-public/AB6AXuDk9RxGaXPsCRBrfKKSCkW07HVWw-MdimcBahtfyYVY9j0UXb3MIHONwFjK3HZjbQqlgwONu8zGsbW_VblJRke1u059X5wOVpX7aH7la5FCjBDDWqCQoRi_hJvBKhJvG4TT0Opi-mIa7twK6v4_1BSbn5wJlQTKGiCwLLKx1fzeUMapH2uWaCW3JYku1NuxaCcl8yMXxdu83U9bXJoM4LJzlhY7LvMH2vSez2bLa5yOBFX3gCOwhyTM8gz36ancdfHoo7KSCP2xt5U",
+                variations: 2,
+                batches: [
+                    { id: "BATCH-001", location: "Warehouse A", qty: 80, expiry: "Dec 2025", color: "emerald" },
+                    { id: "BATCH-002", location: "Warehouse A", qty: 44, expiry: "Nov 2024", color: "yellow" },
+                ],
+                movements: [
+                    { type: "Outward Stock", ref: "Order #ORD-9921 • Sales", delta: -12, when: "2h ago", tone: "red" },
+                    { type: "Inward Stock", ref: "PO #PO-8812 • Supplier Inc.", delta: 100, when: "Yesterday", tone: "emerald" },
+                    { type: "Stock Adjustment", ref: "Audit Check • Alex M.", delta: -2, when: "Oct 24", tone: "blue" },
+                ],
+                suppliers: [
+                    { name: "Supplier Inc.", contact: "support@supplier.com", sla: "48h" },
+                    { name: "Distro North", contact: "north@distro.com", sla: "72h" },
+                ],
+            },
+            {
+                id: "prod-2",
+                name: "Mech Keyboard X1",
+                sku: "KEY-2024-MX",
+                category: "Electronics",
+                status: "Active",
+                stock: 12,
+                capacity: 50,
+                price: 129,
+                image: "https://lh3.googleusercontent.com/aida-public/AB6AXuDrChydS3EgQ0HDCxWVznBjjewdogsk7EhDoftdAhCqBRKZAqv4uUGap6rcN45v4NjGMwfz1nXIDs1C5x9RMFwBKOVEA-uDU7fDrAHkwg8nw1MRmZvS-cQWYDlV32dC05G73_rPJMfD-u8fw7xE6ekDFu80xRqU2_Yu0AlHTDz3gcIVpN1KbvYwtFEyotkvYCNDj8VduaD3Rqp3W_2sODtbmPzg32NgcjctNtM0Wx2TqyAILDievp-9X4QxxUG-iMmPs4tE_-R81JA",
+                variations: 1,
+                batches: [{ id: "BATCH-008", location: "Warehouse B", qty: 12, expiry: "Feb 2026", color: "red" }],
+                movements: [
+                    { type: "Outward Stock", ref: "Order #ORD-1001", delta: -6, when: "Today", tone: "red" },
+                    { type: "Inward Stock", ref: "PO #PO-9902", delta: 20, when: "2d ago", tone: "emerald" },
+                ],
+                suppliers: [{ name: "Keys Co.", contact: "hello@keys.co", sla: "24h" }],
+            },
+            {
+                id: "prod-3",
+                name: "ErgoChair Plus",
+                sku: "CHR-2023-EP",
+                category: "Furniture",
+                status: "Inactive",
+                stock: 45,
+                capacity: 100,
+                price: 259,
+                image: "https://lh3.googleusercontent.com/aida-public/AB6AXuBY83kTh87th-xU8T6iohAsgUM1rQvJRtMwvV-naHBsWiSAEA7FDmjJwyAAYJtisJisCESqKsO8o-Exl9B7c2wD8JGsqVSIlxmxSt3683uqNwAAnt-sDdHI3Kc_gppnMPgBK6teAgpngCzQglOZbf-MtunkGoDOJ4fAaqhync2RrI0-oNPAoeS-YYu8F6RgO8RONax-EdjUVJ8XF3mtfAW0suKzqR7o7r5B2TIY9Uk_mPVKQB_SrNNVSUxI7jHO65tqaSx_VZuObOY",
+                variations: 4,
+                batches: [{ id: "BATCH-201", location: "Warehouse C", qty: 45, expiry: "Jul 2025", color: "emerald" }],
+                movements: [
+                    { type: "Stock Adjustment", ref: "Audit • Team", delta: -3, when: "1w ago", tone: "blue" },
+                ],
+                suppliers: [{ name: "SeatWorks", contact: "ops@seatworks.io", sla: "96h" }],
+            },
+            {
+                id: "prod-4",
+                name: "USB-C Hub Pro",
+                sku: "USB-2024-C7",
+                category: "Electronics",
+                status: "Active",
+                stock: 890,
+                capacity: 1000,
+                price: 59,
+                image: "https://lh3.googleusercontent.com/aida-public/AB6AXuAOmQMMTQGBBOG0i6rM92cI2U1X5G8V2YIhEFggoKBcLM8f-zPabn1rSxHBMmva4FyUxDLtUU7IiqTPai5FlepZDaYlpsPl40rNdDOiegIfGSNoXt9T_xL6HO4gjtW1r-f1Hd9e9_wbvIAUMDF_Kb3Kwdf4p7xMprxq1SqkocxtJ_yeoNkxJoSz3oKr0JwKfpoErezO3x2Thbd1fTaBwEJDzJcS-5nRNJOPg7KoNsHbX_JCScqIoWGVMOKMeIF1Z4fnLDQjQySYMM",
+                variations: 1,
+                batches: [{ id: "BATCH-300", location: "Warehouse A", qty: 500, expiry: "Jan 2027", color: "emerald" }],
+                movements: [
+                    { type: "Inward Stock", ref: "PO #PO-1203", delta: 300, when: "Today", tone: "emerald" },
+                ],
+                suppliers: [{ name: "CableX", contact: "sales@cablex.com", sla: "36h" }],
+            },
+        ];
+
+        const state = {
+            search: "",
+            category: "all",
+            status: "all",
+            sort: "name-asc",
+            activeTab: "batches",
+            selectedProductId: products[0]?.id ?? null,
+        };
+
+        const productTableBody = document.getElementById("productTableBody");
+        const emptyState = document.getElementById("emptyState");
+        const resultsMeta = document.getElementById("resultsMeta");
+        const totalProductsEl = document.getElementById("totalProducts");
+        const lowStockEl = document.getElementById("lowStock");
+        const inventoryValueEl = document.getElementById("inventoryValue");
+        const categoryFilter = document.getElementById("categoryFilter");
+        const statusFilter = document.getElementById("statusFilter");
+        const sortSelect = document.getElementById("sortSelect");
+        const searchInput = document.getElementById("productSearch");
+        const tabContent = document.getElementById("tabContent");
+        const detailImage = document.getElementById("detailImage");
+        const detailName = document.getElementById("detailName");
+        const detailSku = document.getElementById("detailSku");
+        const detailCategory = document.getElementById("detailCategory");
+        const tabButtons = document.querySelectorAll("[data-tab]");
+        const addProductBtn = document.getElementById("openAddProduct");
+        const modalRoot = document.getElementById("modalRoot");
+        const productForm = document.getElementById("productForm");
+        const closeModal = document.getElementById("closeModal");
+        const cancelModal = document.getElementById("cancelModal");
+        const toast = document.getElementById("toast");
+        const addBatchBtn = document.getElementById("addBatch");
+        const batchModal = document.getElementById("batchModal");
+        const batchForm = document.getElementById("batchForm");
+        const closeBatchModal = document.getElementById("closeBatchModal");
+        const cancelBatchModal = document.getElementById("cancelBatchModal");
+        const liveRegion = document.getElementById("live-region");
+        const exportBtn = document.getElementById("exportBtn");
+
+        function formatCurrency(value) {
+            return value.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
+        }
+
+        function isLowStock(product) {
+            return product.stock / product.capacity <= 0.3;
+        }
+
+        function setToast(message) {
+            toast.textContent = message;
+            toast.classList.remove("hidden");
+            liveRegion.textContent = message;
+            setTimeout(() => toast.classList.add("hidden"), 2400);
+        }
+
+        function populateCategoryFilter() {
+            const categories = Array.from(new Set(products.map((p) => p.category))).sort();
+            categories.forEach((cat) => {
+                const opt = document.createElement("option");
+                opt.value = cat;
+                opt.textContent = cat;
+                categoryFilter.appendChild(opt);
+            });
+        }
+
+        function computeStats(list) {
+            const lowCount = list.filter(isLowStock).length;
+            const totalValue = list.reduce((sum, p) => sum + p.stock * p.price, 0);
+            totalProductsEl.textContent = list.length;
+            lowStockEl.textContent = lowCount;
+            inventoryValueEl.textContent = formatCurrency(totalValue);
+        }
+
+        function statusBadge(product) {
+            if (isLowStock(product)) {
+                return { text: "Low Stock", color: "red" };
+            }
+            if (product.status === "Inactive") {
+                return { text: "Inactive", color: "slate" };
+            }
+            return { text: "Active", color: "emerald" };
+        }
+
+        function filteredProducts() {
+            return products
+                .filter((p) => {
+                    const term = state.search.toLowerCase();
+                    const matchesSearch = !term || p.name.toLowerCase().includes(term) || p.sku.toLowerCase().includes(term);
+                    const matchesCategory = state.category === "all" || p.category === state.category;
+                    const low = isLowStock(p);
+                    const matchesStatus =
+                        state.status === "all" ||
+                        (state.status === "active" && p.status === "Active" && !low) ||
+                        (state.status === "inactive" && p.status === "Inactive") ||
+                        (state.status === "low" && low);
+                    return matchesSearch && matchesCategory && matchesStatus;
+                })
+                .sort((a, b) => {
+                    switch (state.sort) {
+                        case "name-desc":
+                            return b.name.localeCompare(a.name);
+                        case "stock-desc":
+                            return b.stock - a.stock;
+                        case "stock-asc":
+                            return a.stock - b.stock;
+                        case "value-desc":
+                            return b.stock * b.price - a.stock * a.price;
+                        default:
+                            return a.name.localeCompare(b.name);
+                    }
+                });
+        }
+
+        function renderTable() {
+            const list = filteredProducts();
+            productTableBody.innerHTML = "";
+            if (!list.length) {
+                emptyState.classList.remove("hidden");
+                resultsMeta.textContent = "No products match your filters";
+                computeStats(list);
+                return;
+            }
+            emptyState.classList.add("hidden");
+            list.forEach((product) => {
+                const row = document.createElement("tr");
+                row.tabIndex = 0;
+                row.dataset.id = product.id;
+                const selected = product.id === state.selectedProductId;
+                row.className = `${selected ? "bg-primary/10 border-l-4 border-l-primary" : "border-l-4 border-l-transparent"} hover:bg-surface-border/30 transition-colors cursor-pointer`;
+                const badge = statusBadge(product);
+                row.innerHTML = `
+                    <td class="px-6 py-4">
+                        <div class="flex items-center gap-3">
+                            <img alt="${product.name}" loading="lazy" class="size-10 rounded-lg bg-white/5 border border-white/10 flex-shrink-0 object-cover" src="${product.image}" />
+                            <div>
+                                <p class="text-white text-sm font-medium">${product.name}</p>
+                                <p class="text-xs text-text-secondary">Variations: ${product.variations}</p>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 text-sm text-text-secondary">${product.sku}</td>
+                    <td class="px-6 py-4">
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-surface-border text-white border border-white/10">${product.category}</span>
+                    </td>
+                    <td class="px-6 py-4">
+                        <div class="flex flex-col gap-1 w-28">
+                            <div class="flex justify-between text-xs">
+                                <span class="text-white">${product.stock}</span>
+                                <span class="text-text-secondary">/ ${product.capacity}</span>
+                            </div>
+                            <div class="h-1.5 w-full bg-surface-border rounded-full overflow-hidden">
+                                <div class="h-full ${badge.color === "red" ? "bg-red-500" : "bg-emerald-500"}" style="width:${Math.min(100, Math.round((product.stock / product.capacity) * 100))}%"></div>
+                            </div>
+                            ${badge.color === "red" ? '<span class="text-[10px] text-red-400">Low Stock</span>' : ""}
+                        </div>
+                    </td>
+                    <td class="px-6 py-4">
+                        <span class="inline-flex items-center gap-1.5 px-2 py-1 rounded text-xs font-medium ${badge.color === "red" ? "text-red-400 bg-red-500/10" : badge.color === "slate" ? "text-text-secondary bg-surface-border" : "text-emerald-400 bg-emerald-500/10"}">
+                            <span class="size-1.5 rounded-full ${badge.color === "red" ? "bg-red-400" : badge.color === "slate" ? "bg-text-secondary" : "bg-emerald-400"}"></span> ${badge.text}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 text-right">
+                        <span class="material-symbols-outlined text-text-secondary" aria-hidden="true">chevron_right</span>
+                    </td>
+                `;
+                row.addEventListener("click", () => selectProduct(product.id));
+                row.addEventListener("keydown", (evt) => {
+                    if (evt.key === "Enter" || evt.key === " ") {
+                        evt.preventDefault();
+                        selectProduct(product.id);
+                    }
+                });
+                productTableBody.appendChild(row);
+            });
+            resultsMeta.textContent = `Showing ${list.length} of ${products.length} products`;
+            computeStats(list);
+        }
+
+        function renderBatches(product) {
+            const wrapper = document.createElement("div");
+            const header = document.createElement("div");
+            header.className = "flex items-center justify-between mb-3";
+            header.innerHTML = `<h4 class="text-sm font-bold text-white">Active Batches (${product.batches.length})</h4>`;
+            wrapper.appendChild(header);
+
+            if (!product.batches.length) {
+                const empty = document.createElement("p");
+                empty.className = "text-text-secondary text-sm";
+                empty.textContent = "No batches yet. Add one to track stock by lot.";
+                wrapper.appendChild(empty);
+                return wrapper;
+            }
+
+            const list = document.createElement("div");
+            list.className = "space-y-3";
+            product.batches.forEach((b) => {
+                const card = document.createElement("div");
+                card.className = "p-3 bg-surface-border/40 rounded-lg border border-surface-border hover:border-primary/30 transition-colors";
+                card.innerHTML = `
+                    <div class="flex justify_between items-start mb-2">
+                        <div>
+                            <p class="text-sm font-semibold text-white">#${b.id}</p>
+                            <p class="text-xs text-text-secondary">In: ${b.location}</p>
+                        </div>
+                        <span class="text-sm font-bold text-white">${b.qty} Qty</span>
+                    </div>
+                    <div class="flex justify-between items-end">
+                        <div class="text-xs">
+                            <p class="text-text-secondary">Exp: <span class="${b.color === "yellow" ? "text-yellow-400" : "text-emerald-400"} font-medium">${b.expiry || "N/A"}</span></p>
+                        </div>
+                        <div class="h-1 w-16 bg-surface-border rounded-full overflow-hidden">
+                            <div class="h-full ${b.color === "yellow" ? "bg-yellow-400" : "bg-emerald-500"} w-full rounded-full"></div>
+                        </div>
+                    </div>`;
+                list.appendChild(card);
+            });
+            wrapper.appendChild(list);
+            return wrapper;
+        }
+
+        function renderHistory(product) {
+            const wrapper = document.createElement("div");
+            const header = document.createElement("div");
+            header.className = "flex items-center justify-between mb-4";
+            header.innerHTML = `<h4 class="text-sm font-bold text-white">Recent Movements</h4>`;
+            wrapper.appendChild(header);
+
+            const line = document.createElement("div");
+            line.className = "relative pl-4 border-l border-surface-border space-y-6";
+            product.movements.forEach((m) => {
+                const item = document.createElement("div");
+                item.className = "relative";
+                item.innerHTML = `
+                    <div class="absolute -left-[21px] bg-[#16161e] p-1">
+                        <div class="size-2 rounded-full ${m.tone === "red" ? "bg-red-500" : m.tone === "emerald" ? "bg-emerald-500" : "bg-blue-500"} ring-4 ring-[#16161e]"></div>
+                    </div>
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-sm font-medium text-white">${m.type}</p>
+                            <p class="text-xs text-text-secondary">${m.ref}</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-sm font-bold ${m.delta < 0 ? "text-red-400" : "text-emerald-400"}">${m.delta < 0 ? "" : "+ "}${m.delta}</p>
+                            <p class="text-[10px] text-text-secondary">${m.when}</p>
+                        </div>
+                    </div>`;
+                line.appendChild(item);
+            });
+            wrapper.appendChild(line);
+            return wrapper;
+        }
+
+        function renderSuppliers(product) {
+            const wrapper = document.createElement("div");
+            wrapper.innerHTML = `<h4 class="text-sm font-bold text-white mb-3">Suppliers</h4>`;
+            const list = document.createElement("div");
+            list.className = "space-y-3";
+            product.suppliers.forEach((s) => {
+                const card = document.createElement("div");
+                card.className = "p-3 bg-surface-border/40 rounded-lg border border-surface-border";
+                card.innerHTML = `
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <p class="text-sm font-semibold text-white">${s.name}</p>
+                            <p class="text-xs text-text-secondary">${s.contact}</p>
+                        </div>
+                        <span class="text-xs px-2 py-1 rounded bg-surface-border text-text-secondary border border-white/5">SLA ${s.sla}</span>
+                    </div>`;
+                list.appendChild(card);
+            });
+            wrapper.appendChild(list);
+            return wrapper;
+        }
+
+        function renderDetail(productId) {
+            const product = products.find((p) => p.id === productId);
+            if (!product) return;
+            detailImage.src = product.image;
+            detailImage.alt = product.name;
+            detailName.textContent = product.name;
+            detailSku.textContent = `SKU: ${product.sku}`;
+            detailCategory.textContent = product.category;
+            detailCategory.className = "text-xs bg-surface-border px-2 py-0.5 rounded text-white border border-white/10";
+
+            tabContent.innerHTML = "";
+            const tab = state.activeTab;
+            if (tab === "batches") tabContent.appendChild(renderBatches(product));
+            if (tab === "history") tabContent.appendChild(renderHistory(product));
+            if (tab === "suppliers") tabContent.appendChild(renderSuppliers(product));
+        }
+
+        function selectProduct(productId) {
+            state.selectedProductId = productId;
+            renderTable();
+            renderDetail(productId);
+        }
+
+        function setActiveTab(tab) {
+            state.activeTab = tab;
+            tabButtons.forEach((btn) => {
+                const active = btn.dataset.tab === tab;
+                btn.setAttribute("aria-selected", active ? "true" : "false");
+                btn.classList.toggle("text-white", active);
+                btn.classList.toggle("text-text-secondary", !active);
+                btn.classList.toggle("border-primary", active);
+                btn.classList.toggle("border-transparent", !active);
+            });
+            if (state.selectedProductId) {
+                renderDetail(state.selectedProductId);
+            }
+        }
+
+        function showModal() {
+            modalRoot.classList.remove("hidden");
+            const firstInput = productForm.querySelector("input[name='name']");
+            firstInput?.focus();
+        }
+
+        function hideModal() {
+            modalRoot.classList.add("hidden");
+            productForm.reset();
+        }
+
+        function showBatchModal() {
+            batchModal.classList.remove("hidden");
+            batchForm.querySelector("input[name='qty']")?.focus();
+        }
+
+        function hideBatchModal() {
+            batchModal.classList.add("hidden");
+            batchForm.reset();
+        }
+
+        function addProduct(formData) {
+            const name = formData.get("name")?.trim();
+            const sku = formData.get("sku")?.trim();
+            if (!name || !sku) {
+                setToast("Name and SKU are required");
+                return false;
+            }
+            const product = {
+                id: `prod-${Date.now()}`,
+                name,
+                sku,
+                category: formData.get("category")?.trim() || "Uncategorized",
+                status: formData.get("status") || "Active",
+                stock: Number(formData.get("stock")) || 0,
+                capacity: Number(formData.get("capacity")) || 100,
+                price: Number(formData.get("price")) || 0,
+                image:
+                    formData.get("image")?.trim() ||
+                    "https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=160&q=80",
+                variations: 1,
+                batches: [],
+                movements: [],
+                suppliers: [],
+            };
+            products.unshift(product);
+            state.selectedProductId = product.id;
+            populateCategoryFilter();
+            renderTable();
+            renderDetail(product.id);
+            setToast(`${name} added`);
+            return true;
+        }
+
+        function addBatch(formData) {
+            const product = products.find((p) => p.id === state.selectedProductId);
+            if (!product) return false;
+            const qty = Number(formData.get("qty"));
+            if (!qty || qty <= 0) {
+                setToast("Quantity must be greater than zero");
+                return false;
+            }
+            const batch = {
+                id: `BATCH-${Math.floor(Math.random() * 900 + 100)}`,
+                location: formData.get("location") || "Warehouse A",
+                qty,
+                expiry: formData.get("expiry") || "TBD",
+                color: "emerald",
+            };
+            product.batches.unshift(batch);
+            product.stock += qty;
+            renderTable();
+            renderDetail(product.id);
+            setToast(`Batch ${batch.id} added to ${product.name}`);
+            return true;
+        }
+
+        function handleExport() {
+            const rows = ["Name,SKU,Category,Status,Stock,Capacity,Price"]; // CSV header
+            products.forEach((p) => rows.push([p.name, p.sku, p.category, p.status, p.stock, p.capacity, p.price].join(",")));
+            const blob = new Blob([rows.join("\n")], { type: "text/csv;charset=utf-8;" });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = "products.csv";
+            link.click();
+            URL.revokeObjectURL(url);
+            setToast("Exported CSV");
+        }
+
+        // Event bindings
+        searchInput.addEventListener("input", (evt) => {
+            state.search = evt.target.value;
+            renderTable();
+        });
+        categoryFilter.addEventListener("change", (evt) => {
+            state.category = evt.target.value;
+            renderTable();
+        });
+        statusFilter.addEventListener("change", (evt) => {
+            state.status = evt.target.value;
+            renderTable();
+        });
+        sortSelect.addEventListener("change", (evt) => {
+            state.sort = evt.target.value;
+            renderTable();
+        });
+        tabButtons.forEach((btn) => btn.addEventListener("click", () => setActiveTab(btn.dataset.tab)));
+        addProductBtn.addEventListener("click", showModal);
+        closeModal.addEventListener("click", hideModal);
+        cancelModal.addEventListener("click", hideModal);
+        addBatchBtn.addEventListener("click", showBatchModal);
+        closeBatchModal.addEventListener("click", hideBatchModal);
+        cancelBatchModal.addEventListener("click", hideBatchModal);
+        exportBtn.addEventListener("click", handleExport);
+
+        productForm.addEventListener("submit", (evt) => {
+            evt.preventDefault();
+            const ok = addProduct(new FormData(productForm));
+            if (ok) hideModal();
+        });
+
+        batchForm.addEventListener("submit", (evt) => {
+            evt.preventDefault();
+            const ok = addBatch(new FormData(batchForm));
+            if (ok) hideBatchModal();
+        });
+
+        document.addEventListener("keydown", (evt) => {
+            if (evt.key === "Escape") {
+                hideModal();
+                hideBatchModal();
+            }
+        });
+
+        function init() {
+            populateCategoryFilter();
+            renderTable();
+            if (state.selectedProductId) renderDetail(state.selectedProductId);
+        }
+
+        init();
+    </script>
+</body>
+</html>

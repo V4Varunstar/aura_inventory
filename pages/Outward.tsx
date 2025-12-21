@@ -6,6 +6,7 @@ import Input from '../components/ui/Input';
 import Select from '../components/ui/Select';
 import { useToast } from '../context/ToastContext';
 import { useCompany } from '../context/CompanyContext';
+import { useAuth } from '../context/AuthContext';
 import { Product, Warehouse, Source, Inward } from '../types';
 import { getProducts, getWarehouses, addOutward, getProductStock, getCourierPartners, addCourierPartner, getInwardRecords } from '../services/firebaseService';
 import { getSources } from '../services/sourceService';
@@ -35,6 +36,12 @@ interface OutwardItem {
 
 const Outward: React.FC = () => {
     const { company } = useCompany();
+    const { user } = useAuth();
+    const { addToast } = useToast();
+    
+    // Use user.companyId for consistency with Sources page and dashboard
+    const companyId = user?.companyId || company?.id || 'default';
+    
     const [products, setProducts] = useState<Product[]>([]);
     const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
     const [outwardDestinations, setOutwardDestinations] = useState<Source[]>([]);
@@ -50,15 +57,14 @@ const Outward: React.FC = () => {
     const [newCourier, setNewCourier] = useState('');
     const [showBulkUpload, setShowBulkUpload] = useState(false);
     const [allBatches, setAllBatches] = useState<Inward[]>([]);
-    const { addToast } = useToast();
 
     useEffect(() => {
         const fetchData = async () => {
-            if (!company) return;
+            if (!companyId) return;
             const [productsData, warehousesData, destinationsData, couriersData, batchesData] = await Promise.all([
                 getProducts(),
                 getWarehouses(),
-                getSources(company.id, 'outward'),
+                getSources(companyId, 'outward'),
                 getCourierPartners(),
                 getInwardRecords()
             ]);
@@ -71,12 +77,12 @@ const Outward: React.FC = () => {
             if (couriersData.length > 0) setCourierPartner(couriersData[0]);
         };
         fetchData();
-    }, [company]);
+    }, [companyId]);
 
     const handleDestinationCreated = async () => {
-        if (!company) return;
+        if (!companyId) return;
         console.log('Outward - Refreshing destinations after creation...');
-        const destinationsData = await getSources(company.id, 'outward');
+        const destinationsData = await getSources(companyId, 'outward');
         setOutwardDestinations(destinationsData);
         console.log('Outward - Destinations refreshed:', destinationsData.length, 'destinations loaded');
         console.log('Outward - New destinations:', destinationsData.map(s => ({ id: s.id, name: s.name })));

@@ -6,6 +6,7 @@ import Input from '../components/ui/Input';
 import Select from '../components/ui/Select';
 import { useToast } from '../context/ToastContext';
 import { useCompany } from '../context/CompanyContext';
+import { useAuth } from '../context/AuthContext';
 import { Product, Source } from '../types';
 import { getProducts, addInward, getWarehouses } from '../services/firebaseService';
 import { getSources } from '../services/sourceService';
@@ -34,6 +35,12 @@ interface InwardForm {
 
 const Inward: React.FC = () => {
     const { company } = useCompany();
+    const { user } = useAuth();
+    const { addToast } = useToast();
+    
+    // Use user.companyId for consistency with Sources page and dashboard
+    const companyId = user?.companyId || company?.id || 'default';
+    
     const [products, setProducts] = useState<Product[]>([]);
     const [warehouses, setWarehouses] = useState<any[]>([]);
     const [inwardSources, setInwardSources] = useState<Source[]>([]);
@@ -45,15 +52,14 @@ const Inward: React.FC = () => {
     const [items, setItems] = useState<InwardItem[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [showBulkUpload, setShowBulkUpload] = useState(false);
-    const { addToast } = useToast();
 
     useEffect(() => {
         const fetchData = async () => {
-            if (!company) return;
+            if (!companyId) return;
             const [productsData, warehousesData, sourcesData] = await Promise.all([
                 getProducts(),
                 getWarehouses(),
-                getSources(company.id, 'inward')
+                getSources(companyId, 'inward')
             ]);
             setProducts(productsData);
             setWarehouses(warehousesData);
@@ -61,12 +67,12 @@ const Inward: React.FC = () => {
             if (sourcesData.length > 0) setSource(sourcesData[0].id);
         };
         fetchData();
-    }, [company]);
+    }, [companyId]);
 
     const handleSourceCreated = async () => {
-        if (!company) return;
+        if (!companyId) return;
         console.log('Inward - Refreshing sources after creation...');
-        const sourcesData = await getSources(company.id, 'inward');
+        const sourcesData = await getSources(companyId, 'inward');
         setInwardSources(sourcesData);
         console.log('Inward - Sources refreshed:', sourcesData.length, 'sources loaded');
         console.log('Inward - New sources:', sourcesData.map(s => ({ id: s.id, name: s.name })));

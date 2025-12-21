@@ -1,4 +1,3 @@
-
 import {
   User,
   Role,
@@ -16,10 +15,120 @@ import {
 } from '../types';
 import { getSources } from './sourceService';
 
+// Performance optimization: Cache management
+interface CacheEntry<T> {
+  data: T;
+  timestamp: number;
+  ttl: number;
+}
+
+class PerformanceCache {
+  private cache = new Map<string, CacheEntry<any>>();
+  private readonly DEFAULT_TTL = 5 * 60 * 1000; // 5 minutes
+
+  set<T>(key: string, data: T, ttl = this.DEFAULT_TTL): void {
+    this.cache.set(key, {
+      data,
+      timestamp: Date.now(),
+      ttl
+    });
+  }
+
+  get<T>(key: string): T | null {
+    const entry = this.cache.get(key);
+    if (!entry) return null;
+    
+    if (Date.now() - entry.timestamp > entry.ttl) {
+      this.cache.delete(key);
+      return null;
+    }
+    
+    return entry.data;
+  }
+
+  clear(): void {
+    this.cache.clear();
+  }
+
+  cleanup(): void {
+    const now = Date.now();
+    for (const [key, entry] of this.cache.entries()) {
+      if (now - entry.timestamp > entry.ttl) {
+        this.cache.delete(key);
+      }
+    }
+  }
+}
+
+// Global cache instance
+const cache = new PerformanceCache();
+
+// Auto cleanup every 10 minutes
+setInterval(() => cache.cleanup(), 10 * 60 * 1000);
+
 // --- MOCK DATABASE ---
 const users: User[] = [
   { id: '1', name: 'Super Admin', email: 'superadmin@aura.com', role: Role.SuperAdmin, isEnabled: true, createdAt: new Date(), updatedAt: new Date() },
 ];
+
+// Optimized localStorage operations with batching
+class StorageManager {
+  private batchedWrites = new Map<string, any>();
+  private writeTimeout: NodeJS.Timeout | null = null;
+  private readonly BATCH_DELAY = 100; // 100ms
+
+  batchWrite(key: string, data: any): void {
+    this.batchedWrites.set(key, data);
+    
+    if (this.writeTimeout) {
+      clearTimeout(this.writeTimeout);
+    }
+    
+    this.writeTimeout = setTimeout(() => {
+      this.flushWrites();
+    }, this.BATCH_DELAY);
+  }
+
+  private flushWrites(): void {
+    for (const [key, data] of this.batchedWrites.entries()) {
+      try {
+        localStorage.setItem(key, typeof data === 'string' ? data : JSON.stringify(data));
+      } catch (error) {
+        console.error(`Failed to write to localStorage key: ${key}`, error);
+      }
+    }
+    this.batchedWrites.clear();
+    this.writeTimeout = null;
+  }
+
+  read<T>(key: string, defaultValue: T): T {
+    const cached = cache.get<T>(`storage_${key}`);
+    if (cached !== null) return cached;
+
+    try {
+      const item = localStorage.getItem(key);
+      if (!item) return defaultValue;
+      
+      const parsed = JSON.parse(item);
+      cache.set(`storage_${key}`, parsed, 2 * 60 * 1000); // Cache for 2 minutes
+      return parsed;
+    } catch (error) {
+      console.error(`Failed to read from localStorage key: ${key}`, error);
+      return defaultValue;
+    }
+  }
+
+  write(key: string, data: any): void {
+    cache.set(`storage_${key}`, data, 2 * 60 * 1000);
+    this.batchWrite(key, data);
+  }
+
+  clearCache(): void {
+    cache.clear();
+  }
+}
+
+const storage = new StorageManager();
 
 // Add a robust initialization function for Vercel production
 const initializeVercelProduction = () => {
@@ -40,8 +149,8 @@ const initializeVercelProduction = () => {
     }
 
     // Initialize test data if in debug mode or if no data exists
-    const hasCompanies = localStorage.getItem('superadmin_companies');
-    const hasUsers = localStorage.getItem('superadmin_users');
+    const hasCompanies = storage.read('superadmin_companies', []).length > 0;
+    const hasUsers = storage.read('superadmin_users', []).length > 0;
     
     if (!hasCompanies && !hasUsers && window.location.hostname.includes('vercel.app')) {
       console.log('🚀 Initializing default test data for Vercel production...');
@@ -80,8 +189,8 @@ const initializeVercelProduction = () => {
         updatedAt: new Date().toISOString()
       };
       
-      localStorage.setItem('superadmin_companies', JSON.stringify([testCompany]));
-      localStorage.setItem('superadmin_users', JSON.stringify([testUser]));
+      storage.write('superadmin_companies', [testCompany]);
+      storage.write('superadmin_users', [testUser]);
       
       console.log('✅ Default test data initialized for Vercel');
     }
@@ -122,21 +231,28 @@ export const addUserToGlobalRegistry = (userData: {
   }
 };
 
-// Initialize users from localStorage on app start
+// Initialize users from localStorage on app start (optimized with caching)
 const initializeUsersFromStorage = () => {
   try {
-    const superAdminUsers = JSON.parse(localStorage.getItem('superadmin_users') || '[]');
-    superAdminUsers.forEach((userData: any) => {
-      addUserToGlobalRegistry({
-        id: userData.id,
-        name: userData.name,
-        email: userData.email,
-        role: userData.role,
-        orgId: userData.orgId,
-        isEnabled: userData.isEnabled,
-        password: userData.password
+    const superAdminUsers = storage.read('superadmin_users', []);
+    if (superAdminUsers.length === 0) return;
+    
+    // Batch process user additions
+    const batchSize = 50;
+    for (let i = 0; i < superAdminUsers.length; i += batchSize) {
+      const batch = superAdminUsers.slice(i, i + batchSize);
+      batch.forEach((userData: any) => {
+        addUserToGlobalRegistry({
+          id: userData.id,
+          name: userData.name,
+          email: userData.email,
+          role: userData.role,
+          orgId: userData.orgId,
+          isEnabled: userData.isEnabled,
+          password: userData.password
+        });
       });
-    });
+    }
     console.log(`✅ Initialized ${superAdminUsers.length} users from storage`);
   } catch (error) {
     console.error('Error initializing users from storage:', error);
@@ -146,16 +262,16 @@ const initializeUsersFromStorage = () => {
 // Call initialization on module load
 initializeUsersFromStorage();
 
-// Debug function to check current users
+// Optimized debug function with caching
 export const debugUserStorage = () => {
   console.log('=== USER STORAGE DEBUG ===');
   console.log('Global registry users:', users);
   
   try {
-    const localStorageUsers = JSON.parse(localStorage.getItem('superadmin_users') || '[]');
+    const localStorageUsers = storage.read('superadmin_users', []);
     console.log('localStorage users:', localStorageUsers);
     
-    const companies = JSON.parse(localStorage.getItem('superadmin_companies') || '[]');
+    const companies = storage.read('superadmin_companies', []);
     console.log('localStorage companies:', companies);
   } catch (error) {
     console.error('Error reading localStorage:', error);

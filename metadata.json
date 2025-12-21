@@ -1,4 +1,8 @@
 {
+  "name": "Inventory SaaS Dashboard",
+  "description": "A high-fidelity dark mode admin dashboard for Inventory SaaS using React, Tailwind CSS, and Recharts.",
+  "requestFramePermissions": []
+}
   "name": "Aura Inventory - Personal Care Brand IMS",
   "description": "A comprehensive, cloud-based inventory management system designed for personal care brands. Track products, manage stock across warehouses, and gain insights through an advanced analytics dashboard. Built with React, TypeScript, and Firebase.",
   "requestFramePermissions": []
