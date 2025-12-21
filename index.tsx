@@ -4,7 +4,7 @@ import ReactDOM from 'react-dom/client';
 import App from './App';
 import './index.css';
 
-console.log('🎯 index.tsx loaded');
+console.log('🎯 index.tsx loaded at', new Date().toISOString());
 
 // Remove loading screen and render app
 const rootElement = document.getElementById('root');
@@ -17,11 +17,8 @@ if (!rootElement) {
   
   try {
     const root = ReactDOM.createRoot(rootElement);
-    root.render(
-      <React.StrictMode>
-        <App />
-      </React.StrictMode>
-    );
+    // Use App directly without StrictMode in production (Vercel)
+    root.render(<App />);
     console.log('✅ App mounted successfully');
   } catch (error) {
     console.error('❌ Failed to render app:', error);

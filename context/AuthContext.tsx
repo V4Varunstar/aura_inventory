@@ -20,19 +20,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setLoading(true);
     try {
       const loggedInUser = await mockFetchUser(); // Simulate checking session
-      console.log('Session check successful:', loggedInUser);
+      console.log('✅ Session check successful:', loggedInUser);
       setUser(loggedInUser);
     } catch (error) {
-      console.log('No session found, user needs to login');
-      // Don't set user to null immediately on refresh, give time for login redirect
-      setTimeout(() => setUser(null), 100);
+      console.log('ℹ️ No session found, user needs to login');
+      setUser(null);
     } finally {
+      console.log('✅ Setting loading to false');
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
     checkUserSession();
+    
+    // Safety: Force clear loading state after 10 seconds max
+    const timeout = setTimeout(() => {
+      console.warn('⚠️ Loading state not cleared after 10s, forcing clear');
+      setLoading(false);
+    }, 10000);
+    
+    return () => clearTimeout(timeout);
   }, [checkUserSession]);
 
   const login = async (email: string, pass: string) => {
