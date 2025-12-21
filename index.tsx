@@ -1,7 +1,7 @@
 
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import App from './App-Simple-Login';
+import App from './App-Full-Dashboard';
 import './index.css';
 
 console.log('🎯 index.tsx loaded at', new Date().toISOString());
