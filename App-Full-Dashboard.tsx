@@ -5,6 +5,7 @@ import CompaniesPage from './components-dashboard/CompaniesPage';
 import UsersPage from './components-dashboard/UsersPage';
 import SubscriptionsPage from './components-dashboard/SubscriptionsPage';
 import ActivityLogsPage from './components-dashboard/ActivityLogsPage';
+import SettingsPage from './components-dashboard/SettingsPage';
 
 const App: React.FC = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -210,14 +211,7 @@ const App: React.FC = () => {
         {activePage === 'Users' && <UsersPage />}
         {activePage === 'Subscriptions' && <SubscriptionsPage />}
         {activePage === 'Activity Logs' && <ActivityLogsPage />}
-        {activePage === 'Settings' && (
-          <div style={{ flex: 1, overflowY: 'auto', padding: '32px', background: '#112117' }}>
-            <div style={{ background: '#182820', border: '1px solid #2a4034', borderRadius: '16px', padding: '48px', textAlign: 'center' }}>
-              <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: 'white', marginBottom: '16px' }}>Settings</h2>
-              <p style={{ fontSize: '16px', color: '#94a3b8' }}>Settings features coming soon...</p>
-            </div>
-          </div>
-        )}
+        {activePage === 'Settings' && <SettingsPage />}
 
         {/* Mobile Sidebar Overlay */}
         {isMobileMenuOpen && (
