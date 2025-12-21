@@ -1,4 +1,51 @@
-import { KPIData, ChartData, Company, User } from './types';
+import { KPIData, ChartData, Company, User, Role } from './types';
+import {
+  LayoutDashboard,
+  Package,
+  ArrowDownToLine,
+  ArrowUpFromLine,
+  Settings as SettingsIcon,
+  FileText,
+  Users,
+  Warehouse as WarehouseIcon,
+  BarChart3,
+  Shuffle,
+  Barcode,
+  TrendingUp
+} from 'lucide-react';
+
+export const APP_NAME = 'Aura Inventory';
+
+// Navigation Items
+export const NAV_ITEMS = [
+  { label: 'Dashboard', isHeader: true, roles: [Role.Admin, Role.Manager, Role.Employee, Role.Viewer] },
+  { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, roles: [Role.Admin, Role.Manager, Role.Employee, Role.Viewer] },
+  
+  { label: 'Inventory', isHeader: true, roles: [Role.Admin, Role.Manager, Role.Employee, Role.Viewer] },
+  { label: 'Products', href: '/products', icon: Package, roles: [Role.Admin, Role.Manager, Role.Employee, Role.Viewer] },
+  { label: 'Inward Stock', href: '/inward', icon: ArrowDownToLine, roles: [Role.Admin, Role.Manager, Role.Employee] },
+  { label: 'Outward Stock', href: '/outward', icon: ArrowUpFromLine, roles: [Role.Admin, Role.Manager, Role.Employee] },
+  { label: 'Adjustments', href: '/adjustments', icon: Shuffle, roles: [Role.Admin, Role.Manager] },
+  { label: 'Audit', href: '/audit', icon: FileText, roles: [Role.Admin, Role.Manager, Role.Viewer] },
+  
+  { label: 'Platform Management', isHeader: true, roles: [Role.Admin, Role.Manager, Role.Employee] },
+  { label: 'Amazon FBA', href: '/amazon-fba', icon: Package, roles: [Role.Admin, Role.Manager, Role.Employee] },
+  { label: 'Flipkart FBF', href: '/flipkart-fbf', icon: Package, roles: [Role.Admin, Role.Manager, Role.Employee] },
+  { label: 'Myntra SJIT', href: '/myntra-sjit', icon: Package, roles: [Role.Admin, Role.Manager, Role.Employee] },
+  { label: 'Zepto PO', href: '/zepto-po', icon: Package, roles: [Role.Admin, Role.Manager, Role.Employee] },
+  { label: 'Nykaa PO', href: '/nykaa-po', icon: Package, roles: [Role.Admin, Role.Manager, Role.Employee] },
+  
+  { label: 'Master Data', isHeader: true, roles: [Role.Admin, Role.Manager, Role.Viewer] },
+  { label: 'Warehouses', href: '/warehouses', icon: WarehouseIcon, roles: [Role.Admin, Role.Manager] },
+  { label: 'Sources & Destinations', href: '/settings/sources', icon: Shuffle, roles: [Role.Admin, Role.Manager] },
+  { label: 'EAN / Barcode Mapping', href: '/product-mapping', icon: Barcode, roles: [Role.Admin, Role.Manager] },
+  { label: 'Expiring Items', href: '/expiring-products', icon: TrendingUp, roles: [Role.Admin, Role.Manager, Role.Viewer] },
+  { label: 'Reports', href: '/reports', icon: BarChart3, roles: [Role.Admin, Role.Manager, Role.Viewer] },
+  
+  { label: 'Administration', isHeader: true, roles: [Role.Admin] },
+  { label: 'User Management', href: '/users', icon: Users, roles: [Role.Admin] },
+  { label: 'Settings', href: '/settings', icon: SettingsIcon, roles: [Role.Admin] },
+];
 
 export const CURRENT_USER: User = {
   name: "Alex Morgan",
