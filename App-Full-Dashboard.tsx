@@ -8,6 +8,7 @@ const App: React.FC = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [activePage, setActivePage] = useState('Dashboard');
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -133,7 +134,7 @@ const App: React.FC = () => {
   // Dashboard Screen
   return (
     <div style={{ display: 'flex', height: '100vh', width: '100%', overflow: 'hidden', background: '#112117', fontFamily: 'system-ui' }}>
-      <Sidebar onLogout={handleLogout} />
+      <Sidebar onLogout={handleLogout} activePage={activePage} setActivePage={setActivePage} />
       
       <main style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', position: 'relative' }}>
         {/* Top Bar */}
@@ -200,7 +201,47 @@ const App: React.FC = () => {
           </div>
         </header>
 
-        <Dashboard />
+        {activePage === 'Dashboard' && <Dashboard />}
+        {activePage === 'Companies' && (
+          <div style={{ flex: 1, overflowY: 'auto', padding: '32px', background: '#112117' }}>
+            <div style={{ background: '#182820', border: '1px solid #2a4034', borderRadius: '16px', padding: '48px', textAlign: 'center' }}>
+              <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: 'white', marginBottom: '16px' }}>Companies Management</h2>
+              <p style={{ fontSize: '16px', color: '#94a3b8' }}>Company management features coming soon...</p>
+            </div>
+          </div>
+        )}
+        {activePage === 'Users' && (
+          <div style={{ flex: 1, overflowY: 'auto', padding: '32px', background: '#112117' }}>
+            <div style={{ background: '#182820', border: '1px solid #2a4034', borderRadius: '16px', padding: '48px', textAlign: 'center' }}>
+              <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: 'white', marginBottom: '16px' }}>User Management</h2>
+              <p style={{ fontSize: '16px', color: '#94a3b8' }}>User management features coming soon...</p>
+            </div>
+          </div>
+        )}
+        {activePage === 'Subscriptions' && (
+          <div style={{ flex: 1, overflowY: 'auto', padding: '32px', background: '#112117' }}>
+            <div style={{ background: '#182820', border: '1px solid #2a4034', borderRadius: '16px', padding: '48px', textAlign: 'center' }}>
+              <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: 'white', marginBottom: '16px' }}>Subscriptions</h2>
+              <p style={{ fontSize: '16px', color: '#94a3b8' }}>Subscription management features coming soon...</p>
+            </div>
+          </div>
+        )}
+        {activePage === 'Activity Logs' && (
+          <div style={{ flex: 1, overflowY: 'auto', padding: '32px', background: '#112117' }}>
+            <div style={{ background: '#182820', border: '1px solid #2a4034', borderRadius: '16px', padding: '48px', textAlign: 'center' }}>
+              <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: 'white', marginBottom: '16px' }}>Activity Logs</h2>
+              <p style={{ fontSize: '16px', color: '#94a3b8' }}>Activity logs features coming soon...</p>
+            </div>
+          </div>
+        )}
+        {activePage === 'Settings' && (
+          <div style={{ flex: 1, overflowY: 'auto', padding: '32px', background: '#112117' }}>
+            <div style={{ background: '#182820', border: '1px solid #2a4034', borderRadius: '16px', padding: '48px', textAlign: 'center' }}>
+              <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: 'white', marginBottom: '16px' }}>Settings</h2>
+              <p style={{ fontSize: '16px', color: '#94a3b8' }}>Settings features coming soon...</p>
+            </div>
+          </div>
+        )}
 
         {/* Mobile Sidebar Overlay */}
         {isMobileMenuOpen && (
@@ -223,7 +264,7 @@ const App: React.FC = () => {
               }}
               onClick={e => e.stopPropagation()}
             >
-              <Sidebar onLogout={handleLogout} />
+              <Sidebar onLogout={handleLogout} activePage={activePage} setActivePage={setActivePage} />
             </div>
           </div>
         )}

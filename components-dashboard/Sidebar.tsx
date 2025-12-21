@@ -1,13 +1,13 @@
 import React from 'react';
 
-const Sidebar: React.FC<{ onLogout?: () => void }> = ({ onLogout }) => {
+const Sidebar: React.FC<{ onLogout?: () => void; activePage: string; setActivePage: (page: string) => void }> = ({ onLogout, activePage, setActivePage }) => {
   const menuItems = [
-    { label: 'Dashboard', icon: '📊', active: true },
-    { label: 'Companies', icon: '🏢', active: false },
-    { label: 'Users', icon: '👥', active: false },
-    { label: 'Subscriptions', icon: '💳', active: false },
-    { label: 'Activity Logs', icon: '📋', active: false },
-    { label: 'Settings', icon: '⚙️', active: false },
+    { label: 'Dashboard', icon: '📊' },
+    { label: 'Companies', icon: '🏢' },
+    { label: 'Users', icon: '👥' },
+    { label: 'Subscriptions', icon: '💳' },
+    { label: 'Activity Logs', icon: '📋' },
+    { label: 'Settings', icon: '⚙️' },
   ];
 
   return (
@@ -44,46 +44,45 @@ const Sidebar: React.FC<{ onLogout?: () => void }> = ({ onLogout }) => {
 
       {/* Navigation */}
       <nav style={{ flex: 1, padding: '0 16px', display: 'flex', flexDirection: 'column', gap: '8px', overflowY: 'auto', paddingTop: '16px' }}>
-        {menuItems.map((item) => (
-          <button
-            key={item.label}
-            onClick={() => {
-              if (item.label !== 'Dashboard') {
-                alert(`${item.label} page coming soon!`);
-              }
-            }}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '12px',
-              padding: '12px 16px',
-              borderRadius: '24px',
-              background: item.active ? '#36e27b20' : 'transparent',
-              color: item.active ? '#36e27b' : '#94a3b8',
-              border: 'none',
-              cursor: 'pointer',
-              fontSize: '14px',
-              fontWeight: '500',
-              transition: 'all 0.2s',
-              textAlign: 'left'
-            }}
-            onMouseEnter={(e) => {
-              if (!item.active) {
-                e.currentTarget.style.background = '#23362b';
-                e.currentTarget.style.color = 'white';
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (!item.active) {
-                e.currentTarget.style.background = 'transparent';
-                e.currentTarget.style.color = '#94a3b8';
-              }
-            }}
-          >
-            <span style={{ fontSize: '20px' }}>{item.icon}</span>
-            <span>{item.label}</span>
-          </button>
-        ))}
+        {menuItems.map((item) => {
+          const isActive = activePage === item.label;
+          return (
+            <button
+              key={item.label}
+              onClick={() => setActivePage(item.label)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                padding: '12px 16px',
+                borderRadius: '24px',
+                background: isActive ? '#36e27b20' : 'transparent',
+                color: isActive ? '#36e27b' : '#94a3b8',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: '500',
+                transition: 'all 0.2s',
+                textAlign: 'left'
+              }}
+              onMouseEnter={(e) => {
+                if (!isActive) {
+                  e.currentTarget.style.background = '#23362b';
+                  e.currentTarget.style.color = 'white';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!isActive) {
+                  e.currentTarget.style.background = 'transparent';
+                  e.currentTarget.style.color = '#94a3b8';
+                }
+              }}
+            >
+              <span style={{ fontSize: '20px' }}>{item.icon}</span>
+              <span>{item.label}</span>
+            </button>
+          );
+        })}
       </nav>
 
       {/* User Profile */}
