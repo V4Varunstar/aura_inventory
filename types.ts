@@ -6,7 +6,8 @@ export enum Role {
   Manager = 'Manager',
   Employee = 'Employee',
   Viewer = 'Viewer',
-  Owner = 'Owner'
+  Owner = 'Owner',
+  SuperAdmin = 'SuperAdmin'
 }
 
 // Product-related types
