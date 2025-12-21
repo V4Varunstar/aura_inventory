@@ -1,48 +1,133 @@
 import React from 'react';
 
 const Sidebar: React.FC<{ onLogout?: () => void }> = ({ onLogout }) => {
+  const menuItems = [
+    { label: 'Dashboard', icon: '📊', active: true },
+    { label: 'Companies', icon: '🏢', active: false },
+    { label: 'Users', icon: '👥', active: false },
+    { label: 'Subscriptions', icon: '💳', active: false },
+    { label: 'Activity Logs', icon: '📋', active: false },
+    { label: 'Settings', icon: '⚙️', active: false },
+  ];
+
   return (
-    <aside className="w-72 hidden lg:flex flex-col border-r border-gray-200 dark:border-border-dark bg-white dark:bg-[#0d1812] h-full flex-shrink-0 transition-colors">
-      <div className="p-6 flex items-center gap-3">
-        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-emerald-800 flex items-center justify-center text-background-dark font-bold text-xl">
+    <aside style={{
+      width: '288px',
+      display: 'flex',
+      flexDirection: 'column',
+      borderRight: '1px solid #2a4034',
+      background: '#0d1812',
+      height: '100%',
+      flexShrink: 0
+    }}>
+      {/* Header */}
+      <div style={{ padding: '24px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <div style={{
+          width: '40px',
+          height: '40px',
+          borderRadius: '50%',
+          background: 'linear-gradient(135deg, #36e27b 0%, #1e8449 100%)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: '#0d1812',
+          fontWeight: 'bold',
+          fontSize: '20px'
+        }}>
           I
         </div>
-        <div className="flex flex-col">
-          <h1 className="text-lg font-bold leading-none tracking-tight">Inventory SaaS</h1>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Super Admin Panel</p>
+        <div>
+          <h1 style={{ fontSize: '18px', fontWeight: 'bold', color: 'white', lineHeight: 1 }}>Inventory SaaS</h1>
+          <p style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>Super Admin Panel</p>
         </div>
       </div>
 
-      <nav className="flex-1 px-4 flex flex-col gap-2 overflow-y-auto py-4">
-        <button className="flex items-center gap-3 px-4 py-3 rounded-full transition-colors bg-primary/10 text-primary">
-          <span className="text-xl">📊</span>
-          <span className="font-medium text-sm">Dashboard</span>
-        </button>
-        <button className="flex items-center gap-3 px-4 py-3 rounded-full transition-colors text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-surface-highlight">
-          <span className="text-xl">🏢</span>
-          <span className="font-medium text-sm">Companies</span>
-        </button>
-        <button className="flex items-center gap-3 px-4 py-3 rounded-full transition-colors text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-surface-highlight">
-          <span className="text-xl">👥</span>
-          <span className="font-medium text-sm">Users</span>
-        </button>
+      {/* Navigation */}
+      <nav style={{ flex: 1, padding: '0 16px', display: 'flex', flexDirection: 'column', gap: '8px', overflowY: 'auto', paddingTop: '16px' }}>
+        {menuItems.map((item) => (
+          <button
+            key={item.label}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px',
+              padding: '12px 16px',
+              borderRadius: '24px',
+              background: item.active ? '#36e27b20' : 'transparent',
+              color: item.active ? '#36e27b' : '#94a3b8',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: '14px',
+              fontWeight: '500',
+              transition: 'all 0.2s',
+              textAlign: 'left'
+            }}
+            onMouseEnter={(e) => {
+              if (!item.active) {
+                e.currentTarget.style.background = '#23362b';
+                e.currentTarget.style.color = 'white';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (!item.active) {
+                e.currentTarget.style.background = 'transparent';
+                e.currentTarget.style.color = '#94a3b8';
+              }
+            }}
+          >
+            <span style={{ fontSize: '20px' }}>{item.icon}</span>
+            <span>{item.label}</span>
+          </button>
+        ))}
       </nav>
 
-      <div className="p-4 border-t border-gray-200 dark:border-border-dark">
-        <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-gray-100 dark:bg-surface-highlight">
-          <div className="w-10 h-10 rounded-full bg-gray-300 flex items-center justify-center text-sm font-bold">
+      {/* User Profile */}
+      <div style={{ padding: '16px', borderTop: '1px solid #2a4034' }}>
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          padding: '12px 16px',
+          borderRadius: '12px',
+          background: '#23362b'
+        }}>
+          <div style={{
+            width: '40px',
+            height: '40px',
+            borderRadius: '50%',
+            background: '#64748b',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '14px',
+            fontWeight: 'bold',
+            color: 'white'
+          }}>
             AM
           </div>
-          <div className="flex flex-col min-w-0 flex-1">
-            <p className="text-sm font-bold truncate text-gray-900 dark:text-white">Alex Morgan</p>
-            <p className="text-xs text-gray-500 dark:text-gray-400 truncate">alex@inventory.com</p>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <p style={{ fontSize: '14px', fontWeight: 'bold', color: 'white', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              Alex Morgan
+            </p>
+            <p style={{ fontSize: '12px', color: '#64748b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              alex@inventory.com
+            </p>
           </div>
-          <button 
+          <button
             onClick={onLogout}
-            className="ml-auto text-gray-500 hover:text-gray-900 dark:hover:text-white"
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: '#64748b',
+              cursor: 'pointer',
+              fontSize: '20px',
+              padding: '4px'
+            }}
             title="Logout"
+            onMouseEnter={(e) => e.currentTarget.style.color = 'white'}
+            onMouseLeave={(e) => e.currentTarget.style.color = '#64748b'}
           >
-            <span className="text-xl">🚪</span>
+            🚪
           </button>
         </div>
       </div>

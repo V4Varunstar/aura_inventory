@@ -1,35 +1,182 @@
 import React from 'react';
-import { INITIAL_KPIS } from '../constants-dashboard';
+import { INITIAL_KPIS, INITIAL_COMPANIES, PLAN_CHART_DATA } from '../constants-dashboard';
+import { CompanyStatus, PlanType } from '../types-dashboard';
 
 const Dashboard: React.FC = () => {
+  const getPlanStyle = (type: PlanType) => {
+    const styles = {
+      [PlanType.ENTERPRISE]: { bg: '#36e27b20', color: '#36e27b', border: '#36e27b40' },
+      [PlanType.PRO_YEARLY]: { bg: '#3b82f620', color: '#3b82f6', border: '#3b82f640' },
+      [PlanType.TRIAL]: { bg: '#fb923c20', color: '#fb923c', border: '#fb923c40' },
+      [PlanType.BASIC]: { bg: '#64748b20', color: '#64748b', border: '#64748b40' }
+    };
+    return styles[type] || styles[PlanType.BASIC];
+  };
+
+  const getStatusColor = (status: CompanyStatus) => {
+    const colors = {
+      [CompanyStatus.ACTIVE]: '#10b981',
+      [CompanyStatus.OFFLINE]: '#64748b',
+      [CompanyStatus.SUSPENDED]: '#ef4444'
+    };
+    return colors[status] || colors[CompanyStatus.OFFLINE];
+  };
+
   return (
-    <div className="flex-1 overflow-y-auto p-4 md:p-8 scroll-smooth h-full">
-      {/* KPI Cards Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 mb-8">
+    <div style={{ flex: 1, overflowY: 'auto', padding: '32px', height: '100%', background: '#112117' }}>
+      {/* KPI Cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '32px' }}>
         {INITIAL_KPIS.map((kpi) => (
           <div 
-            key={kpi.label} 
-            className={`p-5 rounded-2xl bg-white dark:bg-surface-dark border border-gray-100 dark:border-border-dark shadow-sm flex flex-col justify-between h-32 hover:border-primary/50 transition-colors cursor-default ${kpi.borderColor || ''}`}
+            key={kpi.label}
+            style={{
+              background: '#182820',
+              border: '1px solid #2a4034',
+              borderRadius: '16px',
+              padding: '20px',
+              minHeight: '128px',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'space-between'
+            }}
           >
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{kpi.label}</p>
-              <span className={`text-2xl ${kpi.iconColor}`}>{kpi.icon}</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+              <p style={{ fontSize: '14px', color: '#94a3b8' }}>{kpi.label}</p>
+              <span style={{ fontSize: '24px' }}>{kpi.icon}</span>
             </div>
             <div>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">{kpi.value}</p>
-              <p className={`text-xs font-medium flex items-center gap-1 mt-1 ${kpi.trendUp ? 'text-emerald-500' : 'text-red-400'}`}>
-                {kpi.trend}
-              </p>
+              <p style={{ fontSize: '28px', fontWeight: 'bold', color: 'white', marginBottom: '4px' }}>{kpi.value}</p>
+              <p style={{ fontSize: '12px', color: kpi.trendUp ? '#10b981' : '#ef4444' }}>{kpi.trend}</p>
             </div>
           </div>
         ))}
       </div>
 
-      {/* Recent Companies Table */}
-      <div className="bg-white dark:bg-surface-dark rounded-2xl border border-gray-100 dark:border-border-dark shadow-sm p-6">
-        <h3 className="font-bold text-lg dark:text-white mb-4">Recent Companies</h3>
-        <div className="text-sm text-gray-500 dark:text-gray-400">
-          Dashboard content loaded successfully!
+      {/* Content Grid */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '24px' }}>
+        {/* Chart */}
+        <div style={{ background: '#182820', border: '1px solid #2a4034', borderRadius: '16px', padding: '24px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+            <h3 style={{ fontSize: '18px', fontWeight: 'bold', color: 'white' }}>Companies by Plan</h3>
+            <button style={{ background: 'transparent', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: '20px' }}>⋯</button>
+          </div>
+          
+          {/* Simple Bar Chart */}
+          <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-around', height: '200px', gap: '20px', marginBottom: '24px' }}>
+            {PLAN_CHART_DATA.map((item) => (
+              <div key={item.name} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1 }}>
+                <div style={{ 
+                  width: '100%', 
+                  height: `${(item.value / 1000) * 200}px`, 
+                  background: item.color, 
+                  borderRadius: '10px',
+                  marginBottom: '8px'
+                }} />
+                <p style={{ fontSize: '12px', color: '#94a3b8', marginTop: '8px' }}>{item.name}</p>
+              </div>
+            ))}
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', textAlign: 'center', paddingTop: '16px', borderTop: '1px solid #2a4034' }}>
+            <div>
+              <p style={{ fontSize: '11px', color: '#64748b' }}>Total Yearly</p>
+              <p style={{ fontSize: '18px', fontWeight: 'bold', color: 'white' }}>856</p>
+            </div>
+            <div>
+              <p style={{ fontSize: '11px', color: '#64748b' }}>Total Monthly</p>
+              <p style={{ fontSize: '18px', fontWeight: 'bold', color: 'white' }}>312</p>
+            </div>
+            <div>
+              <p style={{ fontSize: '11px', color: '#64748b' }}>Active Trials</p>
+              <p style={{ fontSize: '18px', fontWeight: 'bold', color: 'white' }}>72</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Companies Table */}
+        <div style={{ background: '#182820', border: '1px solid #2a4034', borderRadius: '16px', overflow: 'hidden' }}>
+          <div style={{ padding: '24px', borderBottom: '1px solid #2a4034', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h3 style={{ fontSize: '18px', fontWeight: 'bold', color: 'white' }}>Recent Companies</h3>
+            <button style={{ color: '#36e27b', background: 'transparent', border: 'none', fontSize: '14px', cursor: 'pointer' }}>View All</button>
+          </div>
+          
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid #2a4034' }}>
+                  <th style={{ padding: '16px 24px', textAlign: 'left', fontSize: '11px', color: '#64748b', fontWeight: '500', textTransform: 'uppercase' }}>COMPANY NAME</th>
+                  <th style={{ padding: '16px 24px', textAlign: 'left', fontSize: '11px', color: '#64748b', fontWeight: '500', textTransform: 'uppercase' }}>PLAN TYPE</th>
+                  <th style={{ padding: '16px 24px', textAlign: 'left', fontSize: '11px', color: '#64748b', fontWeight: '500', textTransform: 'uppercase' }}>VALIDITY</th>
+                  <th style={{ padding: '16px 24px', textAlign: 'left', fontSize: '11px', color: '#64748b', fontWeight: '500', textTransform: 'uppercase' }}>STATUS</th>
+                  <th style={{ padding: '16px 24px', textAlign: 'right', fontSize: '11px', color: '#64748b', fontWeight: '500', textTransform: 'uppercase' }}>ACTION</th>
+                </tr>
+              </thead>
+              <tbody>
+                {INITIAL_COMPANIES.map((company) => {
+                  const planStyle = getPlanStyle(company.planType);
+                  const statusColor = getStatusColor(company.status);
+                  return (
+                    <tr key={company.id} style={{ borderBottom: '1px solid #2a4034' }}>
+                      <td style={{ padding: '16px 24px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#23362b', border: '1px solid #2a4034', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                            {company.logo.startsWith('http') ? (
+                              <img src={company.logo} alt={company.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                            ) : (
+                              <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#94a3b8' }}>{company.logo}</span>
+                            )}
+                          </div>
+                          <span style={{ fontSize: '14px', fontWeight: '500', color: 'white' }}>{company.name}</span>
+                        </div>
+                      </td>
+                      <td style={{ padding: '16px 24px' }}>
+                        <span style={{
+                          display: 'inline-block',
+                          padding: '4px 12px',
+                          borderRadius: '20px',
+                          fontSize: '12px',
+                          fontWeight: '500',
+                          background: planStyle.bg,
+                          color: planStyle.color,
+                          border: `1px solid ${planStyle.border}`
+                        }}>
+                          {company.planType === PlanType.ENTERPRISE && '⭐ '}
+                          {company.planType}
+                        </span>
+                      </td>
+                      <td style={{ padding: '16px 24px', fontSize: '14px', color: '#94a3b8' }}>{company.validity}</td>
+                      <td style={{ padding: '16px 24px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: statusColor }} />
+                          <span style={{ fontSize: '14px', color: '#e2e8f0' }}>{company.status}</span>
+                        </div>
+                      </td>
+                      <td style={{ padding: '16px 24px', textAlign: 'right' }}>
+                        <button style={{
+                          padding: '6px 16px',
+                          borderRadius: '8px',
+                          border: '1px solid #2a4034',
+                          background: 'transparent',
+                          color: '#94a3b8',
+                          fontSize: '12px',
+                          fontWeight: '500',
+                          cursor: 'pointer'
+                        }}>
+                          Manage
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          
+          <div style={{ padding: '16px', borderTop: '1px solid #2a4034', textAlign: 'center' }}>
+            <button style={{ background: 'transparent', border: 'none', color: '#64748b', fontSize: '14px', cursor: 'pointer' }}>
+              Show more ▼
+            </button>
+          </div>
         </div>
       </div>
     </div>
