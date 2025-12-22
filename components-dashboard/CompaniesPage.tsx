@@ -22,6 +22,7 @@ const CompaniesPage: React.FC = () => {
   const [newCompany, setNewCompany] = useState({
     name: '',
     email: '',
+    password: '',
     planType: 'Enterprise',
     validityMonths: '12'
   });
@@ -103,8 +104,8 @@ const CompaniesPage: React.FC = () => {
   };
 
   const handleAddCompany = () => {
-    if (!newCompany.name || !newCompany.email) {
-      alert('Please fill all required fields');
+    if (!newCompany.name || !newCompany.email || !newCompany.password) {
+      alert('Please fill all required fields including password');
       return;
     }
 
@@ -118,9 +119,6 @@ const CompaniesPage: React.FC = () => {
     const today = new Date();
     const endDate = new Date(today);
     endDate.setMonth(endDate.getMonth() + parseInt(newCompany.validityMonths));
-
-    // Generate random password
-    const generatedPassword = `${newCompany.name.replace(/\s+/g, '').substring(0, 4).toLowerCase()}${Math.floor(1000 + Math.random() * 9000)}`;
 
     const companyData = {
       id: Date.now().toString(),
@@ -142,7 +140,7 @@ const CompaniesPage: React.FC = () => {
     
     const companyUser = {
       email: newCompany.email,
-      password: generatedPassword,
+      password: newCompany.password,
       name: `${newCompany.name} Admin`,
       role: 'company-user' as const,
       company: newCompany.name,
@@ -152,10 +150,10 @@ const CompaniesPage: React.FC = () => {
     allUsers.push(companyUser);
     localStorage.setItem('inventoryUsers', JSON.stringify(allUsers));
 
-    alert(`✅ Company "${newCompany.name}" created successfully!\n\n📋 LOGIN CREDENTIALS:\nEmail: ${newCompany.email}\nPassword: ${generatedPassword}\n\n🏢 Company Details:\nOrg ID: ${orgId}\nPlan: ${newCompany.planType}\nValidity: ${companyData.validityStart} ${companyData.validityEnd}\n\n⚠️ IMPORTANT: Save these credentials! Share them with the company admin.`);
+    alert(`✅ Company "${newCompany.name}" created successfully!\n\n📋 LOGIN CREDENTIALS:\nEmail: ${newCompany.email}\nPassword: ${newCompany.password}\n\n🏢 Company Details:\nOrg ID: ${orgId}\nPlan: ${newCompany.planType}\nValidity: ${companyData.validityStart} ${companyData.validityEnd}\n\n⚠️ IMPORTANT: Save these credentials! Share them with the company admin.`);
     
     setShowAddCompanyModal(false);
-    setNewCompany({ name: '', email: '', planType: 'Enterprise', validityMonths: '12' });
+    setNewCompany({ name: '', email: '', password: '', planType: 'Enterprise', validityMonths: '12' });
   };
 
   return (
@@ -686,7 +684,7 @@ const CompaniesPage: React.FC = () => {
 
               <div>
                 <label style={{ display: 'block', fontSize: '13px', color: '#94a3b8', marginBottom: '8px', fontWeight: '500' }}>
-                  Email Address *
+                  Email Address (Login ID) *
                 </label>
                 <input
                   type="email"
@@ -705,6 +703,32 @@ const CompaniesPage: React.FC = () => {
                     boxSizing: 'border-box'
                   }}
                 />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '13px', color: '#94a3b8', marginBottom: '8px', fontWeight: '500' }}>
+                  Login Password *
+                </label>
+                <input
+                  type="text"
+                  value={newCompany.password}
+                  onChange={(e) => setNewCompany({ ...newCompany, password: e.target.value })}
+                  placeholder="Minimum 6 characters"
+                  style={{
+                    width: '100%',
+                    padding: '10px 14px',
+                    background: '#112117',
+                    border: '1px solid #2a4034',
+                    borderRadius: '8px',
+                    color: 'white',
+                    fontSize: '14px',
+                    outline: 'none',
+                    boxSizing: 'border-box'
+                  }}
+                />
+                <p style={{ fontSize: '12px', color: '#64748b', marginTop: '6px' }}>
+                  💡 This will be the login password for the company admin
+                </p>
               </div>
 
               <div>
