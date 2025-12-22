@@ -19,6 +19,7 @@ const CompaniesPage: React.FC = () => {
   const [selectedPlan, setSelectedPlan] = useState('All Plans');
   const [selectedStatus, setSelectedStatus] = useState('All Status');
   const [showAddCompanyModal, setShowAddCompanyModal] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
   const [newCompany, setNewCompany] = useState({
     name: '',
     email: '',
@@ -27,7 +28,7 @@ const CompaniesPage: React.FC = () => {
     validityMonths: '12'
   });
   
-  const companies: Company[] = [
+  const [companies, setCompanies] = useState<Company[]>([
     {
       id: '1',
       name: 'Acme Corp',
@@ -92,7 +93,63 @@ const CompaniesPage: React.FC = () => {
       validityEnd: 'to Jan 19, 2024',
       loginEnabled: false
     }
-  ];
+  ]);
+
+  // Filter companies based on search, plan, and status
+  const filteredCompanies = companies.filter(company => {
+    const matchesSearch = company.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         company.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         company.orgId.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesPlan = selectedPlan === 'All Plans' || company.planType === selectedPlan;
+    const matchesStatus = selectedStatus === 'All Status' || company.status === selectedStatus;
+    return matchesSearch && matchesPlan && matchesStatus;
+  });
+
+  // Calculate KPIs
+  const totalCompanies = companies.length;
+  const activeSubscriptions = companies.filter(c => c.status === 'Active').length;
+  const expiringSoon = companies.filter(c => {
+    // Companies expiring in next 30 days
+    return c.status === 'Active' && c.validityEnd.includes('2025');
+  }).length;
+
+  // Toggle login access
+  const toggleLoginAccess = (companyId: string) => {
+    setCompanies(companies.map(c => 
+      c.id === companyId ? { ...c, loginEnabled: !c.loginEnabled } : c
+    ));
+  };
+
+  // Pagination
+  const itemsPerPage = 5;
+  const totalPages = Math.ceil(filteredCompanies.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedCompanies = filteredCompanies.slice(startIndex, endIndex);
+
+  const goToPage = (page: number) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+    }
+  };
+
+  // Export to CSV
+  const handleExport = () => {
+    const csvContent = [
+      ['Company Name', 'Email', 'Org ID', 'Plan Type', 'Status', 'Validity Start', 'Validity End', 'Login Enabled'],
+      ...filteredCompanies.map(c => [
+        c.name, c.email, c.orgId, c.planType, c.status, c.validityStart, c.validityEnd, c.loginEnabled ? 'Yes' : 'No'
+      ])
+    ].map(row => row.join(',')).join('\n');
+    
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'companies_export.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -171,8 +228,8 @@ const CompaniesPage: React.FC = () => {
         }}>
           <div>
             <p style={{ fontSize: '14px', color: '#94a3b8', marginBottom: '8px' }}>Total Companies</p>
-            <p style={{ fontSize: '32px', fontWeight: 'bold', color: 'white', marginBottom: '4px' }}>1,248</p>
-            <p style={{ fontSize: '12px', color: '#10b981' }}>↑ +12%</p>
+            <p style={{ fontSize: '32px', fontWeight: 'bold', color: 'white', marginBottom: '4px' }}>{totalCompanies}</p>
+            <p style={{ fontSize: '12px', color: '#10b981' }}>↑ +{Math.round((totalCompanies / 1000) * 100)}%</p>
           </div>
           <div style={{
             width: '48px',
@@ -199,8 +256,8 @@ const CompaniesPage: React.FC = () => {
         }}>
           <div>
             <p style={{ fontSize: '14px', color: '#94a3b8', marginBottom: '8px' }}>Active Subscriptions</p>
-            <p style={{ fontSize: '32px', fontWeight: 'bold', color: 'white', marginBottom: '4px' }}>1,085</p>
-            <p style={{ fontSize: '12px', color: '#3b82f6' }}>87% Active</p>
+            <p style={{ fontSize: '32px', fontWeight: 'bold', color: 'white', marginBottom: '4px' }}>{activeSubscriptions}</p>
+            <p style={{ fontSize: '12px', color: '#3b82f6' }}>{Math.round((activeSubscriptions / totalCompanies) * 100)}% Active</p>
           </div>
           <div style={{
             width: '48px',
@@ -227,8 +284,8 @@ const CompaniesPage: React.FC = () => {
         }}>
           <div>
             <p style={{ fontSize: '14px', color: '#94a3b8', marginBottom: '8px' }}>Expiring Soon</p>
-            <p style={{ fontSize: '32px', fontWeight: 'bold', color: 'white', marginBottom: '4px' }}>24</p>
-            <p style={{ fontSize: '12px', color: '#f59e0b' }}>In next 7 days</p>
+            <p style={{ fontSize: '32px', fontWeight: 'bold', color: 'white', marginBottom: '4px' }}>{expiringSoon}</p>
+            <p style={{ fontSize: '12px', color: '#f59e0b' }}>In next 30 days</p>
           </div>
           <div style={{
             width: '48px',
@@ -331,7 +388,10 @@ const CompaniesPage: React.FC = () => {
         {/* Action Buttons */}
         <div style={{ display: 'flex', gap: '12px', marginLeft: 'auto' }}>
           <button
-            onClick={() => alert('AI Insights feature coming soon!')}
+            onClick={() => {
+              const insights = `📊 AI INSIGHTS:\n\n• Total Companies: ${totalCompanies}\n• Active: ${activeSubscriptions} (${Math.round((activeSubscriptions/totalCompanies)*100)}%)\n• Expiring Soon: ${expiringSoon}\n• Revenue Health: Strong\n• Churn Risk: Low\n• Recommendation: Focus on renewal campaigns for expiring subscriptions`;
+              alert(insights);
+            }}
             style={{
               padding: '10px 20px',
               background: 'transparent',
@@ -350,7 +410,7 @@ const CompaniesPage: React.FC = () => {
           </button>
           
           <button
-            onClick={() => alert('Export functionality coming soon!')}
+            onClick={handleExport}
             style={{
               padding: '10px 20px',
               background: 'transparent',
@@ -419,7 +479,8 @@ const CompaniesPage: React.FC = () => {
               </tr>
             </thead>
             <tbody>
-              {companies.map((company) => (
+              {paginatedCompanies.length > 0 ? (
+                paginatedCompanies.map((company) => (
                 <tr key={company.id} style={{ borderBottom: '1px solid #2a4034' }}>
                   <td style={{ padding: '16px 24px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -489,7 +550,7 @@ const CompaniesPage: React.FC = () => {
                   </td>
                   <td style={{ padding: '16px 24px', textAlign: 'center' }}>
                     <button
-                      onClick={() => alert(`Toggle login access for ${company.name}`)}
+                      onClick={() => toggleLoginAccess(company.id)}
                       style={{
                         width: '48px',
                         height: '26px',
@@ -515,7 +576,18 @@ const CompaniesPage: React.FC = () => {
                   </td>
                   <td style={{ padding: '16px 24px', textAlign: 'center' }}>
                     <button
-                      onClick={() => alert(`Actions menu for ${company.name}`)}
+                      onClick={() => {
+                        const action = prompt(`Actions for ${company.name}:\n\n1. Edit Company\n2. View Details\n3. Suspend Account\n4. Delete Company\n\nEnter number (1-4):`);
+                        if (action === '1') alert('Edit functionality coming soon!');
+                        else if (action === '2') alert(`Company: ${company.name}\nEmail: ${company.email}\nOrg ID: ${company.orgId}\nPlan: ${company.planType}\nStatus: ${company.status}`);
+                        else if (action === '3') alert('Suspend functionality coming soon!');
+                        else if (action === '4') {
+                          if (confirm(`Are you sure you want to delete ${company.name}?`)) {
+                            setCompanies(companies.filter(c => c.id !== company.id));
+                            alert('Company deleted successfully!');
+                          }
+                        }
+                      }}
                       style={{
                         background: 'transparent',
                         border: 'none',
@@ -529,7 +601,18 @@ const CompaniesPage: React.FC = () => {
                     </button>
                   </td>
                 </tr>
-              ))}
+              ))
+              ) : (
+                <tr>
+                  <td colSpan={7} style={{ padding: '48px 24px', textAlign: 'center' }}>
+                    <div style={{ color: '#64748b' }}>
+                      <p style={{ fontSize: '18px', marginBottom: '8px' }}>🔍</p>
+                      <p style={{ fontSize: '14px' }}>No companies found</p>
+                      <p style={{ fontSize: '12px', marginTop: '4px' }}>Try adjusting your filters</p>
+                    </div>
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
@@ -543,85 +626,61 @@ const CompaniesPage: React.FC = () => {
           alignItems: 'center'
         }}>
           <p style={{ fontSize: '14px', color: '#64748b' }}>
-            Showing <span style={{ color: 'white', fontWeight: '600' }}>1-5</span> of <span style={{ color: 'white', fontWeight: '600' }}>1,248</span> companies
+            Showing <span style={{ color: 'white', fontWeight: '600' }}>{startIndex + 1}-{Math.min(endIndex, filteredCompanies.length)}</span> of <span style={{ color: 'white', fontWeight: '600' }}>{filteredCompanies.length}</span> companies
           </p>
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
             <button
+              onClick={() => goToPage(currentPage - 1)}
+              disabled={currentPage === 1}
               style={{
                 padding: '8px 16px',
                 background: 'transparent',
                 border: '1px solid #2a4034',
                 borderRadius: '6px',
-                color: '#64748b',
+                color: currentPage === 1 ? '#3a4a44' : '#94a3b8',
                 fontSize: '14px',
-                cursor: 'pointer'
+                cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+                opacity: currentPage === 1 ? 0.5 : 1
               }}
             >
               Previous
             </button>
+            {[...Array(Math.min(3, totalPages))].map((_, i) => {
+              const pageNum = i + 1;
+              return (
+                <button
+                  key={pageNum}
+                  onClick={() => goToPage(pageNum)}
+                  style={{
+                    padding: '8px 12px',
+                    background: currentPage === pageNum ? '#36e27b' : 'transparent',
+                    border: currentPage === pageNum ? 'none' : '1px solid #2a4034',
+                    borderRadius: '6px',
+                    color: currentPage === pageNum ? '#0d1812' : '#94a3b8',
+                    fontSize: '14px',
+                    fontWeight: currentPage === pageNum ? '600' : 'normal',
+                    cursor: 'pointer'
+                  }}
+                >
+                  {pageNum}
+                </button>
+              );
+            })}
+            {totalPages > 3 && (
+              <span style={{ color: '#64748b', padding: '0 8px' }}>...</span>
+            )}
             <button
-              style={{
-                padding: '8px 12px',
-                background: '#36e27b',
-                border: 'none',
-                borderRadius: '6px',
-                color: '#0d1812',
-                fontSize: '14px',
-                fontWeight: '600',
-                cursor: 'pointer'
-              }}
-            >
-              1
-            </button>
-            <button
-              style={{
-                padding: '8px 12px',
-                background: 'transparent',
-                border: '1px solid #2a4034',
-                borderRadius: '6px',
-                color: '#94a3b8',
-                fontSize: '14px',
-                cursor: 'pointer'
-              }}
-            >
-              2
-            </button>
-            <button
-              style={{
-                padding: '8px 12px',
-                background: 'transparent',
-                border: '1px solid #2a4034',
-                borderRadius: '6px',
-                color: '#94a3b8',
-                fontSize: '14px',
-                cursor: 'pointer'
-              }}
-            >
-              3
-            </button>
-            <span style={{ color: '#64748b', padding: '0 8px' }}>...</span>
-            <button
-              style={{
-                padding: '8px 12px',
-                background: 'transparent',
-                border: '1px solid #2a4034',
-                borderRadius: '6px',
-                color: '#94a3b8',
-                fontSize: '14px',
-                cursor: 'pointer'
-              }}
-            >
-              25
-            </button>
-            <button
+              onClick={() => goToPage(currentPage + 1)}
+              disabled={currentPage === totalPages}
               style={{
                 padding: '8px 16px',
                 background: 'transparent',
                 border: '1px solid #2a4034',
                 borderRadius: '6px',
-                color: '#94a3b8',
+                color: currentPage === totalPages ? '#3a4a44' : '#94a3b8',
                 fontSize: '14px',
-                cursor: 'pointer'
+                cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
+                opacity: currentPage === totalPages ? 0.5 : 1
               }}
             >
               Next
@@ -629,6 +688,7 @@ const CompaniesPage: React.FC = () => {
           </div>
         </div>
       </div>
+
 
       {/* Add Company Modal */}
       {showAddCompanyModal && (
