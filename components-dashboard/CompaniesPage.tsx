@@ -711,7 +711,7 @@ const CompaniesPage: React.FC = () => {
                             padding: '12px 16px',
                             background: 'transparent',
                             border: 'none',
-                            color: '#f59e0b',
+                            color: company.status === 'Suspended' ? '#10b981' : '#f59e0b',
                             fontSize: '14px',
                             textAlign: 'left',
                             cursor: 'pointer',
@@ -723,8 +723,8 @@ const CompaniesPage: React.FC = () => {
                           onMouseEnter={(e) => e.currentTarget.style.background = '#334155'}
                           onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                         >
-                          <span style={{ fontSize: '16px' }}>{company.status === 'Suspended' ? '▶️' : '⏸️'}</span>
-                          <span>{company.status === 'Suspended' ? 'Reactivate Account' : 'Suspend Account'}</span>
+                          <span style={{ fontSize: '16px' }}>{company.status === 'Suspended' ? '✅' : '⏸️'}</span>
+                          <span>{company.status === 'Suspended' ? 'Recover Account' : 'Suspend Account'}</span>
                         </button>
 
                         <button
