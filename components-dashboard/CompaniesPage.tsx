@@ -119,6 +119,9 @@ const CompaniesPage: React.FC = () => {
     const endDate = new Date(today);
     endDate.setMonth(endDate.getMonth() + parseInt(newCompany.validityMonths));
 
+    // Generate random password
+    const generatedPassword = `${newCompany.name.replace(/\s+/g, '').substring(0, 4).toLowerCase()}${Math.floor(1000 + Math.random() * 9000)}`;
+
     const companyData = {
       id: Date.now().toString(),
       name: newCompany.name,
@@ -133,7 +136,23 @@ const CompaniesPage: React.FC = () => {
       loginEnabled: true
     };
 
-    alert(`Company "${newCompany.name}" created successfully!\nOrg ID: ${orgId}\nPlan: ${newCompany.planType}\nValidity: ${companyData.validityStart} ${companyData.validityEnd}`);
+    // Create user credentials for this company
+    const storedUsers = localStorage.getItem('inventoryUsers');
+    const allUsers = storedUsers ? JSON.parse(storedUsers) : [];
+    
+    const companyUser = {
+      email: newCompany.email,
+      password: generatedPassword,
+      name: `${newCompany.name} Admin`,
+      role: 'company-user' as const,
+      company: newCompany.name,
+      orgId: orgId
+    };
+    
+    allUsers.push(companyUser);
+    localStorage.setItem('inventoryUsers', JSON.stringify(allUsers));
+
+    alert(`✅ Company "${newCompany.name}" created successfully!\n\n📋 LOGIN CREDENTIALS:\nEmail: ${newCompany.email}\nPassword: ${generatedPassword}\n\n🏢 Company Details:\nOrg ID: ${orgId}\nPlan: ${newCompany.planType}\nValidity: ${companyData.validityStart} ${companyData.validityEnd}\n\n⚠️ IMPORTANT: Save these credentials! Share them with the company admin.`);
     
     setShowAddCompanyModal(false);
     setNewCompany({ name: '', email: '', planType: 'Enterprise', validityMonths: '12' });
