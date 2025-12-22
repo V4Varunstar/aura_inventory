@@ -135,9 +135,6 @@ const CompanyDashboard: React.FC<CompanyDashboardProps> = ({ user, onLogout }) =
                 key={item.id}
                 onClick={() => {
                   setActivePage(item.id);
-                  if (item.id !== 'Dashboard') {
-                    alert(`${item.label} section coming soon!`);
-                  }
                 }}
                 style={{
                   display: 'flex',
@@ -268,22 +265,13 @@ const CompanyDashboard: React.FC<CompanyDashboardProps> = ({ user, onLogout }) =
                 }}
               />
             </div>
-            <button style={{
-              padding: '10px 16px',
-              background: '#334155',
-              border: 'none',
-              borderRadius: '8px',
-              color: '#94a3b8',
-              cursor: 'pointer',
-              fontSize: '20px'
-            }}>
-              🔔
-            </button>
           </div>
         </header>
 
         {/* Dashboard Content */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '32px', background: '#0f172a' }}>
+          {activePage === 'Dashboard' && (
+            <>
           {/* KPI Cards */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px', marginBottom: '32px' }}>
             <div style={{
@@ -378,7 +366,7 @@ const CompanyDashboard: React.FC<CompanyDashboardProps> = ({ user, onLogout }) =
                 </button>
 
                 <button
-                  onClick={() => alert('Inward stock functionality coming soon!')}
+                  onClick={() => setActivePage('Inward')}
                   style={{
                     padding: '16px',
                     background: '#3b82f6',
@@ -401,7 +389,7 @@ const CompanyDashboard: React.FC<CompanyDashboardProps> = ({ user, onLogout }) =
                 </button>
 
                 <button
-                  onClick={() => alert('Outward stock functionality coming soon!')}
+                  onClick={() => setActivePage('Outward')}
                   style={{
                     padding: '16px',
                     background: '#f59e0b',
@@ -424,7 +412,7 @@ const CompanyDashboard: React.FC<CompanyDashboardProps> = ({ user, onLogout }) =
                 </button>
 
                 <button
-                  onClick={() => alert('Generate report functionality coming soon!')}
+                  onClick={() => setActivePage('Reports')}
                   style={{
                     padding: '16px',
                     background: '#a855f7',
@@ -543,6 +531,238 @@ const CompanyDashboard: React.FC<CompanyDashboardProps> = ({ user, onLogout }) =
               </div>
             </div>
           </div>
+            </>
+          )}
+
+          {activePage === 'Inventory' && (
+            <div style={{
+              background: '#1e293b',
+              border: '1px solid #334155',
+              borderRadius: '16px',
+              padding: '48px',
+              textAlign: 'center'
+            }}>
+              <div style={{
+                width: '80px',
+                height: '80px',
+                margin: '0 auto 24px',
+                borderRadius: '50%',
+                background: '#36e27b20',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '40px'
+              }}>
+                📦
+              </div>
+              <h2 style={{ fontSize: '28px', fontWeight: 'bold', color: 'white', marginBottom: '16px' }}>
+                Inventory Management
+              </h2>
+              <p style={{ fontSize: '16px', color: '#94a3b8', marginBottom: '8px' }}>
+                Full inventory management features coming soon...
+              </p>
+              <button
+                onClick={() => setActivePage('Dashboard')}
+                style={{
+                  marginTop: '32px',
+                  padding: '12px 32px',
+                  background: '#36e27b',
+                  border: 'none',
+                  borderRadius: '8px',
+                  color: '#0d1812',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer'
+                }}
+              >
+                Back to Dashboard
+              </button>
+            </div>
+          )}
+
+          {activePage === 'Inward' && (
+            <div style={{
+              background: '#1e293b',
+              border: '1px solid #334155',
+              borderRadius: '16px',
+              padding: '48px',
+              textAlign: 'center'
+            }}>
+              <div style={{
+                width: '80px',
+                height: '80px',
+                margin: '0 auto 24px',
+                borderRadius: '50%',
+                background: '#3b82f620',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '40px'
+              }}>
+                📥
+              </div>
+              <h2 style={{ fontSize: '28px', fontWeight: 'bold', color: 'white', marginBottom: '16px' }}>
+                Inward Stock Management
+              </h2>
+              <p style={{ fontSize: '16px', color: '#94a3b8', marginBottom: '8px' }}>
+                Track and manage incoming inventory...
+              </p>
+              <button
+                onClick={() => setActivePage('Dashboard')}
+                style={{
+                  marginTop: '32px',
+                  padding: '12px 32px',
+                  background: '#3b82f6',
+                  border: 'none',
+                  borderRadius: '8px',
+                  color: 'white',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer'
+                }}
+              >
+                Back to Dashboard
+              </button>
+            </div>
+          )}
+
+          {activePage === 'Outward' && (
+            <div style={{
+              background: '#1e293b',
+              border: '1px solid #334155',
+              borderRadius: '16px',
+              padding: '48px',
+              textAlign: 'center'
+            }}>
+              <div style={{
+                width: '80px',
+                height: '80px',
+                margin: '0 auto 24px',
+                borderRadius: '50%',
+                background: '#f59e0b20',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '40px'
+              }}>
+                📤
+              </div>
+              <h2 style={{ fontSize: '28px', fontWeight: 'bold', color: 'white', marginBottom: '16px' }}>
+                Outward Stock Management
+              </h2>
+              <p style={{ fontSize: '16px', color: '#94a3b8', marginBottom: '8px' }}>
+                Track and manage outgoing inventory...
+              </p>
+              <button
+                onClick={() => setActivePage('Dashboard')}
+                style={{
+                  marginTop: '32px',
+                  padding: '12px 32px',
+                  background: '#f59e0b',
+                  border: 'none',
+                  borderRadius: '8px',
+                  color: 'white',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer'
+                }}
+              >
+                Back to Dashboard
+              </button>
+            </div>
+          )}
+
+          {activePage === 'Reports' && (
+            <div style={{
+              background: '#1e293b',
+              border: '1px solid #334155',
+              borderRadius: '16px',
+              padding: '48px',
+              textAlign: 'center'
+            }}>
+              <div style={{
+                width: '80px',
+                height: '80px',
+                margin: '0 auto 24px',
+                borderRadius: '50%',
+                background: '#a855f720',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '40px'
+              }}>
+                📈
+              </div>
+              <h2 style={{ fontSize: '28px', fontWeight: 'bold', color: 'white', marginBottom: '16px' }}>
+                Reports & Analytics
+              </h2>
+              <p style={{ fontSize: '16px', color: '#94a3b8', marginBottom: '8px' }}>
+                Generate detailed reports and analytics...
+              </p>
+              <button
+                onClick={() => setActivePage('Dashboard')}
+                style={{
+                  marginTop: '32px',
+                  padding: '12px 32px',
+                  background: '#a855f7',
+                  border: 'none',
+                  borderRadius: '8px',
+                  color: 'white',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer'
+                }}
+              >
+                Back to Dashboard
+              </button>
+            </div>
+          )}
+
+          {activePage === 'Settings' && (
+            <div style={{
+              background: '#1e293b',
+              border: '1px solid #334155',
+              borderRadius: '16px',
+              padding: '48px',
+              textAlign: 'center'
+            }}>
+              <div style={{
+                width: '80px',
+                height: '80px',
+                margin: '0 auto 24px',
+                borderRadius: '50%',
+                background: '#64748b20',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '40px'
+              }}>
+                ⚙️
+              </div>
+              <h2 style={{ fontSize: '28px', fontWeight: 'bold', color: 'white', marginBottom: '16px' }}>
+                Company Settings
+              </h2>
+              <p style={{ fontSize: '16px', color: '#94a3b8', marginBottom: '8px' }}>
+                Manage your company preferences and settings...
+              </p>
+              <button
+                onClick={() => setActivePage('Dashboard')}
+                style={{
+                  marginTop: '32px',
+                  padding: '12px 32px',
+                  background: '#64748b',
+                  border: 'none',
+                  borderRadius: '8px',
+                  color: 'white',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer'
+                }}
+              >
+                Back to Dashboard
+              </button>
+            </div>
+          )}
         </div>
       </main>
 
