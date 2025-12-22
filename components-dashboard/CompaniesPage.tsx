@@ -18,6 +18,13 @@ const CompaniesPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedPlan, setSelectedPlan] = useState('All Plans');
   const [selectedStatus, setSelectedStatus] = useState('All Status');
+  const [showAddCompanyModal, setShowAddCompanyModal] = useState(false);
+  const [newCompany, setNewCompany] = useState({
+    name: '',
+    email: '',
+    planType: 'Enterprise',
+    validityMonths: '12'
+  });
   
   const companies: Company[] = [
     {
@@ -93,6 +100,43 @@ const CompaniesPage: React.FC = () => {
       case 'Suspended': return '#f59e0b';
       default: return '#64748b';
     }
+  };
+
+  const handleAddCompany = () => {
+    if (!newCompany.name || !newCompany.email) {
+      alert('Please fill all required fields');
+      return;
+    }
+
+    const planColors: { [key: string]: string } = {
+      'Enterprise': '#f59e0b',
+      'Professional': '#3b82f6',
+      'Starter': '#64748b'
+    };
+
+    const orgId = `ORG-${Math.floor(1000 + Math.random() * 9000)}`;
+    const today = new Date();
+    const endDate = new Date(today);
+    endDate.setMonth(endDate.getMonth() + parseInt(newCompany.validityMonths));
+
+    const companyData = {
+      id: Date.now().toString(),
+      name: newCompany.name,
+      email: newCompany.email,
+      avatar: newCompany.name.substring(0, 2).toUpperCase(),
+      orgId: orgId,
+      planType: newCompany.planType,
+      planColor: planColors[newCompany.planType],
+      status: 'Active' as const,
+      validityStart: today.toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }),
+      validityEnd: `to ${endDate.toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })}`,
+      loginEnabled: true
+    };
+
+    alert(`Company "${newCompany.name}" created successfully!\nOrg ID: ${orgId}\nPlan: ${newCompany.planType}\nValidity: ${companyData.validityStart} ${companyData.validityEnd}`);
+    
+    setShowAddCompanyModal(false);
+    setNewCompany({ name: '', email: '', planType: 'Enterprise', validityMonths: '12' });
   };
 
   return (
@@ -308,7 +352,7 @@ const CompaniesPage: React.FC = () => {
           </button>
 
           <button
-            onClick={() => alert('Add Company functionality coming soon!')}
+            onClick={() => setShowAddCompanyModal(true)}
             style={{
               padding: '10px 20px',
               background: '#36e27b',
@@ -568,8 +612,191 @@ const CompaniesPage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Add Company Modal */}
+      {showAddCompanyModal && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(0,0,0,0.7)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{
+            background: '#182820',
+            border: '1px solid #2a4034',
+            borderRadius: '12px',
+            padding: '32px',
+            width: '100%',
+            maxWidth: '500px',
+            maxHeight: '90vh',
+            overflowY: 'auto'
+          }}>
+            <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: 'white', marginBottom: '8px' }}>
+              Add New Company
+            </h2>
+            <p style={{ fontSize: '14px', color: '#94a3b8', marginBottom: '24px' }}>
+              Create a new company account with subscription plan
+            </p>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '13px', color: '#94a3b8', marginBottom: '8px', fontWeight: '500' }}>
+                  Company Name *
+                </label>
+                <input
+                  type="text"
+                  value={newCompany.name}
+                  onChange={(e) => setNewCompany({ ...newCompany, name: e.target.value })}
+                  placeholder="Acme Corporation"
+                  style={{
+                    width: '100%',
+                    padding: '10px 14px',
+                    background: '#112117',
+                    border: '1px solid #2a4034',
+                    borderRadius: '8px',
+                    color: 'white',
+                    fontSize: '14px',
+                    outline: 'none',
+                    boxSizing: 'border-box'
+                  }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '13px', color: '#94a3b8', marginBottom: '8px', fontWeight: '500' }}>
+                  Email Address *
+                </label>
+                <input
+                  type="email"
+                  value={newCompany.email}
+                  onChange={(e) => setNewCompany({ ...newCompany, email: e.target.value })}
+                  placeholder="admin@acme.com"
+                  style={{
+                    width: '100%',
+                    padding: '10px 14px',
+                    background: '#112117',
+                    border: '1px solid #2a4034',
+                    borderRadius: '8px',
+                    color: 'white',
+                    fontSize: '14px',
+                    outline: 'none',
+                    boxSizing: 'border-box'
+                  }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '13px', color: '#94a3b8', marginBottom: '8px', fontWeight: '500' }}>
+                  Plan Type *
+                </label>
+                <select
+                  value={newCompany.planType}
+                  onChange={(e) => setNewCompany({ ...newCompany, planType: e.target.value })}
+                  style={{
+                    width: '100%',
+                    padding: '10px 14px',
+                    background: '#112117',
+                    border: '1px solid #2a4034',
+                    borderRadius: '8px',
+                    color: 'white',
+                    fontSize: '14px',
+                    cursor: 'pointer',
+                    outline: 'none',
+                    boxSizing: 'border-box'
+                  }}
+                >
+                  <option value="Enterprise">Enterprise</option>
+                  <option value="Professional">Professional</option>
+                  <option value="Starter">Starter</option>
+                </select>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '13px', color: '#94a3b8', marginBottom: '8px', fontWeight: '500' }}>
+                  Subscription Duration *
+                </label>
+                <select
+                  value={newCompany.validityMonths}
+                  onChange={(e) => setNewCompany({ ...newCompany, validityMonths: e.target.value })}
+                  style={{
+                    width: '100%',
+                    padding: '10px 14px',
+                    background: '#112117',
+                    border: '1px solid #2a4034',
+                    borderRadius: '8px',
+                    color: 'white',
+                    fontSize: '14px',
+                    cursor: 'pointer',
+                    outline: 'none',
+                    boxSizing: 'border-box'
+                  }}
+                >
+                  <option value="1">1 Month</option>
+                  <option value="3">3 Months</option>
+                  <option value="6">6 Months</option>
+                  <option value="12">12 Months (1 Year)</option>
+                  <option value="24">24 Months (2 Years)</option>
+                </select>
+              </div>
+
+              <div style={{ 
+                padding: '12px 16px', 
+                background: '#36e27b20', 
+                border: '1px solid #36e27b40',
+                borderRadius: '8px',
+                fontSize: '13px',
+                color: '#94a3b8'
+              }}>
+                💡 An organization ID will be auto-generated for this company
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
+              <button
+                onClick={() => {
+                  setShowAddCompanyModal(false);
+                  setNewCompany({ name: '', email: '', planType: 'Enterprise', validityMonths: '12' });
+                }}
+                style={{
+                  flex: 1,
+                  padding: '12px',
+                  background: 'transparent',
+                  border: '1px solid #2a4034',
+                  borderRadius: '8px',
+                  color: '#94a3b8',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer'
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleAddCompany}
+                style={{
+                  flex: 1,
+                  padding: '12px',
+                  background: '#36e27b',
+                  border: 'none',
+                  borderRadius: '8px',
+                  color: '#0d1812',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer'
+                }}
+              >
+                Create Company
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
 export default CompaniesPage;
+
