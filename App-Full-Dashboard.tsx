@@ -6,6 +6,7 @@ import UsersPage from './components-dashboard/UsersPage';
 import SubscriptionsPage from './components-dashboard/SubscriptionsPage';
 import ActivityLogsPage from './components-dashboard/ActivityLogsPage';
 import SettingsPage from './components-dashboard/SettingsPage';
+import CompanyDashboard from './components-dashboard/CompanyDashboard';
 
 interface User {
   email: string;
@@ -254,54 +255,14 @@ const App: React.FC = () => {
             {activePage === 'Settings' && <SettingsPage />}
           </>
         ) : (
-          <div style={{ flex: 1, overflowY: 'auto', padding: '32px', background: '#112117' }}>
-            <div style={{
-              background: '#182820',
-              border: '1px solid #2a4034',
-              borderRadius: '16px',
-              padding: '48px',
-              textAlign: 'center'
-            }}>
-              <div style={{
-                width: '80px',
-                height: '80px',
-                margin: '0 auto 24px',
-                borderRadius: '50%',
-                background: '#36e27b20',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '40px'
-              }}>
-                🏢
-              </div>
-              <h2 style={{ fontSize: '28px', fontWeight: 'bold', color: 'white', marginBottom: '16px' }}>
-                Welcome, {currentUser?.name}!
-              </h2>
-              <p style={{ fontSize: '16px', color: '#94a3b8', marginBottom: '8px' }}>
-                Company: {currentUser?.company}
-              </p>
-              <p style={{ fontSize: '14px', color: '#64748b' }}>
-                Your company inventory dashboard is coming soon...
-              </p>
-              <button
-                onClick={handleLogout}
-                style={{
-                  marginTop: '32px',
-                  padding: '12px 32px',
-                  background: '#36e27b',
-                  border: 'none',
-                  borderRadius: '8px',
-                  color: '#0d1812',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  cursor: 'pointer'
-                }}
-              >
-                Logout
-              </button>
-            </div>
-          </div>
+          <CompanyDashboard 
+            user={{
+              name: currentUser?.name || '',
+              company: currentUser?.company || '',
+              email: currentUser?.email || ''
+            }}
+            onLogout={handleLogout}
+          />
         )}
 
         {/* Mobile Sidebar Overlay */}
