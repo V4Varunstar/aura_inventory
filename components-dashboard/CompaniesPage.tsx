@@ -20,6 +20,7 @@ const CompaniesPage: React.FC = () => {
   const [selectedStatus, setSelectedStatus] = useState('All Status');
   const [showAddCompanyModal, setShowAddCompanyModal] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [openActionMenu, setOpenActionMenu] = useState<string | null>(null);
   const [newCompany, setNewCompany] = useState({
     name: '',
     email: '',
@@ -132,6 +133,20 @@ const CompaniesPage: React.FC = () => {
       setCurrentPage(page);
     }
   };
+
+  // Close dropdown when clicking outside
+  React.useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (openActionMenu) {
+        setOpenActionMenu(null);
+      }
+    };
+    
+    if (openActionMenu) {
+      document.addEventListener('click', handleClickOutside);
+      return () => document.removeEventListener('click', handleClickOutside);
+    }
+  }, [openActionMenu]);
 
   // Export to CSV
   const handleExport = () => {
@@ -574,31 +589,148 @@ const CompaniesPage: React.FC = () => {
                       }} />
                     </button>
                   </td>
-                  <td style={{ padding: '16px 24px', textAlign: 'center' }}>
+                  <td style={{ padding: '16px 24px', textAlign: 'center', position: 'relative' }}>
                     <button
-                      onClick={() => {
-                        const action = prompt(`Actions for ${company.name}:\n\n1. Edit Company\n2. View Details\n3. Suspend Account\n4. Delete Company\n\nEnter number (1-4):`);
-                        if (action === '1') alert('Edit functionality coming soon!');
-                        else if (action === '2') alert(`Company: ${company.name}\nEmail: ${company.email}\nOrg ID: ${company.orgId}\nPlan: ${company.planType}\nStatus: ${company.status}`);
-                        else if (action === '3') alert('Suspend functionality coming soon!');
-                        else if (action === '4') {
-                          if (confirm(`Are you sure you want to delete ${company.name}?`)) {
-                            setCompanies(companies.filter(c => c.id !== company.id));
-                            alert('Company deleted successfully!');
-                          }
-                        }
-                      }}
+                      onClick={() => setOpenActionMenu(openActionMenu === company.id ? null : company.id)}
                       style={{
                         background: 'transparent',
                         border: 'none',
                         color: '#94a3b8',
                         cursor: 'pointer',
                         fontSize: '20px',
-                        padding: '4px 8px'
+                        padding: '4px 8px',
+                        position: 'relative'
                       }}
                     >
                       ⋯
                     </button>
+
+                    {/* Action Dropdown Menu */}
+                    {openActionMenu === company.id && (
+                      <div
+                        style={{
+                          position: 'absolute',
+                          right: '24px',
+                          top: '50px',
+                          background: '#1e293b',
+                          border: '1px solid #334155',
+                          borderRadius: '12px',
+                          boxShadow: '0 10px 40px rgba(0,0,0,0.5)',
+                          zIndex: 1000,
+                          minWidth: '200px',
+                          overflow: 'hidden'
+                        }}
+                      >
+                        <button
+                          onClick={() => {
+                            setOpenActionMenu(null);
+                            alert('Edit functionality coming soon!');
+                          }}
+                          style={{
+                            width: '100%',
+                            padding: '12px 16px',
+                            background: 'transparent',
+                            border: 'none',
+                            color: 'white',
+                            fontSize: '14px',
+                            textAlign: 'left',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '12px',
+                            transition: 'all 0.2s'
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.background = '#334155'}
+                          onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                        >
+                          <span style={{ fontSize: '16px' }}>✏️</span>
+                          <span>Edit Company</span>
+                        </button>
+
+                        <button
+                          onClick={() => {
+                            setOpenActionMenu(null);
+                            alert(`Company: ${company.name}\nEmail: ${company.email}\nOrg ID: ${company.orgId}\nPlan: ${company.planType}\nStatus: ${company.status}`);
+                          }}
+                          style={{
+                            width: '100%',
+                            padding: '12px 16px',
+                            background: 'transparent',
+                            border: 'none',
+                            color: 'white',
+                            fontSize: '14px',
+                            textAlign: 'left',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '12px',
+                            transition: 'all 0.2s'
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.background = '#334155'}
+                          onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                        >
+                          <span style={{ fontSize: '16px' }}>👁️</span>
+                          <span>View Details</span>
+                        </button>
+
+                        <div style={{ height: '1px', background: '#334155', margin: '4px 0' }} />
+
+                        <button
+                          onClick={() => {
+                            setOpenActionMenu(null);
+                            alert('Suspend functionality coming soon!');
+                          }}
+                          style={{
+                            width: '100%',
+                            padding: '12px 16px',
+                            background: 'transparent',
+                            border: 'none',
+                            color: '#f59e0b',
+                            fontSize: '14px',
+                            textAlign: 'left',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '12px',
+                            transition: 'all 0.2s'
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.background = '#334155'}
+                          onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                        >
+                          <span style={{ fontSize: '16px' }}>⏸️</span>
+                          <span>Suspend Account</span>
+                        </button>
+
+                        <button
+                          onClick={() => {
+                            setOpenActionMenu(null);
+                            if (confirm(`Are you sure you want to delete ${company.name}?`)) {
+                              setCompanies(companies.filter(c => c.id !== company.id));
+                              alert('Company deleted successfully!');
+                            }
+                          }}
+                          style={{
+                            width: '100%',
+                            padding: '12px 16px',
+                            background: 'transparent',
+                            border: 'none',
+                            color: '#ef4444',
+                            fontSize: '14px',
+                            textAlign: 'left',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '12px',
+                            transition: 'all 0.2s'
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.background = '#334155'}
+                          onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                        >
+                          <span style={{ fontSize: '16px' }}>🗑️</span>
+                          <span>Delete Company</span>
+                        </button>
+                      </div>
+                    )}
                   </td>
                 </tr>
               ))
