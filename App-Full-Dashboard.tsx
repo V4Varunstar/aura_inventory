@@ -7,18 +7,52 @@ import SubscriptionsPage from './components-dashboard/SubscriptionsPage';
 import ActivityLogsPage from './components-dashboard/ActivityLogsPage';
 import SettingsPage from './components-dashboard/SettingsPage';
 
+interface User {
+  email: string;
+  password: string;
+  name: string;
+  role: 'superadmin' | 'company-user';
+  company?: string;
+}
+
 const App: React.FC = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [activePage, setActivePage] = useState('Dashboard');
 
+  // Load users from localStorage on mount
+  React.useEffect(() => {
+    const storedUsers = localStorage.getItem('inventoryUsers');
+    if (!storedUsers) {
+      // Initialize with super admin
+      const defaultUsers: User[] = [
+        {
+          email: 'demo@aura.com',
+          password: 'demo123',
+          name: 'Super Admin',
+          role: 'superadmin'
+        }
+      ];
+      localStorage.setItem('inventoryUsers', JSON.stringify(defaultUsers));
+    }
+  }, []);
+
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (email === 'demo@aura.com' && password === 'demo123') {
+    // Get users from localStorage
+    const storedUsers = localStorage.getItem('inventoryUsers');
+    const users: User[] = storedUsers ? JSON.parse(storedUsers) : [];
+    
+    // Find matching user
+    const user = users.find(u => u.email === email && u.password === password);
+    
+    if (user) {
+      setCurrentUser(user);
       setIsLoggedIn(true);
       setError('');
     } else {
@@ -28,8 +62,10 @@ const App: React.FC = () => {
 
   const handleLogout = () => {
     setIsLoggedIn(false);
+    setCurrentUser(null);
     setEmail('');
     setPassword('');
+    setActivePage('Dashboard');
   };
 
   // Login Screen
@@ -52,7 +88,9 @@ const App: React.FC = () => {
           maxWidth: '400px'
         }}>
           <h1 style={{ marginBottom: '10px', color: '#333', fontSize: '24px' }}>Aura Inventory</h1>
-          <p style={{ color: '#666', marginBottom: '30px' }}>Login to your account</p>
+          <p style={{ color: '#666', marginBottom: '30px' }}>
+            {currentUser?.role === 'superadmin' ? 'Super Admin Panel' : 'Company User Login'}
+          </p>
           
           <form onSubmit={handleLogin}>
             <div style={{ marginBottom: '20px' }}>
@@ -139,7 +177,7 @@ const App: React.FC = () => {
   // Dashboard Screen
   return (
     <div style={{ display: 'flex', height: '100vh', width: '100%', overflow: 'hidden', background: '#112117', fontFamily: 'system-ui' }}>
-      <Sidebar onLogout={handleLogout} activePage={activePage} setActivePage={setActivePage} />
+      {currentUser?.role === 'superadmin' && <Sidebar onLogout={handleLogout} activePage={activePage} setActivePage={setActivePage} />}
       
       <main style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', position: 'relative' }}>
         {/* Top Bar */}
@@ -206,12 +244,65 @@ const App: React.FC = () => {
           </div>
         </header>
 
-        {activePage === 'Dashboard' && <Dashboard />}
-        {activePage === 'Companies' && <CompaniesPage />}
-        {activePage === 'Users' && <UsersPage />}
-        {activePage === 'Subscriptions' && <SubscriptionsPage />}
-        {activePage === 'Activity Logs' && <ActivityLogsPage />}
-        {activePage === 'Settings' && <SettingsPage />}
+        {currentUser?.role === 'superadmin' ? (
+          <>
+            {activePage === 'Dashboard' && <Dashboard />}
+            {activePage === 'Companies' && <CompaniesPage />}
+            {activePage === 'Users' && <UsersPage />}
+            {activePage === 'Subscriptions' && <SubscriptionsPage />}
+            {activePage === 'Activity Logs' && <ActivityLogsPage />}
+            {activePage === 'Settings' && <SettingsPage />}
+          </>
+        ) : (
+          <div style={{ flex: 1, overflowY: 'auto', padding: '32px', background: '#112117' }}>
+            <div style={{
+              background: '#182820',
+              border: '1px solid #2a4034',
+              borderRadius: '16px',
+              padding: '48px',
+              textAlign: 'center'
+            }}>
+              <div style={{
+                width: '80px',
+                height: '80px',
+                margin: '0 auto 24px',
+                borderRadius: '50%',
+                background: '#36e27b20',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '40px'
+              }}>
+                🏢
+              </div>
+              <h2 style={{ fontSize: '28px', fontWeight: 'bold', color: 'white', marginBottom: '16px' }}>
+                Welcome, {currentUser?.name}!
+              </h2>
+              <p style={{ fontSize: '16px', color: '#94a3b8', marginBottom: '8px' }}>
+                Company: {currentUser?.company}
+              </p>
+              <p style={{ fontSize: '14px', color: '#64748b' }}>
+                Your company inventory dashboard is coming soon...
+              </p>
+              <button
+                onClick={handleLogout}
+                style={{
+                  marginTop: '32px',
+                  padding: '12px 32px',
+                  background: '#36e27b',
+                  border: 'none',
+                  borderRadius: '8px',
+                  color: '#0d1812',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer'
+                }}
+              >
+                Logout
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Mobile Sidebar Overlay */}
         {isMobileMenuOpen && (

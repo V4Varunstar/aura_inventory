@@ -17,6 +17,15 @@ const UsersPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedRole, setSelectedRole] = useState('All Roles');
   const [selectedStatus, setSelectedStatus] = useState('All Status');
+  const [showAddUserModal, setShowAddUserModal] = useState(false);
+  const [newUser, setNewUser] = useState({
+    name: '',
+    email: '',
+    password: '',
+    company: '',
+    role: 'company-user'
+  });
+  
   const [users, setUsers] = useState<User[]>([
     {
       id: '1',
@@ -79,6 +88,33 @@ const UsersPage: React.FC = () => {
     setUsers(users.map(user => ({ ...user, checked: !allChecked })));
   };
 
+  const handleAddUser = () => {
+    if (!newUser.name || !newUser.email || !newUser.password || !newUser.company) {
+      alert('Please fill all fields');
+      return;
+    }
+
+    // Save to localStorage
+    const storedUsers = localStorage.getItem('inventoryUsers');
+    const allUsers = storedUsers ? JSON.parse(storedUsers) : [];
+    
+    const userToAdd = {
+      email: newUser.email,
+      password: newUser.password,
+      name: newUser.name,
+      role: 'company-user' as const,
+      company: newUser.company
+    };
+    
+    allUsers.push(userToAdd);
+    localStorage.setItem('inventoryUsers', JSON.stringify(allUsers));
+    
+    alert(`User ${newUser.name} created successfully! They can now login with:\nEmail: ${newUser.email}\nPassword: ${newUser.password}`);
+    
+    setShowAddUserModal(false);
+    setNewUser({ name: '', email: '', password: '', company: '', role: 'company-user' });
+  };
+
   return (
     <div style={{ flex: 1, overflowY: 'auto', padding: '32px', background: '#112117' }}>
       {/* Breadcrumb */}
@@ -101,7 +137,7 @@ const UsersPage: React.FC = () => {
           </p>
         </div>
         <button
-          onClick={() => alert('Add New User functionality coming soon!')}
+          onClick={() => setShowAddUserModal(true)}
           style={{
             padding: '12px 24px',
             background: '#4f46e5',
@@ -439,7 +475,179 @@ const UsersPage: React.FC = () => {
           </table>
         </div>
       </div>
-    </div>
+      {/* Add User Modal */}
+      {showAddUserModal && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(0,0,0,0.7)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{
+            background: '#1e293b',
+            border: '1px solid #334155',
+            borderRadius: '12px',
+            padding: '32px',
+            width: '100%',
+            maxWidth: '500px',
+            maxHeight: '90vh',
+            overflowY: 'auto'
+          }}>
+            <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: 'white', marginBottom: '8px' }}>
+              Create Company User
+            </h2>
+            <p style={{ fontSize: '14px', color: '#94a3b8', marginBottom: '24px' }}>
+              Add a new user who can login to their company dashboard
+            </p>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '13px', color: '#94a3b8', marginBottom: '8px', fontWeight: '500' }}>
+                  Full Name *
+                </label>
+                <input
+                  type="text"
+                  value={newUser.name}
+                  onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
+                  placeholder="John Doe"
+                  style={{
+                    width: '100%',
+                    padding: '10px 14px',
+                    background: '#0f172a',
+                    border: '1px solid #334155',
+                    borderRadius: '8px',
+                    color: 'white',
+                    fontSize: '14px',
+                    outline: 'none',
+                    boxSizing: 'border-box'
+                  }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '13px', color: '#94a3b8', marginBottom: '8px', fontWeight: '500' }}>
+                  Email Address *
+                </label>
+                <input
+                  type="email"
+                  value={newUser.email}
+                  onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
+                  placeholder="john@company.com"
+                  style={{
+                    width: '100%',
+                    padding: '10px 14px',
+                    background: '#0f172a',
+                    border: '1px solid #334155',
+                    borderRadius: '8px',
+                    color: 'white',
+                    fontSize: '14px',
+                    outline: 'none',
+                    boxSizing: 'border-box'
+                  }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '13px', color: '#94a3b8', marginBottom: '8px', fontWeight: '500' }}>
+                  Password *
+                </label>
+                <input
+                  type="password"
+                  value={newUser.password}
+                  onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
+                  placeholder="Minimum 6 characters"
+                  style={{
+                    width: '100%',
+                    padding: '10px 14px',
+                    background: '#0f172a',
+                    border: '1px solid #334155',
+                    borderRadius: '8px',
+                    color: 'white',
+                    fontSize: '14px',
+                    outline: 'none',
+                    boxSizing: 'border-box'
+                  }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '13px', color: '#94a3b8', marginBottom: '8px', fontWeight: '500' }}>
+                  Company Name *
+                </label>
+                <input
+                  type="text"
+                  value={newUser.company}
+                  onChange={(e) => setNewUser({ ...newUser, company: e.target.value })}
+                  placeholder="Acme Corp"
+                  style={{
+                    width: '100%',
+                    padding: '10px 14px',
+                    background: '#0f172a',
+                    border: '1px solid #334155',
+                    borderRadius: '8px',
+                    color: 'white',
+                    fontSize: '14px',
+                    outline: 'none',
+                    boxSizing: 'border-box'
+                  }}
+                />
+              </div>
+
+              <div style={{ 
+                padding: '12px 16px', 
+                background: '#4f46e520', 
+                border: '1px solid #4f46e540',
+                borderRadius: '8px',
+                fontSize: '13px',
+                color: '#94a3b8'
+              }}>
+                💡 This user will be able to login and access their company's inventory dashboard
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
+              <button
+                onClick={() => {
+                  setShowAddUserModal(false);
+                  setNewUser({ name: '', email: '', password: '', company: '', role: 'company-user' });
+                }}
+                style={{
+                  flex: 1,
+                  padding: '12px',
+                  background: 'transparent',
+                  border: '1px solid #334155',
+                  borderRadius: '8px',
+                  color: '#94a3b8',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer'
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleAddUser}
+                style={{
+                  flex: 1,
+                  padding: '12px',
+                  background: '#4f46e5',
+                  border: 'none',
+                  borderRadius: '8px',
+                  color: 'white',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer'
+                }}
+              >
+                Create User
+              </button>
+            </div>
+          </div>
+        </div>
+      )}    </div>
   );
 };
 
