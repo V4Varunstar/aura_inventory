@@ -19,6 +19,8 @@ const CompaniesPage: React.FC = () => {
   const [selectedPlan, setSelectedPlan] = useState('All Plans');
   const [selectedStatus, setSelectedStatus] = useState('All Status');
   const [showAddCompanyModal, setShowAddCompanyModal] = useState(false);
+  const [showEditCompanyModal, setShowEditCompanyModal] = useState(false);
+  const [editingCompany, setEditingCompany] = useState<Company | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [openActionMenu, setOpenActionMenu] = useState<string | null>(null);
   const [newCompany, setNewCompany] = useState({
@@ -629,7 +631,8 @@ const CompaniesPage: React.FC = () => {
                           onClick={(e) => {
                             e.stopPropagation();
                             setOpenActionMenu(null);
-                            alert('Edit functionality coming soon!');
+                            setEditingCompany(company);
+                            setShowEditCompanyModal(true);
                           }}
                           style={{
                             width: '100%',
@@ -682,9 +685,26 @@ const CompaniesPage: React.FC = () => {
                         <div style={{ height: '1px', background: '#334155', margin: '4px 0' }} />
 
                         <button
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.stopPropagation();
                             setOpenActionMenu(null);
-                            alert('Suspend functionality coming soon!');
+                            if (company.status === 'Suspended') {
+                              // Reactivate
+                              if (confirm(`Reactivate ${company.name}?`)) {
+                                setCompanies(companies.map(c => 
+                                  c.id === company.id ? { ...c, status: 'Active', loginEnabled: true } : c
+                                ));
+                                alert(`${company.name} has been reactivated!`);
+                              }
+                            } else {
+                              // Suspend
+                              if (confirm(`Suspend ${company.name}? They will lose access immediately.`)) {
+                                setCompanies(companies.map(c => 
+                                  c.id === company.id ? { ...c, status: 'Suspended', loginEnabled: false } : c
+                                ));
+                                alert(`${company.name} has been suspended!`);
+                              }
+                            }
                           }}
                           style={{
                             width: '100%',
@@ -703,8 +723,8 @@ const CompaniesPage: React.FC = () => {
                           onMouseEnter={(e) => e.currentTarget.style.background = '#334155'}
                           onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                         >
-                          <span style={{ fontSize: '16px' }}>⏸️</span>
-                          <span>Suspend Account</span>
+                          <span style={{ fontSize: '16px' }}>{company.status === 'Suspended' ? '▶️' : '⏸️'}</span>
+                          <span>{company.status === 'Suspended' ? 'Reactivate Account' : 'Suspend Account'}</span>
                         </button>
 
                         <button
@@ -1030,6 +1050,229 @@ const CompaniesPage: React.FC = () => {
                 }}
               >
                 Create Company
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Company Modal */}
+      {showEditCompanyModal && editingCompany && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(0,0,0,0.7)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{
+            background: '#182820',
+            border: '1px solid #2a4034',
+            borderRadius: '12px',
+            padding: '32px',
+            width: '100%',
+            maxWidth: '500px',
+            maxHeight: '90vh',
+            overflowY: 'auto'
+          }}>
+            <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: 'white', marginBottom: '8px' }}>
+              Edit Company
+            </h2>
+            <p style={{ fontSize: '14px', color: '#94a3b8', marginBottom: '24px' }}>
+              Update company information and subscription details
+            </p>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '13px', color: '#94a3b8', marginBottom: '8px', fontWeight: '500' }}>
+                  Company Name *
+                </label>
+                <input
+                  type="text"
+                  value={editingCompany.name}
+                  onChange={(e) => setEditingCompany({ ...editingCompany, name: e.target.value })}
+                  style={{
+                    width: '100%',
+                    padding: '10px 14px',
+                    background: '#112117',
+                    border: '1px solid #2a4034',
+                    borderRadius: '8px',
+                    color: 'white',
+                    fontSize: '14px',
+                    outline: 'none',
+                    boxSizing: 'border-box'
+                  }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '13px', color: '#94a3b8', marginBottom: '8px', fontWeight: '500' }}>
+                  Email Address *
+                </label>
+                <input
+                  type="email"
+                  value={editingCompany.email}
+                  onChange={(e) => setEditingCompany({ ...editingCompany, email: e.target.value })}
+                  style={{
+                    width: '100%',
+                    padding: '10px 14px',
+                    background: '#112117',
+                    border: '1px solid #2a4034',
+                    borderRadius: '8px',
+                    color: 'white',
+                    fontSize: '14px',
+                    outline: 'none',
+                    boxSizing: 'border-box'
+                  }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '13px', color: '#94a3b8', marginBottom: '8px', fontWeight: '500' }}>
+                  Organization ID
+                </label>
+                <input
+                  type="text"
+                  value={editingCompany.orgId}
+                  disabled
+                  style={{
+                    width: '100%',
+                    padding: '10px 14px',
+                    background: '#0f1814',
+                    border: '1px solid #2a4034',
+                    borderRadius: '8px',
+                    color: '#64748b',
+                    fontSize: '14px',
+                    outline: 'none',
+                    boxSizing: 'border-box',
+                    cursor: 'not-allowed'
+                  }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '13px', color: '#94a3b8', marginBottom: '8px', fontWeight: '500' }}>
+                  Plan Type *
+                </label>
+                <select
+                  value={editingCompany.planType}
+                  onChange={(e) => {
+                    const planColors: { [key: string]: string } = {
+                      'Enterprise': '#f59e0b',
+                      'Professional': '#3b82f6',
+                      'Starter': '#64748b'
+                    };
+                    setEditingCompany({ 
+                      ...editingCompany, 
+                      planType: e.target.value,
+                      planColor: planColors[e.target.value]
+                    });
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '10px 14px',
+                    background: '#112117',
+                    border: '1px solid #2a4034',
+                    borderRadius: '8px',
+                    color: 'white',
+                    fontSize: '14px',
+                    cursor: 'pointer',
+                    outline: 'none',
+                    boxSizing: 'border-box'
+                  }}
+                >
+                  <option value="Enterprise">Enterprise</option>
+                  <option value="Professional">Professional</option>
+                  <option value="Starter">Starter</option>
+                </select>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '13px', color: '#94a3b8', marginBottom: '8px', fontWeight: '500' }}>
+                  Status *
+                </label>
+                <select
+                  value={editingCompany.status}
+                  onChange={(e) => setEditingCompany({ ...editingCompany, status: e.target.value as 'Active' | 'Expired' | 'Suspended' })}
+                  style={{
+                    width: '100%',
+                    padding: '10px 14px',
+                    background: '#112117',
+                    border: '1px solid #2a4034',
+                    borderRadius: '8px',
+                    color: 'white',
+                    fontSize: '14px',
+                    cursor: 'pointer',
+                    outline: 'none',
+                    boxSizing: 'border-box'
+                  }}
+                >
+                  <option value="Active">Active</option>
+                  <option value="Suspended">Suspended</option>
+                  <option value="Expired">Expired</option>
+                </select>
+              </div>
+
+              <div style={{ 
+                padding: '12px 16px', 
+                background: '#36e27b20', 
+                border: '1px solid #36e27b40',
+                borderRadius: '8px',
+                fontSize: '13px',
+                color: '#94a3b8'
+              }}>
+                💡 Changes will be applied immediately
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
+              <button
+                onClick={() => {
+                  setShowEditCompanyModal(false);
+                  setEditingCompany(null);
+                }}
+                style={{
+                  flex: 1,
+                  padding: '12px',
+                  background: 'transparent',
+                  border: '1px solid #2a4034',
+                  borderRadius: '8px',
+                  color: '#94a3b8',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer'
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  if (!editingCompany.name || !editingCompany.email) {
+                    alert('Please fill all required fields');
+                    return;
+                  }
+                  setCompanies(companies.map(c => 
+                    c.id === editingCompany.id ? editingCompany : c
+                  ));
+                  alert(`${editingCompany.name} updated successfully!`);
+                  setShowEditCompanyModal(false);
+                  setEditingCompany(null);
+                }}
+                style={{
+                  flex: 1,
+                  padding: '12px',
+                  background: '#36e27b',
+                  border: 'none',
+                  borderRadius: '8px',
+                  color: '#0d1812',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer'
+                }}
+              >
+                Save Changes
               </button>
             </div>
           </div>
