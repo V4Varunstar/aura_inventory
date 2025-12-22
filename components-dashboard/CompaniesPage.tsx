@@ -108,7 +108,7 @@ const CompaniesPage: React.FC = () => {
 
   // Calculate KPIs
   const totalCompanies = companies.length;
-  const activeSubscriptions = companies.filter(c => c.status === 'Active').length;
+  const activeSubscriptions = companies.filter(c => c.status === 'Active' && c.loginEnabled).length;
   const expiringSoon = companies.filter(c => {
     // Companies expiring in next 30 days
     return c.status === 'Active' && c.validityEnd.includes('2025');
@@ -591,7 +591,10 @@ const CompaniesPage: React.FC = () => {
                   </td>
                   <td style={{ padding: '16px 24px', textAlign: 'center', position: 'relative' }}>
                     <button
-                      onClick={() => setOpenActionMenu(openActionMenu === company.id ? null : company.id)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setOpenActionMenu(openActionMenu === company.id ? null : company.id);
+                      }}
                       style={{
                         background: 'transparent',
                         border: 'none',
@@ -608,6 +611,7 @@ const CompaniesPage: React.FC = () => {
                     {/* Action Dropdown Menu */}
                     {openActionMenu === company.id && (
                       <div
+                        onClick={(e) => e.stopPropagation()}
                         style={{
                           position: 'absolute',
                           right: '24px',
@@ -622,7 +626,8 @@ const CompaniesPage: React.FC = () => {
                         }}
                       >
                         <button
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.stopPropagation();
                             setOpenActionMenu(null);
                             alert('Edit functionality coming soon!');
                           }}
@@ -648,7 +653,8 @@ const CompaniesPage: React.FC = () => {
                         </button>
 
                         <button
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.stopPropagation();
                             setOpenActionMenu(null);
                             alert(`Company: ${company.name}\nEmail: ${company.email}\nOrg ID: ${company.orgId}\nPlan: ${company.planType}\nStatus: ${company.status}`);
                           }}
