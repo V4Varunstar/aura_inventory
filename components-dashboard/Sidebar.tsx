@@ -107,14 +107,14 @@ const Sidebar: React.FC<{ onLogout?: () => void; activePage: string; setActivePa
             fontWeight: 'bold',
             color: 'white'
           }}>
-            AM
+            {userProfile.initials}
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <p style={{ fontSize: '14px', fontWeight: 'bold', color: 'white', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              Alex Morgan
+              {userProfile.name}
             </p>
             <p style={{ fontSize: '12px', color: '#64748b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              alex@inventory.com
+              {userProfile.email}
             </p>
           </div>
           <button
