@@ -182,19 +182,261 @@ const SettingsPage: React.FC = () => {
         {/* User Management Tab */}
         {activeTab === 'User Management' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+            {/* Default User Roles */}
             <div style={{
               background: '#1e293b',
               border: '1px solid #334155',
               borderRadius: '12px',
               padding: '24px'
             }}>
-              <h2 style={{ fontSize: '18px', fontWeight: '600', color: 'white', marginBottom: '8px' }}>User Management Settings</h2>
+              <h2 style={{ fontSize: '18px', fontWeight: '600', color: 'white', marginBottom: '8px' }}>Default User Roles</h2>
               <p style={{ fontSize: '13px', color: '#94a3b8', marginBottom: '24px' }}>
-                Configure user roles, permissions, and access controls.
+                Configure permissions for different user roles in the system.
               </p>
-              <div style={{ padding: '40px', textAlign: 'center', color: '#64748b' }}>
-                <span style={{ fontSize: '48px', marginBottom: '16px', display: 'block' }}>👥</span>
-                <p>User management features are available here.</p>
+
+              {/* Super Admin Role */}
+              <div style={{ marginBottom: '16px', padding: '20px', background: '#0f172a', borderRadius: '8px', border: '1px solid #334155' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                  <div>
+                    <h3 style={{ fontSize: '16px', fontWeight: '600', color: 'white', marginBottom: '4px' }}>🔑 Super Admin</h3>
+                    <p style={{ fontSize: '12px', color: '#64748b' }}>Full system access and control</p>
+                  </div>
+                  <span style={{ padding: '4px 12px', background: '#4f46e5', color: 'white', borderRadius: '6px', fontSize: '12px', fontWeight: '600' }}>
+                    System Role
+                  </span>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
+                  {['Dashboard Access', 'User Management', 'Company Management', 'Billing Management', 'Settings Access', 'Full Permissions'].map(perm => (
+                    <div key={perm} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px', background: '#1e293b', borderRadius: '6px' }}>
+                      <span style={{ color: '#10b981', fontSize: '16px' }}>✓</span>
+                      <span style={{ fontSize: '13px', color: '#94a3b8' }}>{perm}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Company Admin Role */}
+              <div style={{ marginBottom: '16px', padding: '20px', background: '#0f172a', borderRadius: '8px', border: '1px solid #334155' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                  <div>
+                    <h3 style={{ fontSize: '16px', fontWeight: '600', color: 'white', marginBottom: '4px' }}>👔 Company Admin</h3>
+                    <p style={{ fontSize: '12px', color: '#64748b' }}>Manage company users and inventory</p>
+                  </div>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                    <span style={{ fontSize: '13px', color: '#94a3b8' }}>Enabled</span>
+                    <button
+                      style={{
+                        width: '44px',
+                        height: '24px',
+                        borderRadius: '12px',
+                        background: '#4f46e5',
+                        border: 'none',
+                        cursor: 'pointer',
+                        position: 'relative',
+                        transition: 'all 0.3s'
+                      }}
+                    >
+                      <span style={{
+                        position: 'absolute',
+                        top: '2px',
+                        left: '22px',
+                        width: '20px',
+                        height: '20px',
+                        borderRadius: '50%',
+                        background: 'white',
+                        transition: 'all 0.3s'
+                      }} />
+                    </button>
+                  </label>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
+                  {['View Dashboard', 'Manage Users', 'View Inventory', 'Add Products', 'Generate Reports', 'View Analytics'].map(perm => (
+                    <div key={perm} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px', background: '#1e293b', borderRadius: '6px' }}>
+                      <span style={{ color: '#10b981', fontSize: '16px' }}>✓</span>
+                      <span style={{ fontSize: '13px', color: '#94a3b8' }}>{perm}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Company User Role */}
+              <div style={{ padding: '20px', background: '#0f172a', borderRadius: '8px', border: '1px solid #334155' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                  <div>
+                    <h3 style={{ fontSize: '16px', fontWeight: '600', color: 'white', marginBottom: '4px' }}>👤 Company User</h3>
+                    <p style={{ fontSize: '12px', color: '#64748b' }}>Basic access to inventory operations</p>
+                  </div>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                    <span style={{ fontSize: '13px', color: '#94a3b8' }}>Enabled</span>
+                    <button
+                      style={{
+                        width: '44px',
+                        height: '24px',
+                        borderRadius: '12px',
+                        background: '#4f46e5',
+                        border: 'none',
+                        cursor: 'pointer',
+                        position: 'relative',
+                        transition: 'all 0.3s'
+                      }}
+                    >
+                      <span style={{
+                        position: 'absolute',
+                        top: '2px',
+                        left: '22px',
+                        width: '20px',
+                        height: '20px',
+                        borderRadius: '50%',
+                        background: 'white',
+                        transition: 'all 0.3s'
+                      }} />
+                    </button>
+                  </label>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
+                  {['View Inventory', 'Add Stock', 'Create Orders', 'View Reports'].map(perm => (
+                    <div key={perm} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px', background: '#1e293b', borderRadius: '6px' }}>
+                      <span style={{ color: '#10b981', fontSize: '16px' }}>✓</span>
+                      <span style={{ fontSize: '13px', color: '#94a3b8' }}>{perm}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Access Control Settings */}
+            <div style={{
+              background: '#1e293b',
+              border: '1px solid #334155',
+              borderRadius: '12px',
+              padding: '24px'
+            }}>
+              <h2 style={{ fontSize: '18px', fontWeight: '600', color: 'white', marginBottom: '8px' }}>Access Control</h2>
+              <p style={{ fontSize: '13px', color: '#94a3b8', marginBottom: '24px' }}>
+                Configure system-wide access and security settings.
+              </p>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                {/* Two-Factor Authentication */}
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  padding: '16px',
+                  background: '#0f172a',
+                  borderRadius: '8px'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <span style={{ fontSize: '20px' }}>🔐</span>
+                    <div>
+                      <p style={{ fontSize: '14px', fontWeight: '600', color: 'white', marginBottom: '4px' }}>
+                        Require Two-Factor Authentication
+                      </p>
+                      <p style={{ fontSize: '12px', color: '#64748b' }}>
+                        Force all users to enable 2FA for enhanced security
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    style={{
+                      width: '44px',
+                      height: '24px',
+                      borderRadius: '12px',
+                      background: '#64748b',
+                      border: 'none',
+                      cursor: 'pointer',
+                      position: 'relative',
+                      transition: 'all 0.3s'
+                    }}
+                  >
+                    <span style={{
+                      position: 'absolute',
+                      top: '2px',
+                      left: '2px',
+                      width: '20px',
+                      height: '20px',
+                      borderRadius: '50%',
+                      background: 'white',
+                      transition: 'all 0.3s'
+                    }} />
+                  </button>
+                </div>
+
+                {/* Session Timeout */}
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  padding: '16px',
+                  background: '#0f172a',
+                  borderRadius: '8px'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <span style={{ fontSize: '20px' }}>⏱️</span>
+                    <div>
+                      <p style={{ fontSize: '14px', fontWeight: '600', color: 'white', marginBottom: '4px' }}>
+                        Session Timeout
+                      </p>
+                      <p style={{ fontSize: '12px', color: '#64748b' }}>
+                        Auto logout after inactivity period
+                      </p>
+                    </div>
+                  </div>
+                  <select
+                    style={{
+                      padding: '8px 12px',
+                      background: '#1e293b',
+                      border: '1px solid #334155',
+                      borderRadius: '6px',
+                      color: 'white',
+                      fontSize: '13px',
+                      cursor: 'pointer',
+                      outline: 'none'
+                    }}
+                  >
+                    <option>15 minutes</option>
+                    <option>30 minutes</option>
+                    <option>1 hour</option>
+                    <option>2 hours</option>
+                    <option>Never</option>
+                  </select>
+                </div>
+
+                {/* IP Whitelist */}
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  padding: '16px',
+                  background: '#0f172a',
+                  borderRadius: '8px'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <span style={{ fontSize: '20px' }}>🌐</span>
+                    <div>
+                      <p style={{ fontSize: '14px', fontWeight: '600', color: 'white', marginBottom: '4px' }}>
+                        IP Whitelist
+                      </p>
+                      <p style={{ fontSize: '12px', color: '#64748b' }}>
+                        Restrict access to specific IP addresses
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    style={{
+                      padding: '8px 16px',
+                      background: '#4f46e5',
+                      border: 'none',
+                      borderRadius: '6px',
+                      color: 'white',
+                      fontSize: '13px',
+                      fontWeight: '600',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Configure
+                  </button>
+                </div>
               </div>
             </div>
           </div>
