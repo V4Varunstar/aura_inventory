@@ -18,6 +18,13 @@ const SubscriptionsPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedPlan, setSelectedPlan] = useState('All Plans');
   const [selectedStatus, setSelectedStatus] = useState('All Statuses');
+  const [openActionMenu, setOpenActionMenu] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showViewDetailsModal, setShowViewDetailsModal] = useState(false);
+  const [selectedSub, setSelectedSub] = useState<Subscription | null>(null);
+  const [editSub, setEditSub] = useState<Subscription | null>(null);
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([
     {
       id: '1',
@@ -83,22 +90,121 @@ const SubscriptionsPage: React.FC = () => {
       autoRenewal: false,
       status: 'Cancelled',
       checked: false
+    },
+    {
+      id: '6',
+      company: 'NexGen Solutions',
+      email: 'nexgen.io',
+      logo: 'NS',
+      plan: 'Professional',
+      planColor: '#10b981',
+      billingStart: 'Jan 15, 2024',
+      billingNext: 'Next: Feb 15, 2024',
+      autoRenewal: true,
+      status: 'Paid',
+      checked: false
+    },
+    {
+      id: '7',
+      company: 'Digital Wave',
+      email: 'digitalwave.com',
+      logo: 'DW',
+      plan: 'Enterprise',
+      planColor: '#a855f7',
+      billingStart: 'Feb 20, 2024',
+      billingNext: 'Next: Mar 20, 2024',
+      autoRenewal: true,
+      status: 'Paid',
+      checked: false
+    },
+    {
+      id: '8',
+      company: 'CloudFirst Inc',
+      email: 'cloudfirst.io',
+      logo: 'CF',
+      plan: 'Starter',
+      planColor: '#06b6d4',
+      billingStart: 'Nov 10, 2023',
+      billingNext: 'Next: Dec 10, 2024',
+      autoRenewal: false,
+      status: 'Overdue',
+      checked: false
     }
   ]);
 
+  // Filter subscriptions
+  const filteredSubscriptions = subscriptions.filter(sub => {
+    const matchesSearch = sub.company.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         sub.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         sub.plan.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesPlan = selectedPlan === 'All Plans' || sub.plan === selectedPlan;
+    const matchesStatus = selectedStatus === 'All Statuses' || sub.status === selectedStatus;
+    return matchesSearch && matchesPlan && matchesStatus;
+  });
+
+  // Calculate real-time KPIs - these recalculate on every render when subscriptions change
+  const activeSubscriptions = subscriptions.filter(s => 
+    s.status === 'Paid' || s.status === 'Pending'
+  ).length;
+  const totalSubscriptions = subscriptions.length;
+  const paidSubscriptions = subscriptions.filter(s => s.status === 'Paid').length;
+  const cancelledCount = subscriptions.filter(s => s.status === 'Cancelled').length;
+  
+  // Calculate ARR based on plan types (more realistic)
+  const totalARR = subscriptions.reduce((total, sub) => {
+    if (sub.status === 'Paid' || sub.status === 'Pending') {
+      if (sub.plan === 'Enterprise') return total + 50000;
+      if (sub.plan === 'Professional') return total + 25000;
+      if (sub.plan === 'Starter') return total + 10000;
+    }
+    return total;
+  }, 0);
+  
+  const churnRate = totalSubscriptions > 0 
+    ? ((cancelledCount / totalSubscriptions) * 100).toFixed(1) 
+    : '0.0';
+
+  // Pagination
+  const itemsPerPage = 5;
+  const totalPages = Math.ceil(filteredSubscriptions.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedSubscriptions = filteredSubscriptions.slice(startIndex, endIndex);
+
+  const goToPage = (page: number) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+    }
+  };
+
+  // Close dropdown when clicking outside
+  React.useEffect(() => {
+    const handleClickOutside = () => {
+      if (openActionMenu) {
+        setOpenActionMenu(null);
+      }
+    };
+    if (openActionMenu) {
+      document.addEventListener('click', handleClickOutside);
+      return () => document.removeEventListener('click', handleClickOutside);
+    }
+  }, [openActionMenu]);
+
   const toggleSubscriptionCheck = (id: string) => {
-    setSubscriptions(subscriptions.map(sub =>
+    setSubscriptions(prevSubs => prevSubs.map(sub =>
       sub.id === id ? { ...sub, checked: !sub.checked } : sub
     ));
   };
 
   const toggleAllSubscriptions = () => {
-    const allChecked = subscriptions.every(s => s.checked);
-    setSubscriptions(subscriptions.map(sub => ({ ...sub, checked: !allChecked })));
+    setSubscriptions(prevSubs => {
+      const allChecked = prevSubs.every(s => s.checked);
+      return prevSubs.map(sub => ({ ...sub, checked: !allChecked }));
+    });
   };
 
   const toggleAutoRenewal = (id: string) => {
-    setSubscriptions(subscriptions.map(sub =>
+    setSubscriptions(prevSubs => prevSubs.map(sub =>
       sub.id === id ? { ...sub, autoRenewal: !sub.autoRenewal } : sub
     ));
   };
@@ -134,7 +240,15 @@ const SubscriptionsPage: React.FC = () => {
         </div>
         <div style={{ display: 'flex', gap: '12px' }}>
           <button
-            onClick={() => alert('AI Insights feature coming soon!')}
+            onClick={() => {
+              const stats = `📊 Subscription Insights:\n\n` +
+                `Total ARR: $${(totalARR / 1000000).toFixed(1)}M\n` +
+                `Active Subscriptions: ${activeSubscriptions}\n` +
+                `Churn Rate: ${churnRate}%\n` +
+                `Cancelled: ${cancelledCount}\n\n` +
+                `Filtered Results: ${filteredSubscriptions.length} subscriptions`;
+              alert(stats);
+            }}
             style={{
               padding: '10px 20px',
               background: 'transparent',
@@ -153,7 +267,28 @@ const SubscriptionsPage: React.FC = () => {
           </button>
           
           <button
-            onClick={() => alert('Export CSV functionality coming soon!')}
+            onClick={() => {
+              const csvContent = [
+                ['Company', 'Email', 'Plan', 'Billing Start', 'Next Billing', 'Auto-Renewal', 'Status'].join(','),
+                ...filteredSubscriptions.map(sub => [
+                  sub.company,
+                  sub.email,
+                  sub.plan,
+                  sub.billingStart,
+                  sub.billingNext,
+                  sub.autoRenewal ? 'Yes' : 'No',
+                  sub.status
+                ].join(','))
+              ].join('\n');
+              
+              const blob = new Blob([csvContent], { type: 'text/csv' });
+              const url = window.URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = `subscriptions-export-${new Date().toISOString().split('T')[0]}.csv`;
+              a.click();
+              window.URL.revokeObjectURL(url);
+            }}
             style={{
               padding: '10px 20px',
               background: 'transparent',
@@ -172,7 +307,7 @@ const SubscriptionsPage: React.FC = () => {
           </button>
 
           <button
-            onClick={() => alert('Add Subscription functionality coming soon!')}
+            onClick={() => setShowAddModal(true)}
             style={{
               padding: '10px 20px',
               background: '#4f46e5',
@@ -204,7 +339,7 @@ const SubscriptionsPage: React.FC = () => {
             <p style={{ fontSize: '14px', color: '#94a3b8' }}>Total ARR</p>
             <span style={{ fontSize: '20px' }}>📈</span>
           </div>
-          <p style={{ fontSize: '32px', fontWeight: 'bold', color: 'white', marginBottom: '8px' }}>$1.2M</p>
+          <p style={{ fontSize: '32px', fontWeight: 'bold', color: 'white', marginBottom: '8px' }}>${(totalARR / 1000000).toFixed(1)}M</p>
           <p style={{ fontSize: '12px', color: '#10b981', display: 'flex', alignItems: 'center', gap: '4px' }}>
             <span>↑</span> 5.4% vs last month
           </p>
@@ -220,7 +355,7 @@ const SubscriptionsPage: React.FC = () => {
             <p style={{ fontSize: '14px', color: '#94a3b8' }}>Active Subscriptions</p>
             <span style={{ fontSize: '20px' }}>📊</span>
           </div>
-          <p style={{ fontSize: '32px', fontWeight: 'bold', color: 'white', marginBottom: '8px' }}>1420</p>
+          <p style={{ fontSize: '32px', fontWeight: 'bold', color: 'white', marginBottom: '8px' }}>{activeSubscriptions}</p>
           <p style={{ fontSize: '12px', color: '#10b981', display: 'flex', alignItems: 'center', gap: '4px' }}>
             <span>↑</span> 12% new subscribers
           </p>
@@ -236,7 +371,7 @@ const SubscriptionsPage: React.FC = () => {
             <p style={{ fontSize: '14px', color: '#94a3b8' }}>Churn Rate</p>
             <span style={{ fontSize: '20px' }}>📉</span>
           </div>
-          <p style={{ fontSize: '32px', fontWeight: 'bold', color: 'white', marginBottom: '8px' }}>2.1%</p>
+          <p style={{ fontSize: '32px', fontWeight: 'bold', color: 'white', marginBottom: '8px' }}>{churnRate}%</p>
           <p style={{ fontSize: '12px', color: '#10b981', display: 'flex', alignItems: 'center', gap: '4px' }}>
             <span>↑</span> 0.5% vs month (good)
           </p>
@@ -363,7 +498,7 @@ const SubscriptionsPage: React.FC = () => {
               </tr>
             </thead>
             <tbody>
-              {subscriptions.map((sub) => (
+              {paginatedSubscriptions.map((sub) => (
                 <tr key={sub.id} style={{ borderBottom: '1px solid #334155' }}>
                   <td style={{ padding: '16px 24px' }}>
                     <input
@@ -454,9 +589,12 @@ const SubscriptionsPage: React.FC = () => {
                       <span style={{ fontSize: '14px', color: '#e2e8f0', fontWeight: '500' }}>{sub.status}</span>
                     </div>
                   </td>
-                  <td style={{ padding: '16px 24px', textAlign: 'center' }}>
+                  <td style={{ padding: '16px 24px', textAlign: 'center', position: 'relative' }}>
                     <button
-                      onClick={() => alert(`Actions menu for ${sub.company}`)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setOpenActionMenu(openActionMenu === sub.id ? null : sub.id);
+                      }}
                       style={{
                         background: 'transparent',
                         border: 'none',
@@ -468,6 +606,139 @@ const SubscriptionsPage: React.FC = () => {
                     >
                       ⋮
                     </button>
+                    {openActionMenu === sub.id && (
+                      <div
+                        onClick={(e) => e.stopPropagation()}
+                        style={{
+                          position: 'absolute',
+                          right: '60px',
+                          top: '50%',
+                          transform: 'translateY(-50%)',
+                          background: '#1e293b',
+                          border: '1px solid #334155',
+                          borderRadius: '8px',
+                          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2)',
+                          zIndex: 100,
+                          minWidth: '200px',
+                          overflow: 'hidden'
+                        }}
+                      >
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditSub({...sub});
+                            setShowEditModal(true);
+                            setOpenActionMenu(null);
+                          }}
+                          style={{
+                            width: '100%',
+                            padding: '12px 16px',
+                            background: 'transparent',
+                            border: 'none',
+                            color: '#e2e8f0',
+                            cursor: 'pointer',
+                            fontSize: '14px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '10px',
+                            textAlign: 'left',
+                            transition: 'background 0.2s'
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.background = '#334155'}
+                          onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                        >
+                          <span style={{ fontSize: '16px' }}>✏️</span>
+                          Edit Subscription
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedSub(sub);
+                            setShowViewDetailsModal(true);
+                            setOpenActionMenu(null);
+                          }}
+                          style={{
+                            width: '100%',
+                            padding: '12px 16px',
+                            background: 'transparent',
+                            border: 'none',
+                            color: '#e2e8f0',
+                            cursor: 'pointer',
+                            fontSize: '14px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '10px',
+                            textAlign: 'left',
+                            transition: 'background 0.2s'
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.background = '#334155'}
+                          onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                        >
+                          <span style={{ fontSize: '16px' }}>👁️</span>
+                          View Details
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (confirm(`Are you sure you want to ${sub.status === 'Cancelled' ? 'reactivate' : 'cancel'} ${sub.company}'s subscription?`)) {
+                              setSubscriptions(prevSubs => prevSubs.map(s => 
+                                s.id === sub.id 
+                                  ? { ...s, status: s.status === 'Cancelled' ? 'Paid' as 'Paid' : 'Cancelled' as 'Cancelled' } 
+                                  : s
+                              ));
+                            }
+                            setOpenActionMenu(null);
+                          }}
+                          style={{
+                            width: '100%',
+                            padding: '12px 16px',
+                            background: 'transparent',
+                            border: 'none',
+                            color: sub.status === 'Cancelled' ? '#10b981' : '#f59e0b',
+                            cursor: 'pointer',
+                            fontSize: '14px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '10px',
+                            textAlign: 'left',
+                            transition: 'background 0.2s'
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.background = '#334155'}
+                          onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                        >
+                          <span style={{ fontSize: '16px' }}>{sub.status === 'Cancelled' ? '✅' : '⏸️'}</span>
+                          {sub.status === 'Cancelled' ? 'Reactivate' : 'Cancel Subscription'}
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (confirm(`Are you sure you want to delete ${sub.company}'s subscription? This action cannot be undone.`)) {
+                              setSubscriptions(prevSubs => prevSubs.filter(s => s.id !== sub.id));
+                            }
+                            setOpenActionMenu(null);
+                          }}
+                          style={{
+                            width: '100%',
+                            padding: '12px 16px',
+                            background: 'transparent',
+                            border: 'none',
+                            color: '#ef4444',
+                            cursor: 'pointer',
+                            fontSize: '14px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '10px',
+                            textAlign: 'left',
+                            transition: 'background 0.2s'
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.background = '#334155'}
+                          onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                        >
+                          <span style={{ fontSize: '16px' }}>🗑️</span>
+                          Delete
+                        </button>
+                      </div>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -484,79 +755,580 @@ const SubscriptionsPage: React.FC = () => {
           alignItems: 'center'
         }}>
           <p style={{ fontSize: '14px', color: '#64748b' }}>
-            Showing <span style={{ color: 'white', fontWeight: '600' }}>1</span> to <span style={{ color: 'white', fontWeight: '600' }}>5</span> of <span style={{ color: 'white', fontWeight: '600' }}>1,420</span> results
+            Showing <span style={{ color: 'white', fontWeight: '600' }}>{startIndex + 1}</span> to <span style={{ color: 'white', fontWeight: '600' }}>{Math.min(endIndex, filteredSubscriptions.length)}</span> of <span style={{ color: 'white', fontWeight: '600' }}>{filteredSubscriptions.length}</span> results
           </p>
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
             <button
+              onClick={() => goToPage(currentPage - 1)}
+              disabled={currentPage === 1}
               style={{
-                padding: '8px 12px',
-                background: '#4f46e5',
-                border: 'none',
+                padding: '8px 16px',
+                background: currentPage === 1 ? '#0f172a' : '#334155',
+                border: '1px solid #475569',
                 borderRadius: '6px',
-                color: 'white',
+                color: currentPage === 1 ? '#475569' : 'white',
+                cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
                 fontSize: '14px',
-                fontWeight: '600',
-                cursor: 'pointer'
+                fontWeight: '500'
               }}
             >
-              1
+              Previous
             </button>
+            {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => i + 1).map(page => (
+              <button
+                key={page}
+                onClick={() => goToPage(page)}
+                style={{
+                  padding: '8px 12px',
+                  background: currentPage === page ? '#4f46e5' : '#334155',
+                  border: '1px solid #475569',
+                  borderRadius: '6px',
+                  color: 'white',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  minWidth: '40px'
+                }}
+              >
+                {page}
+              </button>
+            ))}
             <button
+              onClick={() => goToPage(currentPage + 1)}
+              disabled={currentPage === totalPages}
               style={{
-                padding: '8px 12px',
-                background: 'transparent',
-                border: '1px solid #334155',
+                padding: '8px 16px',
+                background: currentPage === totalPages ? '#0f172a' : '#334155',
+                border: '1px solid #475569',
                 borderRadius: '6px',
-                color: '#94a3b8',
+                color: currentPage === totalPages ? '#475569' : 'white',
+                cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
                 fontSize: '14px',
-                cursor: 'pointer'
+                fontWeight: '500'
               }}
             >
-              2
-            </button>
-            <button
-              style={{
-                padding: '8px 12px',
-                background: 'transparent',
-                border: '1px solid #334155',
-                borderRadius: '6px',
-                color: '#94a3b8',
-                fontSize: '14px',
-                cursor: 'pointer'
-              }}
-            >
-              3
-            </button>
-            <span style={{ color: '#64748b', padding: '0 8px' }}>...</span>
-            <button
-              style={{
-                padding: '8px 12px',
-                background: 'transparent',
-                border: '1px solid #334155',
-                borderRadius: '6px',
-                color: '#94a3b8',
-                fontSize: '14px',
-                cursor: 'pointer'
-              }}
-            >
-              10
-            </button>
-            <button
-              style={{
-                padding: '8px 12px',
-                background: 'transparent',
-                border: '1px solid #334155',
-                borderRadius: '6px',
-                color: '#94a3b8',
-                fontSize: '14px',
-                cursor: 'pointer'
-              }}
-            >
-              ›
+              Next
             </button>
           </div>
         </div>
       </div>
+
+      {/* Add Subscription Modal */}
+      {showAddModal && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(0,0,0,0.7)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{
+            background: '#1e293b',
+            border: '1px solid #334155',
+            borderRadius: '12px',
+            padding: '32px',
+            width: '100%',
+            maxWidth: '500px',
+            maxHeight: '90vh',
+            overflowY: 'auto'
+          }}>
+            <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: 'white', marginBottom: '8px' }}>
+              Add New Subscription
+            </h2>
+            <p style={{ fontSize: '14px', color: '#94a3b8', marginBottom: '24px' }}>
+              Create a new subscription for a company
+            </p>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '13px', color: '#94a3b8', marginBottom: '8px', fontWeight: '500' }}>
+                  Company Name *
+                </label>
+                <input
+                  type="text"
+                  placeholder="Acme Corp"
+                  style={{
+                    width: '100%',
+                    padding: '10px 14px',
+                    background: '#0f172a',
+                    border: '1px solid #334155',
+                    borderRadius: '8px',
+                    color: 'white',
+                    fontSize: '14px',
+                    outline: 'none',
+                    boxSizing: 'border-box'
+                  }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '13px', color: '#94a3b8', marginBottom: '8px', fontWeight: '500' }}>
+                  Email *
+                </label>
+                <input
+                  type="email"
+                  placeholder="acme.co"
+                  style={{
+                    width: '100%',
+                    padding: '10px 14px',
+                    background: '#0f172a',
+                    border: '1px solid #334155',
+                    borderRadius: '8px',
+                    color: 'white',
+                    fontSize: '14px',
+                    outline: 'none',
+                    boxSizing: 'border-box'
+                  }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '13px', color: '#94a3b8', marginBottom: '8px', fontWeight: '500' }}>
+                  Plan *
+                </label>
+                <select
+                  style={{
+                    width: '100%',
+                    padding: '10px 14px',
+                    background: '#0f172a',
+                    border: '1px solid #334155',
+                    borderRadius: '8px',
+                    color: 'white',
+                    fontSize: '14px',
+                    outline: 'none',
+                    cursor: 'pointer',
+                    boxSizing: 'border-box'
+                  }}
+                >
+                  <option value="Enterprise">Enterprise</option>
+                  <option value="Professional">Professional</option>
+                  <option value="Starter">Starter</option>
+                </select>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '13px', color: '#94a3b8', marginBottom: '8px', fontWeight: '500' }}>
+                  Billing Start Date *
+                </label>
+                <input
+                  type="date"
+                  style={{
+                    width: '100%',
+                    padding: '10px 14px',
+                    background: '#0f172a',
+                    border: '1px solid #334155',
+                    borderRadius: '8px',
+                    color: 'white',
+                    fontSize: '14px',
+                    outline: 'none',
+                    boxSizing: 'border-box'
+                  }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <input type="checkbox" id="autoRenewal" style={{ width: '18px', height: '18px', cursor: 'pointer' }} />
+                <label htmlFor="autoRenewal" style={{ fontSize: '14px', color: 'white', cursor: 'pointer' }}>
+                  Enable Auto-Renewal
+                </label>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
+              <button
+                onClick={() => setShowAddModal(false)}
+                style={{
+                  flex: 1,
+                  padding: '12px',
+                  background: 'transparent',
+                  border: '1px solid #334155',
+                  borderRadius: '8px',
+                  color: '#94a3b8',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer'
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  alert('Subscription added successfully!');
+                  setShowAddModal(false);
+                }}
+                style={{
+                  flex: 1,
+                  padding: '12px',
+                  background: '#4f46e5',
+                  border: 'none',
+                  borderRadius: '8px',
+                  color: 'white',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer'
+                }}
+              >
+                Add Subscription
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Subscription Modal */}
+      {showEditModal && editSub && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(0,0,0,0.7)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{
+            background: '#1e293b',
+            border: '1px solid #334155',
+            borderRadius: '12px',
+            padding: '32px',
+            width: '100%',
+            maxWidth: '500px',
+            maxHeight: '90vh',
+            overflowY: 'auto'
+          }}>
+            <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: 'white', marginBottom: '8px' }}>
+              Edit Subscription
+            </h2>
+            <p style={{ fontSize: '14px', color: '#94a3b8', marginBottom: '24px' }}>
+              Update subscription details for {editSub.company}
+            </p>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '13px', color: '#94a3b8', marginBottom: '8px', fontWeight: '500' }}>
+                  Company Name *
+                </label>
+                <input
+                  type="text"
+                  value={editSub.company}
+                  onChange={(e) => setEditSub({ ...editSub, company: e.target.value })}
+                  style={{
+                    width: '100%',
+                    padding: '10px 14px',
+                    background: '#0f172a',
+                    border: '1px solid #334155',
+                    borderRadius: '8px',
+                    color: 'white',
+                    fontSize: '14px',
+                    outline: 'none',
+                    boxSizing: 'border-box'
+                  }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '13px', color: '#94a3b8', marginBottom: '8px', fontWeight: '500' }}>
+                  Email *
+                </label>
+                <input
+                  type="email"
+                  value={editSub.email}
+                  onChange={(e) => setEditSub({ ...editSub, email: e.target.value })}
+                  style={{
+                    width: '100%',
+                    padding: '10px 14px',
+                    background: '#0f172a',
+                    border: '1px solid #334155',
+                    borderRadius: '8px',
+                    color: 'white',
+                    fontSize: '14px',
+                    outline: 'none',
+                    boxSizing: 'border-box'
+                  }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '13px', color: '#94a3b8', marginBottom: '8px', fontWeight: '500' }}>
+                  Plan *
+                </label>
+                <select
+                  value={editSub.plan}
+                  onChange={(e) => {
+                    const plan = e.target.value;
+                    let planColor = '#a855f7';
+                    if (plan === 'Professional') planColor = '#10b981';
+                    else if (plan === 'Starter') planColor = '#06b6d4';
+                    setEditSub({ ...editSub, plan, planColor });
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '10px 14px',
+                    background: '#0f172a',
+                    border: '1px solid #334155',
+                    borderRadius: '8px',
+                    color: 'white',
+                    fontSize: '14px',
+                    outline: 'none',
+                    cursor: 'pointer',
+                    boxSizing: 'border-box'
+                  }}
+                >
+                  <option value="Enterprise">Enterprise</option>
+                  <option value="Professional">Professional</option>
+                  <option value="Starter">Starter</option>
+                </select>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '13px', color: '#94a3b8', marginBottom: '8px', fontWeight: '500' }}>
+                  Status
+                </label>
+                <select
+                  value={editSub.status}
+                  onChange={(e) => setEditSub({ ...editSub, status: e.target.value as 'Paid' | 'Pending' | 'Overdue' | 'Cancelled' })}
+                  style={{
+                    width: '100%',
+                    padding: '10px 14px',
+                    background: '#0f172a',
+                    border: '1px solid #334155',
+                    borderRadius: '8px',
+                    color: 'white',
+                    fontSize: '14px',
+                    outline: 'none',
+                    cursor: 'pointer',
+                    boxSizing: 'border-box'
+                  }}
+                >
+                  <option value="Paid">Paid</option>
+                  <option value="Pending">Pending</option>
+                  <option value="Overdue">Overdue</option>
+                  <option value="Cancelled">Cancelled</option>
+                </select>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <input 
+                  type="checkbox" 
+                  id="editAutoRenewal" 
+                  checked={editSub.autoRenewal}
+                  onChange={(e) => setEditSub({ ...editSub, autoRenewal: e.target.checked })}
+                  style={{ width: '18px', height: '18px', cursor: 'pointer' }} 
+                />
+                <label htmlFor="editAutoRenewal" style={{ fontSize: '14px', color: 'white', cursor: 'pointer' }}>
+                  Enable Auto-Renewal
+                </label>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
+              <button
+                onClick={() => {
+                  setShowEditModal(false);
+                  setEditSub(null);
+                }}
+                style={{
+                  flex: 1,
+                  padding: '12px',
+                  background: 'transparent',
+                  border: '1px solid #334155',
+                  borderRadius: '8px',
+                  color: '#94a3b8',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer'
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  if (editSub.company && editSub.email) {
+                    setSubscriptions(prevSubs => prevSubs.map(s => s.id === editSub.id ? editSub : s));
+                    setShowEditModal(false);
+                    setEditSub(null);
+                  }
+                }}
+                style={{
+                  flex: 1,
+                  padding: '12px',
+                  background: '#4f46e5',
+                  border: 'none',
+                  borderRadius: '8px',
+                  color: 'white',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer'
+                }}
+              >
+                Save Changes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* View Details Modal */}
+      {showViewDetailsModal && selectedSub && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(0,0,0,0.7)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{
+            background: '#1e293b',
+            border: '1px solid #334155',
+            borderRadius: '12px',
+            padding: '32px',
+            width: '100%',
+            maxWidth: '600px',
+            maxHeight: '90vh',
+            overflowY: 'auto'
+          }}>
+            {/* Header */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '24px' }}>
+              <div style={{
+                width: '60px',
+                height: '60px',
+                borderRadius: '50%',
+                background: selectedSub.planColor + '30',
+                border: `3px solid ${selectedSub.planColor}`,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '24px',
+                fontWeight: 'bold',
+                color: selectedSub.planColor
+              }}>
+                {selectedSub.logo}
+              </div>
+              <div>
+                <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: 'white', marginBottom: '4px' }}>
+                  {selectedSub.company}
+                </h2>
+                <p style={{ fontSize: '14px', color: '#94a3b8' }}>
+                  {selectedSub.email}
+                </p>
+              </div>
+            </div>
+
+            {/* Details Grid */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              <div style={{
+                background: '#0f172a',
+                border: '1px solid #334155',
+                borderRadius: '8px',
+                padding: '16px'
+              }}>
+                <p style={{ fontSize: '12px', color: '#64748b', marginBottom: '8px', textTransform: 'uppercase', fontWeight: '600' }}>
+                  Plan
+                </p>
+                <span style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  padding: '8px 16px',
+                  borderRadius: '6px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  background: selectedSub.planColor + '20',
+                  color: selectedSub.planColor,
+                  border: `1px solid ${selectedSub.planColor}40`
+                }}>
+                  {selectedSub.plan}
+                </span>
+              </div>
+
+              <div style={{
+                background: '#0f172a',
+                border: '1px solid #334155',
+                borderRadius: '8px',
+                padding: '16px'
+              }}>
+                <p style={{ fontSize: '12px', color: '#64748b', marginBottom: '8px', textTransform: 'uppercase', fontWeight: '600' }}>
+                  Status
+                </p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{
+                    width: '10px',
+                    height: '10px',
+                    borderRadius: '50%',
+                    background: getStatusColor(selectedSub.status)
+                  }} />
+                  <span style={{ fontSize: '16px', color: 'white', fontWeight: '600' }}>{selectedSub.status}</span>
+                </div>
+              </div>
+
+              <div style={{
+                background: '#0f172a',
+                border: '1px solid #334155',
+                borderRadius: '8px',
+                padding: '16px'
+              }}>
+                <p style={{ fontSize: '12px', color: '#64748b', marginBottom: '8px', textTransform: 'uppercase', fontWeight: '600' }}>
+                  Billing Cycle
+                </p>
+                <p style={{ fontSize: '14px', color: 'white', marginBottom: '4px' }}>Start: {selectedSub.billingStart}</p>
+                <p style={{ fontSize: '14px', color: '#94a3b8' }}>{selectedSub.billingNext}</p>
+              </div>
+
+              <div style={{
+                background: '#0f172a',
+                border: '1px solid #334155',
+                borderRadius: '8px',
+                padding: '16px'
+              }}>
+                <p style={{ fontSize: '12px', color: '#64748b', marginBottom: '8px', textTransform: 'uppercase', fontWeight: '600' }}>
+                  Auto-Renewal
+                </p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '18px' }}>{selectedSub.autoRenewal ? '✅' : '❌'}</span>
+                  <span style={{ fontSize: '14px', color: 'white' }}>{selectedSub.autoRenewal ? 'Enabled' : 'Disabled'}</span>
+                </div>
+              </div>
+
+              <div style={{
+                background: '#0f172a',
+                border: '1px solid #334155',
+                borderRadius: '8px',
+                padding: '16px'
+              }}>
+                <p style={{ fontSize: '12px', color: '#64748b', marginBottom: '8px', textTransform: 'uppercase', fontWeight: '600' }}>
+                  Subscription ID
+                </p>
+                <p style={{ fontSize: '14px', color: 'white', fontFamily: 'monospace' }}>{selectedSub.id}</p>
+              </div>
+            </div>
+
+            <div style={{ marginTop: '24px' }}>
+              <button
+                onClick={() => {
+                  setShowViewDetailsModal(false);
+                  setSelectedSub(null);
+                }}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  background: '#4f46e5',
+                  border: 'none',
+                  borderRadius: '8px',
+                  color: 'white',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer'
+                }}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

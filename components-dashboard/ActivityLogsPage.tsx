@@ -22,6 +22,10 @@ const ActivityLogsPage: React.FC = () => {
   const [targetCompany, setTargetCompany] = useState('All');
   const [status, setStatus] = useState('Success');
   const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [showDateModal, setShowDateModal] = useState(false);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [selectedLog, setSelectedLog] = useState<ActivityLog | null>(null);
 
   const activityLogs: ActivityLog[] = [
     {
@@ -96,6 +100,29 @@ const ActivityLogsPage: React.FC = () => {
     }
   ];
 
+  // Filter activity logs
+  const filteredLogs = activityLogs.filter(log => {
+    const matchesSearch = log.user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         log.user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         log.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         log.ipAddress.includes(searchQuery);
+    const matchesAction = actionType === 'All' || actionType === 'Action Type: All' || log.actionType === actionType;
+    const matchesCompany = targetCompany === 'All' || targetCompany === 'Target Company: All' || log.company === targetCompany;
+    return matchesSearch && matchesAction && matchesCompany;
+  });
+
+  // Pagination
+  const totalPages = Math.ceil(filteredLogs.length / rowsPerPage);
+  const startIndex = (currentPage - 1) * rowsPerPage;
+  const endIndex = startIndex + rowsPerPage;
+  const paginatedLogs = filteredLogs.slice(startIndex, endIndex);
+
+  const goToPage = (page: number) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+    }
+  };
+
   const getActionColor = (actionType: string) => {
     switch (actionType) {
       case 'Update': return '#3b82f6';
@@ -159,6 +186,7 @@ const ActivityLogsPage: React.FC = () => {
 
           {/* Date Filter */}
           <button
+            onClick={() => setShowDateModal(true)}
             style={{
               padding: '10px 16px',
               background: '#0f172a',
@@ -177,7 +205,28 @@ const ActivityLogsPage: React.FC = () => {
 
           {/* Export CSV */}
           <button
-            onClick={() => alert('Export CSV functionality coming soon!')}
+            onClick={() => {
+              const csvContent = [
+                ['Timestamp', 'User', 'Email', 'Company', 'Action', 'Description', 'IP Address'].join(','),
+                ...filteredLogs.map(log => [
+                  log.timestamp,
+                  log.user.name,
+                  log.user.email,
+                  log.company,
+                  log.actionType,
+                  log.description,
+                  log.ipAddress
+                ].join(','))
+              ].join('\n');
+              
+              const blob = new Blob([csvContent], { type: 'text/csv' });
+              const url = window.URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = `activity-logs-${new Date().toISOString().split('T')[0]}.csv`;
+              a.click();
+              window.URL.revokeObjectURL(url);
+            }}
             style={{
               padding: '10px 20px',
               background: 'transparent',
@@ -320,7 +369,7 @@ const ActivityLogsPage: React.FC = () => {
               </tr>
             </thead>
             <tbody>
-              {activityLogs.map((log) => (
+              {paginatedLogs.map((log) => (
                 <tr key={log.id} style={{ borderBottom: '1px solid #334155' }}>
                   <td style={{ padding: '16px 24px', fontSize: '13px', color: '#94a3b8', fontFamily: 'monospace' }}>
                     {log.timestamp}
@@ -372,7 +421,10 @@ const ActivityLogsPage: React.FC = () => {
                   </td>
                   <td style={{ padding: '16px 24px', textAlign: 'center' }}>
                     <button
-                      onClick={() => alert(`View details for ${log.user.name}'s action`)}
+                      onClick={() => {
+                        setSelectedLog(log);
+                        setShowDetailsModal(true);
+                      }}
                       style={{
                         background: 'transparent',
                         border: 'none',
@@ -424,31 +476,35 @@ const ActivityLogsPage: React.FC = () => {
           
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
             <p style={{ fontSize: '14px', color: '#94a3b8' }}>
-              <span style={{ color: 'white', fontWeight: '600' }}>1-10</span> of <span style={{ color: 'white', fontWeight: '600' }}>245</span>
+              <span style={{ color: 'white', fontWeight: '600' }}>{startIndex + 1}-{Math.min(endIndex, filteredLogs.length)}</span> of <span style={{ color: 'white', fontWeight: '600' }}>{filteredLogs.length}</span>
             </p>
             <div style={{ display: 'flex', gap: '8px' }}>
               <button
+                onClick={() => goToPage(currentPage - 1)}
+                disabled={currentPage === 1}
                 style={{
                   padding: '6px 10px',
                   background: 'transparent',
                   border: '1px solid #334155',
                   borderRadius: '6px',
-                  color: '#94a3b8',
+                  color: currentPage === 1 ? '#475569' : '#94a3b8',
                   fontSize: '14px',
-                  cursor: 'pointer'
+                  cursor: currentPage === 1 ? 'not-allowed' : 'pointer'
                 }}
               >
                 ‹
               </button>
               <button
+                onClick={() => goToPage(currentPage + 1)}
+                disabled={currentPage === totalPages}
                 style={{
                   padding: '6px 10px',
                   background: 'transparent',
                   border: '1px solid #334155',
                   borderRadius: '6px',
-                  color: '#94a3b8',
+                  color: currentPage === totalPages ? '#475569' : '#94a3b8',
                   fontSize: '14px',
-                  cursor: 'pointer'
+                  cursor: currentPage === totalPages ? 'not-allowed' : 'pointer'
                 }}
               >
                 ›
@@ -457,6 +513,252 @@ const ActivityLogsPage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Date Filter Modal */}
+      {showDateModal && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(0,0,0,0.7)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{
+            background: '#1e293b',
+            border: '1px solid #334155',
+            borderRadius: '12px',
+            padding: '32px',
+            width: '100%',
+            maxWidth: '400px'
+          }}>
+            <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: 'white', marginBottom: '8px' }}>
+              Select Date Range
+            </h2>
+            <p style={{ fontSize: '14px', color: '#94a3b8', marginBottom: '24px' }}>
+              Choose a predefined time range for activity logs
+            </p>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {['Last 24 Hours', 'Last 7 Days', 'Last 30 Days', 'Last 90 Days', 'Last Year', 'All Time'].map(range => (
+                <button
+                  key={range}
+                  onClick={() => {
+                    setDateFilter(range);
+                    setShowDateModal(false);
+                  }}
+                  style={{
+                    padding: '12px 16px',
+                    background: dateFilter === range ? '#4f46e520' : 'transparent',
+                    border: `1px solid ${dateFilter === range ? '#4f46e5' : '#334155'}`,
+                    borderRadius: '8px',
+                    color: dateFilter === range ? '#4f46e5' : 'white',
+                    fontSize: '14px',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseEnter={(e) => {
+                    if (dateFilter !== range) {
+                      e.currentTarget.style.background = '#334155';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (dateFilter !== range) {
+                      e.currentTarget.style.background = 'transparent';
+                    }
+                  }}
+                >
+                  {range}
+                </button>
+              ))}
+            </div>
+
+            <div style={{ marginTop: '24px' }}>
+              <button
+                onClick={() => setShowDateModal(false)}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  background: 'transparent',
+                  border: '1px solid #334155',
+                  borderRadius: '8px',
+                  color: '#94a3b8',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer'
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* View Details Modal */}
+      {showDetailsModal && selectedLog && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(0,0,0,0.7)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{
+            background: '#1e293b',
+            border: '1px solid #334155',
+            borderRadius: '12px',
+            padding: '32px',
+            width: '100%',
+            maxWidth: '600px',
+            maxHeight: '90vh',
+            overflowY: 'auto'
+          }}>
+            <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: 'white', marginBottom: '8px' }}>
+              Activity Details
+            </h2>
+            <p style={{ fontSize: '14px', color: '#94a3b8', marginBottom: '24px' }}>
+              Complete information about this activity log
+            </p>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              {/* User Info */}
+              <div style={{
+                background: '#0f172a',
+                border: '1px solid #334155',
+                borderRadius: '8px',
+                padding: '16px'
+              }}>
+                <p style={{ fontSize: '12px', color: '#64748b', marginBottom: '12px', textTransform: 'uppercase', fontWeight: '600' }}>
+                  User Information
+                </p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+                  <div style={{
+                    width: '48px',
+                    height: '48px',
+                    borderRadius: '50%',
+                    background: '#334155',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '20px'
+                  }}>
+                    {selectedLog.user.avatar}
+                  </div>
+                  <div>
+                    <p style={{ fontSize: '16px', fontWeight: '600', color: 'white' }}>{selectedLog.user.name}</p>
+                    <p style={{ fontSize: '14px', color: '#94a3b8' }}>{selectedLog.user.email}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Info */}
+              <div style={{
+                background: '#0f172a',
+                border: '1px solid #334155',
+                borderRadius: '8px',
+                padding: '16px'
+              }}>
+                <p style={{ fontSize: '12px', color: '#64748b', marginBottom: '12px', textTransform: 'uppercase', fontWeight: '600' }}>
+                  Action Type
+                </p>
+                <span style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  padding: '8px 16px',
+                  borderRadius: '6px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  background: getActionColor(selectedLog.actionType) + '20',
+                  color: getActionColor(selectedLog.actionType),
+                  border: `1px solid ${getActionColor(selectedLog.actionType)}40`
+                }}>
+                  {selectedLog.actionType}
+                </span>
+                <p style={{ fontSize: '14px', color: 'white', marginTop: '12px' }}>{selectedLog.description}</p>
+              </div>
+
+              {/* Company */}
+              <div style={{
+                background: '#0f172a',
+                border: '1px solid #334155',
+                borderRadius: '8px',
+                padding: '16px'
+              }}>
+                <p style={{ fontSize: '12px', color: '#64748b', marginBottom: '8px', textTransform: 'uppercase', fontWeight: '600' }}>
+                  Target Company
+                </p>
+                <p style={{ fontSize: '16px', color: 'white', fontWeight: '500' }}>{selectedLog.company}</p>
+              </div>
+
+              {/* Timestamp */}
+              <div style={{
+                background: '#0f172a',
+                border: '1px solid #334155',
+                borderRadius: '8px',
+                padding: '16px'
+              }}>
+                <p style={{ fontSize: '12px', color: '#64748b', marginBottom: '8px', textTransform: 'uppercase', fontWeight: '600' }}>
+                  Timestamp
+                </p>
+                <p style={{ fontSize: '14px', color: 'white', fontFamily: 'monospace' }}>{selectedLog.timestamp}</p>
+              </div>
+
+              {/* IP Address */}
+              <div style={{
+                background: '#0f172a',
+                border: '1px solid #334155',
+                borderRadius: '8px',
+                padding: '16px'
+              }}>
+                <p style={{ fontSize: '12px', color: '#64748b', marginBottom: '8px', textTransform: 'uppercase', fontWeight: '600' }}>
+                  IP Address
+                </p>
+                <p style={{ fontSize: '14px', color: 'white', fontFamily: 'monospace' }}>{selectedLog.ipAddress}</p>
+              </div>
+
+              {/* Activity ID */}
+              <div style={{
+                background: '#0f172a',
+                border: '1px solid #334155',
+                borderRadius: '8px',
+                padding: '16px'
+              }}>
+                <p style={{ fontSize: '12px', color: '#64748b', marginBottom: '8px', textTransform: 'uppercase', fontWeight: '600' }}>
+                  Activity ID
+                </p>
+                <p style={{ fontSize: '14px', color: 'white', fontFamily: 'monospace' }}>{selectedLog.id}</p>
+              </div>
+            </div>
+
+            <div style={{ marginTop: '24px' }}>
+              <button
+                onClick={() => {
+                  setShowDetailsModal(false);
+                  setSelectedLog(null);
+                }}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  background: '#4f46e5',
+                  border: 'none',
+                  borderRadius: '8px',
+                  color: 'white',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer'
+                }}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

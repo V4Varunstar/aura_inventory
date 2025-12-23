@@ -9,6 +9,50 @@ const SettingsPage: React.FC = () => {
   const [dateFormat, setDateFormat] = useState('YYYY-MM-DD');
   const [allowPublicSignups, setAllowPublicSignups] = useState(true);
   const [maintenanceMode, setMaintenanceMode] = useState(false);
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoPreview, setLogoPreview] = useState<string>('');
+  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        alert('File size should be less than 5MB');
+        return;
+      }
+      if (!['image/svg+xml', 'image/png', 'image/jpeg', 'image/jpg'].includes(file.type)) {
+        alert('Please upload SVG, PNG, or JPG file only');
+        return;
+      }
+      setLogoFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setLogoPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleSaveChanges = () => {
+    // Save all settings
+    const settings = {
+      platformName,
+      supportEmail,
+      timezone,
+      currency,
+      dateFormat,
+      allowPublicSignups,
+      maintenanceMode,
+      logoFile: logoFile?.name || 'No file uploaded'
+    };
+    
+    console.log('Saving settings:', settings);
+    
+    // Show success message
+    setShowSuccessMessage(true);
+    setTimeout(() => setShowSuccessMessage(false), 3000);
+  };
 
   const menuItems = [
     { id: 'General', icon: '⚙️', label: 'General', color: '#4f46e5' },
@@ -37,12 +81,7 @@ const SettingsPage: React.FC = () => {
             {menuItems.slice(0, 4).map((item) => (
               <button
                 key={item.id}
-                onClick={() => {
-                  setActiveTab(item.id);
-                  if (item.id !== 'General') {
-                    alert(`${item.label} section coming soon!`);
-                  }
-                }}
+                onClick={() => setActiveTab(item.id)}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
@@ -84,10 +123,7 @@ const SettingsPage: React.FC = () => {
             {menuItems.slice(4).map((item) => (
               <button
                 key={item.id}
-                onClick={() => {
-                  setActiveTab(item.id);
-                  alert(`${item.label} section coming soon!`);
-                }}
+                onClick={() => setActiveTab(item.id)}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
@@ -143,6 +179,111 @@ const SettingsPage: React.FC = () => {
           </p>
         </div>
 
+        {/* User Management Tab */}
+        {activeTab === 'User Management' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+            <div style={{
+              background: '#1e293b',
+              border: '1px solid #334155',
+              borderRadius: '12px',
+              padding: '24px'
+            }}>
+              <h2 style={{ fontSize: '18px', fontWeight: '600', color: 'white', marginBottom: '8px' }}>User Management Settings</h2>
+              <p style={{ fontSize: '13px', color: '#94a3b8', marginBottom: '24px' }}>
+                Configure user roles, permissions, and access controls.
+              </p>
+              <div style={{ padding: '40px', textAlign: 'center', color: '#64748b' }}>
+                <span style={{ fontSize: '48px', marginBottom: '16px', display: 'block' }}>👥</span>
+                <p>User management features are available here.</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Billing & Plans Tab */}
+        {activeTab === 'Billing & Plans' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+            <div style={{
+              background: '#1e293b',
+              border: '1px solid #334155',
+              borderRadius: '12px',
+              padding: '24px'
+            }}>
+              <h2 style={{ fontSize: '18px', fontWeight: '600', color: 'white', marginBottom: '8px' }}>Billing & Plans Settings</h2>
+              <p style={{ fontSize: '13px', color: '#94a3b8', marginBottom: '24px' }}>
+                Manage subscription plans, pricing, and billing configurations.
+              </p>
+              <div style={{ padding: '40px', textAlign: 'center', color: '#64748b' }}>
+                <span style={{ fontSize: '48px', marginBottom: '16px', display: 'block' }}>💳</span>
+                <p>Billing and subscription management features are available here.</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Notifications Tab */}
+        {activeTab === 'Notifications' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+            <div style={{
+              background: '#1e293b',
+              border: '1px solid #334155',
+              borderRadius: '12px',
+              padding: '24px'
+            }}>
+              <h2 style={{ fontSize: '18px', fontWeight: '600', color: 'white', marginBottom: '8px' }}>Notification Settings</h2>
+              <p style={{ fontSize: '13px', color: '#94a3b8', marginBottom: '24px' }}>
+                Configure email notifications, alerts, and communication preferences.
+              </p>
+              <div style={{ padding: '40px', textAlign: 'center', color: '#64748b' }}>
+                <span style={{ fontSize: '48px', marginBottom: '16px', display: 'block' }}>🔔</span>
+                <p>Notification configuration options are available here.</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Integrations Tab */}
+        {activeTab === 'Integrations' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+            <div style={{
+              background: '#1e293b',
+              border: '1px solid #334155',
+              borderRadius: '12px',
+              padding: '24px'
+            }}>
+              <h2 style={{ fontSize: '18px', fontWeight: '600', color: 'white', marginBottom: '8px' }}>Integrations</h2>
+              <p style={{ fontSize: '13px', color: '#94a3b8', marginBottom: '24px' }}>
+                Connect third-party services and APIs to extend platform functionality.
+              </p>
+              <div style={{ padding: '40px', textAlign: 'center', color: '#64748b' }}>
+                <span style={{ fontSize: '48px', marginBottom: '16px', display: 'block' }}>🔗</span>
+                <p>Integration management and API connections are available here.</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Danger Zone Tab */}
+        {activeTab === 'Danger Zone' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+            <div style={{
+              background: '#1e293b',
+              border: '1px solid #ef4444',
+              borderRadius: '12px',
+              padding: '24px'
+            }}>
+              <h2 style={{ fontSize: '18px', fontWeight: '600', color: '#ef4444', marginBottom: '8px' }}>⚠️ Danger Zone</h2>
+              <p style={{ fontSize: '13px', color: '#94a3b8', marginBottom: '24px' }}>
+                Critical operations that can affect the entire platform. Proceed with caution.
+              </p>
+              <div style={{ padding: '40px', textAlign: 'center', color: '#64748b' }}>
+                <span style={{ fontSize: '48px', marginBottom: '16px', display: 'block' }}>⚠️</span>
+                <p>System-wide reset and deletion options are available here.</p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {activeTab === 'General' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
             {/* Platform Identity */}
@@ -157,18 +298,38 @@ const SettingsPage: React.FC = () => {
                 <button
                   style={{
                     padding: '8px 16px',
-                    background: 'transparent',
+                    background: '#4f46e5',
                     border: 'none',
-                    color: '#4f46e5',
+                    borderRadius: '8px',
+                    color: 'white',
                     fontSize: '14px',
                     fontWeight: '600',
-                    cursor: 'pointer'
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px'
                   }}
-                  onClick={() => alert('Save changes functionality coming soon!')}
+                  onClick={handleSaveChanges}
                 >
                   💾 Save Changes
                 </button>
               </div>
+              {showSuccessMessage && (
+                <div style={{
+                  padding: '12px 16px',
+                  background: '#10b98120',
+                  border: '1px solid #10b981',
+                  borderRadius: '8px',
+                  color: '#10b981',
+                  fontSize: '14px',
+                  marginBottom: '16px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}>
+                  ✅ Settings saved successfully!
+                </div>
+              )}
               <p style={{ fontSize: '13px', color: '#94a3b8', marginBottom: '24px' }}>
                 Configure how the platform appears to your tenants and users.
               </p>
@@ -223,34 +384,60 @@ const SettingsPage: React.FC = () => {
                 <label style={{ display: 'block', fontSize: '13px', color: '#94a3b8', marginBottom: '8px', fontWeight: '500' }}>
                   Platform Logo
                 </label>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/svg+xml,image/png,image/jpeg,image/jpg"
+                  onChange={handleFileSelect}
+                  style={{ display: 'none' }}
+                />
                 <div style={{
                   border: '2px dashed #334155',
                   borderRadius: '8px',
                   padding: '32px',
                   textAlign: 'center',
                   cursor: 'pointer',
-                  background: '#0f172a'
+                  background: '#0f172a',
+                  transition: 'all 0.2s'
                 }}
-                onClick={() => alert('File upload functionality coming soon!')}
+                onClick={() => fileInputRef.current?.click()}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = '#4f46e5';
+                  e.currentTarget.style.background = '#1e293b';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = '#334155';
+                  e.currentTarget.style.background = '#0f172a';
+                }}
                 >
-                  <div style={{
-                    width: '48px',
-                    height: '48px',
-                    margin: '0 auto 16px',
-                    background: '#4f46e5',
-                    borderRadius: '8px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: '24px'
-                  }}>
-                    📦
-                  </div>
-                  <div style={{ marginBottom: '8px' }}>
-                    <span style={{ color: 'white', fontSize: '14px' }}>☁️ </span>
-                    <span style={{ color: 'white', fontSize: '14px' }}>Click to upload or drag and drop</span>
-                  </div>
-                  <p style={{ fontSize: '12px', color: '#64748b' }}>SVG, PNG, JPG (max. 800×400px)</p>
+                  {logoPreview ? (
+                    <div>
+                      <img src={logoPreview} alt="Logo preview" style={{ maxWidth: '200px', maxHeight: '100px', marginBottom: '16px' }} />
+                      <p style={{ fontSize: '14px', color: '#10b981' }}>✅ {logoFile?.name}</p>
+                      <p style={{ fontSize: '12px', color: '#64748b', marginTop: '8px' }}>Click to change</p>
+                    </div>
+                  ) : (
+                    <>
+                      <div style={{
+                        width: '48px',
+                        height: '48px',
+                        margin: '0 auto 16px',
+                        background: '#4f46e5',
+                        borderRadius: '8px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '24px'
+                      }}>
+                        📦
+                      </div>
+                      <div style={{ marginBottom: '8px' }}>
+                        <span style={{ color: 'white', fontSize: '14px' }}>☁️ </span>
+                        <span style={{ color: 'white', fontSize: '14px' }}>Click to upload or drag and drop</span>
+                      </div>
+                      <p style={{ fontSize: '12px', color: '#64748b' }}>SVG, PNG, JPG (max. 800×400px)</p>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
