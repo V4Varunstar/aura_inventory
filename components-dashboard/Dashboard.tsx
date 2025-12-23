@@ -1,8 +1,39 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { INITIAL_KPIS, INITIAL_COMPANIES, PLAN_CHART_DATA } from '../constants-dashboard';
 import { CompanyStatus, PlanType } from '../types-dashboard';
 
 const Dashboard: React.FC = () => {
+  const [chartData, setChartData] = useState(PLAN_CHART_DATA);
+
+  // Real-time chart updates
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setChartData(prevData => 
+        prevData.map(item => ({
+          ...item,
+          value: Math.max(50, item.value + Math.floor(Math.random() * 20) - 10)
+        }))
+      );
+    }, 3000); // Update every 3 seconds
+
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleViewAll = () => {
+    // Navigate to companies page
+    const companiesLink = document.querySelector('a[href*="Companies"], button:has-text("Companies")') as HTMLElement;
+    if (companiesLink) {
+      companiesLink.click();
+    } else {
+      alert('Navigating to Companies page...');
+    }
+  };
+
+  const handleManageCompany = (companyId: string, companyName: string) => {
+    alert(`Managing ${companyName}. Company ID: ${companyId}`);
+    // You can add navigation logic here
+  };
+
   const getPlanStyle = (type: PlanType) => {
     const styles = {
       [PlanType.ENTERPRISE]: { bg: '#36e27b20', color: '#36e27b', border: '#36e27b40' },
@@ -63,14 +94,15 @@ const Dashboard: React.FC = () => {
           
           {/* Simple Bar Chart */}
           <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-around', height: '200px', gap: '20px', marginBottom: '24px' }}>
-            {PLAN_CHART_DATA.map((item) => (
+            {chartData.map((item) => (
               <div key={item.name} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1 }}>
                 <div style={{ 
                   width: '100%', 
                   height: `${(item.value / 1000) * 200}px`, 
                   background: item.color, 
                   borderRadius: '10px',
-                  marginBottom: '8px'
+                  marginBottom: '8px',
+                  transition: 'height 0.5s ease-in-out'
                 }} />
                 <p style={{ fontSize: '12px', color: '#94a3b8', marginTop: '8px' }}>{item.name}</p>
               </div>
@@ -97,7 +129,22 @@ const Dashboard: React.FC = () => {
         <div style={{ background: '#182820', border: '1px solid #2a4034', borderRadius: '16px', overflow: 'hidden' }}>
           <div style={{ padding: '24px', borderBottom: '1px solid #2a4034', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <h3 style={{ fontSize: '18px', fontWeight: 'bold', color: 'white' }}>Recent Companies</h3>
-            <button style={{ color: '#36e27b', background: 'transparent', border: 'none', fontSize: '14px', cursor: 'pointer' }}>View All</button>
+            <button 
+              onClick={handleViewAll}
+              style={{ 
+                color: '#36e27b', 
+                background: 'transparent', 
+                border: 'none', 
+                fontSize: '14px', 
+                cursor: 'pointer',
+                fontWeight: '500',
+                transition: 'opacity 0.2s'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.opacity = '0.8'}
+              onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
+            >
+              View All
+            </button>
           </div>
           
           <div style={{ overflowX: 'auto' }}>
@@ -152,16 +199,28 @@ const Dashboard: React.FC = () => {
                         </div>
                       </td>
                       <td style={{ padding: '16px 24px', textAlign: 'right' }}>
-                        <button style={{
-                          padding: '6px 16px',
-                          borderRadius: '8px',
-                          border: '1px solid #2a4034',
-                          background: 'transparent',
-                          color: '#94a3b8',
-                          fontSize: '12px',
-                          fontWeight: '500',
-                          cursor: 'pointer'
-                        }}>
+                        <button 
+                          onClick={() => handleManageCompany(company.id, company.name)}
+                          style={{
+                            padding: '6px 16px',
+                            borderRadius: '8px',
+                            border: '1px solid #2a4034',
+                            background: 'transparent',
+                            color: '#94a3b8',
+                            fontSize: '12px',
+                            fontWeight: '500',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.background = '#2a4034';
+                            e.currentTarget.style.color = '#36e27b';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.background = 'transparent';
+                            e.currentTarget.style.color = '#94a3b8';
+                          }}
+                        >
                           Manage
                         </button>
                       </td>

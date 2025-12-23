@@ -6,7 +6,7 @@ export const INITIAL_KPIS: KPI[] = [
     value: '1,240',
     trend: '+12% vs last month',
     trendUp: true,
-    icon: 'apartment',
+    icon: '🏢',
     iconColor: 'text-primary'
   },
   {
@@ -14,7 +14,7 @@ export const INITIAL_KPIS: KPI[] = [
     value: '1,100',
     trend: '+5% vs last week',
     trendUp: true,
-    icon: 'check_circle',
+    icon: '✅',
     iconColor: 'text-emerald-400'
   },
   {
@@ -22,7 +22,7 @@ export const INITIAL_KPIS: KPI[] = [
     value: '45',
     trend: '+2% action needed',
     trendUp: false,
-    icon: 'block',
+    icon: '🚫',
     iconColor: 'text-red-500',
     borderColor: 'hover:border-red-500/50'
   },
@@ -31,7 +31,7 @@ export const INITIAL_KPIS: KPI[] = [
     value: '15',
     trend: '-5% renewal rate',
     trendUp: false,
-    icon: 'schedule',
+    icon: '⏰',
     iconColor: 'text-orange-500',
     borderColor: 'hover:border-orange-500/50'
   },
@@ -40,7 +40,7 @@ export const INITIAL_KPIS: KPI[] = [
     value: '8,500',
     trend: '+8% organic growth',
     trendUp: true,
-    icon: 'group',
+    icon: '👥',
     iconColor: 'text-blue-400'
   }
 ];
