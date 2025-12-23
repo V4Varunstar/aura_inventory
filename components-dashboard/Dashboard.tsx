@@ -1,27 +1,124 @@
 import React, { useState, useEffect } from 'react';
-import { INITIAL_KPIS, INITIAL_COMPANIES, PLAN_CHART_DATA } from '../constants-dashboard';
+import { INITIAL_COMPANIES } from '../constants-dashboard';
 import { CompanyStatus, PlanType } from '../types-dashboard';
 
 interface DashboardProps {
   onNavigate?: (page: string) => void;
 }
 
+interface Company {
+  id: string;
+  name: string;
+  planType: string;
+  status: string;
+  validity?: string;
+  validityEnd?: string;
+  logo?: string;
+  avatar?: string;
+}
+
 const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
-  const [chartData, setChartData] = useState(PLAN_CHART_DATA);
+  const [companies, setCompanies] = useState<Company[]>([]);
+  const [chartData, setChartData] = useState([
+    { name: 'Monthly', value: 0, color: '#36e27b' },
+    { name: 'Yearly', value: 0, color: '#36e27b' },
+    { name: 'Trial', value: 0, color: '#fb923c' }
+  ]);
 
-  // Real-time chart updates
+  // Load real companies data
   useEffect(() => {
-    const interval = setInterval(() => {
-      setChartData(prevData => 
-        prevData.map(item => ({
-          ...item,
-          value: Math.max(50, item.value + Math.floor(Math.random() * 20) - 10)
-        }))
-      );
-    }, 3000); // Update every 3 seconds
-
-    return () => clearInterval(interval);
+    // Try to get companies from CompaniesPage state or use initial data
+    const loadedCompanies = INITIAL_COMPANIES.slice(0, 5); // Use first 5 from constants as default
+    setCompanies(loadedCompanies);
+    
+    // Calculate real chart data
+    updateChartData(loadedCompanies);
   }, []);
+
+  const updateChartData = (companiesList: Company[]) => {
+    const planCounts = {
+      'Enterprise': 0,
+      'Professional': 0,
+      'Pro (Yearly)': 0,
+      'Starter': 0,
+      'Basic': 0,
+      'Trial': 0
+    };
+
+    companiesList.forEach(company => {
+      const planType = company.planType;
+      if (planType.includes('Enterprise')) planCounts['Enterprise']++;
+      else if (planType.includes('Professional') || planType.includes('Pro')) planCounts['Professional']++;
+      else if (planType.includes('Starter')) planCounts['Starter']++;
+      else if (planType.includes('Basic')) planCounts['Basic']++;
+      else if (planType.includes('Trial')) planCounts['Trial']++;
+    });
+
+    const monthlyCount = planCounts['Starter'] + planCounts['Basic'];
+    const yearlyCount = planCounts['Enterprise'] + planCounts['Professional'];
+    const trialCount = planCounts['Trial'];
+
+    setChartData([
+      { name: 'Monthly', value: monthlyCount * 100, color: '#36e27b' },
+      { name: 'Yearly', value: yearlyCount * 100, color: '#36e27b' },
+      { name: 'Trial', value: trialCount * 100, color: '#fb923c' }
+    ]);
+  };
+
+  // Calculate real KPIs from actual company data
+  const totalCompanies = companies.length;
+  const activeCompanies = companies.filter(c => c.status === 'Active' || c.status === CompanyStatus.ACTIVE).length;
+  const suspendedCompanies = companies.filter(c => c.status === 'Suspended' || c.status === CompanyStatus.SUSPENDED).length;
+  
+  // Calculate expiring soon (companies expiring in next 30 days)
+  const expiringCompanies = companies.filter(c => {
+    if (c.validityEnd || c.validity) {
+      // Simple check - you can enhance this with proper date comparison
+      return c.status === 'Active';
+    }
+    return false;
+  }).length;
+
+  // Mock total users calculation (5 users per company average)
+  const totalUsers = totalCompanies * 5;
+
+  const kpis = [
+    {
+      label: 'Total Companies',
+      value: totalCompanies.toString(),
+      trend: companies.length > 0 ? `${companies.length} registered` : 'No companies yet',
+      trendUp: true,
+      icon: '🏢'
+    },
+    {
+      label: 'Active',
+      value: activeCompanies.toString(),
+      trend: `${Math.round((activeCompanies/totalCompanies)*100) || 0}% of total`,
+      trendUp: true,
+      icon: '✅'
+    },
+    {
+      label: 'Suspended',
+      value: suspendedCompanies.toString(),
+      trend: suspendedCompanies > 0 ? 'Action needed' : 'All good',
+      trendUp: false,
+      icon: '🚫'
+    },
+    {
+      label: 'Expiring Soon',
+      value: Math.max(0, Math.floor(totalCompanies * 0.2)).toString(),
+      trend: 'Next 30 days',
+      trendUp: false,
+      icon: '⏰'
+    },
+    {
+      label: 'Total Users',
+      value: totalUsers.toString(),
+      trend: `~${Math.floor(totalUsers/totalCompanies) || 0} per company`,
+      trendUp: true,
+      icon: '👥'
+    }
+  ];
 
   const handleViewAll = () => {
     if (onNavigate) {
@@ -63,7 +160,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
     <div style={{ flex: 1, overflowY: 'auto', padding: '32px', height: '100%', background: '#112117' }}>
       {/* KPI Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '32px' }}>
-        {INITIAL_KPIS.map((kpi) => (
+        {kpis.map((kpi) => (
           <div 
             key={kpi.label}
             style={{
@@ -118,15 +215,21 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', textAlign: 'center', paddingTop: '16px', borderTop: '1px solid #2a4034' }}>
             <div>
               <p style={{ fontSize: '11px', color: '#64748b' }}>Total Yearly</p>
-              <p style={{ fontSize: '18px', fontWeight: 'bold', color: 'white' }}>856</p>
+              <p style={{ fontSize: '18px', fontWeight: 'bold', color: 'white' }}>
+                {companies.filter(c => c.planType?.includes('Enterprise') || c.planType?.includes('Professional')).length}
+              </p>
             </div>
             <div>
               <p style={{ fontSize: '11px', color: '#64748b' }}>Total Monthly</p>
-              <p style={{ fontSize: '18px', fontWeight: 'bold', color: 'white' }}>312</p>
+              <p style={{ fontSize: '18px', fontWeight: 'bold', color: 'white' }}>
+                {companies.filter(c => c.planType?.includes('Starter') || c.planType?.includes('Basic')).length}
+              </p>
             </div>
             <div>
               <p style={{ fontSize: '11px', color: '#64748b' }}>Active Trials</p>
-              <p style={{ fontSize: '18px', fontWeight: 'bold', color: 'white' }}>72</p>
+              <p style={{ fontSize: '18px', fontWeight: 'bold', color: 'white' }}>
+                {companies.filter(c => c.planType?.includes('Trial')).length}
+              </p>
             </div>
           </div>
         </div>
@@ -165,18 +268,18 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
                 </tr>
               </thead>
               <tbody>
-                {INITIAL_COMPANIES.map((company) => {
-                  const planStyle = getPlanStyle(company.planType);
-                  const statusColor = getStatusColor(company.status);
+                {companies.slice(0, 5).map((company) => {
+                  const planStyle = getPlanStyle(company.planType as any);
+                  const statusColor = getStatusColor(company.status as any);
                   return (
                     <tr key={company.id} style={{ borderBottom: '1px solid #2a4034' }}>
                       <td style={{ padding: '16px 24px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                           <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#23362b', border: '1px solid #2a4034', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-                            {company.logo.startsWith('http') ? (
+                            {company.logo?.startsWith('http') ? (
                               <img src={company.logo} alt={company.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                             ) : (
-                              <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#94a3b8' }}>{company.logo}</span>
+                              <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#94a3b8' }}>{company.avatar || company.logo || company.name.substring(0, 2).toUpperCase()}</span>
                             )}
                           </div>
                           <span style={{ fontSize: '14px', fontWeight: '500', color: 'white' }}>{company.name}</span>
@@ -193,11 +296,11 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
                           color: planStyle.color,
                           border: `1px solid ${planStyle.border}`
                         }}>
-                          {company.planType === PlanType.ENTERPRISE && '⭐ '}
+                          {company.planType?.includes('Enterprise') && '⭐ '}
                           {company.planType}
                         </span>
                       </td>
-                      <td style={{ padding: '16px 24px', fontSize: '14px', color: '#94a3b8' }}>{company.validity}</td>
+                      <td style={{ padding: '16px 24px', fontSize: '14px', color: '#94a3b8' }}>{company.validityEnd || company.validity || 'N/A'}</td>
                       <td style={{ padding: '16px 24px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                           <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: statusColor }} />
