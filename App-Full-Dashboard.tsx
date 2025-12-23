@@ -247,7 +247,7 @@ const App: React.FC = () => {
 
         {currentUser?.role === 'superadmin' ? (
           <>
-            {activePage === 'Dashboard' && <Dashboard />}
+            {activePage === 'Dashboard' && <Dashboard onNavigate={setActivePage} />}
             {activePage === 'Companies' && <CompaniesPage />}
             {activePage === 'Users' && <UsersPage />}
             {activePage === 'Subscriptions' && <SubscriptionsPage />}

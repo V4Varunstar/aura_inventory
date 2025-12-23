@@ -2,7 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { INITIAL_KPIS, INITIAL_COMPANIES, PLAN_CHART_DATA } from '../constants-dashboard';
 import { CompanyStatus, PlanType } from '../types-dashboard';
 
-const Dashboard: React.FC = () => {
+interface DashboardProps {
+  onNavigate?: (page: string) => void;
+}
+
+const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
   const [chartData, setChartData] = useState(PLAN_CHART_DATA);
 
   // Real-time chart updates
@@ -20,18 +24,20 @@ const Dashboard: React.FC = () => {
   }, []);
 
   const handleViewAll = () => {
-    // Navigate to companies page
-    const companiesLink = document.querySelector('a[href*="Companies"], button:has-text("Companies")') as HTMLElement;
-    if (companiesLink) {
-      companiesLink.click();
+    if (onNavigate) {
+      onNavigate('Companies');
     } else {
-      alert('Navigating to Companies page...');
+      console.log('Navigating to Companies page...');
     }
   };
 
   const handleManageCompany = (companyId: string, companyName: string) => {
-    alert(`Managing ${companyName}. Company ID: ${companyId}`);
-    // You can add navigation logic here
+    console.log(`Managing ${companyName} (ID: ${companyId})`);
+    if (onNavigate) {
+      // Store the company ID in sessionStorage for the Companies page to use
+      sessionStorage.setItem('selectedCompanyId', companyId);
+      onNavigate('Companies');
+    }
   };
 
   const getPlanStyle = (type: PlanType) => {
