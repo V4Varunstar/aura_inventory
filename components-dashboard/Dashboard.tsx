@@ -157,15 +157,15 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
   };
 
   return (
-    <div style={{ flex: 1, overflowY: 'auto', padding: '32px', height: '100%', background: '#112117' }}>
+    <div style={{ flex: 1, overflowY: 'auto', padding: '32px', height: '100%', background: '#0f172a' }}>
       {/* KPI Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '32px' }}>
         {kpis.map((kpi) => (
           <div 
             key={kpi.label}
             style={{
-              background: '#182820',
-              border: '1px solid #2a4034',
+              background: '#1e293b',
+              border: '1px solid #334155',
               borderRadius: '16px',
               padding: '20px',
               minHeight: '128px',
@@ -189,7 +189,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
       {/* Content Grid */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '24px' }}>
         {/* Chart */}
-        <div style={{ background: '#182820', border: '1px solid #2a4034', borderRadius: '16px', padding: '24px' }}>
+        <div style={{ background: '#1e293b', border: '1px solid #334155', borderRadius: '16px', padding: '24px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
             <h3 style={{ fontSize: '18px', fontWeight: 'bold', color: 'white' }}>Companies by Plan</h3>
             <button style={{ background: 'transparent', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: '20px' }}>⋯</button>
@@ -235,13 +235,13 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
         </div>
 
         {/* Companies Table */}
-        <div style={{ background: '#182820', border: '1px solid #2a4034', borderRadius: '16px', overflow: 'hidden' }}>
-          <div style={{ padding: '24px', borderBottom: '1px solid #2a4034', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ background: '#1e293b', border: '1px solid #334155', borderRadius: '16px', overflow: 'hidden' }}>
+          <div style={{ padding: '24px', borderBottom: '1px solid #334155', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <h3 style={{ fontSize: '18px', fontWeight: 'bold', color: 'white' }}>Recent Companies</h3>
             <button 
               onClick={handleViewAll}
               style={{ 
-                color: '#36e27b', 
+                color: '#10b981', 
                 background: 'transparent', 
                 border: 'none', 
                 fontSize: '14px', 
@@ -259,7 +259,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
-                <tr style={{ borderBottom: '1px solid #2a4034' }}>
+                <tr style={{ borderBottom: '1px solid #334155' }}>
                   <th style={{ padding: '16px 24px', textAlign: 'left', fontSize: '11px', color: '#64748b', fontWeight: '500', textTransform: 'uppercase' }}>COMPANY NAME</th>
                   <th style={{ padding: '16px 24px', textAlign: 'left', fontSize: '11px', color: '#64748b', fontWeight: '500', textTransform: 'uppercase' }}>PLAN TYPE</th>
                   <th style={{ padding: '16px 24px', textAlign: 'left', fontSize: '11px', color: '#64748b', fontWeight: '500', textTransform: 'uppercase' }}>VALIDITY</th>
@@ -272,10 +272,10 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
                   const planStyle = getPlanStyle(company.planType as any);
                   const statusColor = getStatusColor(company.status as any);
                   return (
-                    <tr key={company.id} style={{ borderBottom: '1px solid #2a4034' }}>
+                    <tr key={company.id} style={{ borderBottom: '1px solid #334155' }}>
                       <td style={{ padding: '16px 24px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                          <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#23362b', border: '1px solid #2a4034', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                          <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#334155', border: '1px solid #475569', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
                             {company.logo?.startsWith('http') ? (
                               <img src={company.logo} alt={company.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                             ) : (

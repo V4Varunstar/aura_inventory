@@ -75,14 +75,14 @@ html, body {
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: #112117;
-  color: var(--text-primary);
+  background-color: #0f172a;
+  color: #f1f5f9;
 }
 
 #root {
   height: 100%;
   width: 100%;
-  background-color: #112117;
+  background-color: #0f172a;
 }
 
 /* Green Theme Utility Classes */

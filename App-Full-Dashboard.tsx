@@ -177,10 +177,10 @@ const App: React.FC = () => {
 
   // Dashboard Screen
   return (
-    <div style={{ display: 'flex', height: '100vh', width: '100%', overflow: 'hidden', background: '#112117', fontFamily: 'system-ui' }}>
+    <div style={{ display: 'flex', height: '100vh', width: '100%', overflow: 'hidden', background: '#0f172a', fontFamily: 'system-ui' }}>
       {currentUser?.role === 'superadmin' && <Sidebar onLogout={handleLogout} activePage={activePage} setActivePage={setActivePage} />}
       
-      <main style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', position: 'relative' }}>
+      <main style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', position: 'relative', background: '#0f172a' }}>
         {/* Top Bar */}
         <header style={{
           height: '80px',
@@ -188,8 +188,8 @@ const App: React.FC = () => {
           alignItems: 'center',
           justifyContent: 'space-between',
           padding: '0 32px',
-          borderBottom: '1px solid #2a4034',
-          background: '#112117',
+          borderBottom: '1px solid #334155',
+          background: '#1e293b',
           position: 'sticky',
           top: 0,
           zIndex: 20
@@ -198,13 +198,13 @@ const App: React.FC = () => {
             <div style={{
               display: 'flex',
               alignItems: 'center',
-              background: '#182820',
-              border: '1px solid #2a4034',
+              background: '#334155',
+              border: '1px solid #475569',
               borderRadius: '12px',
               padding: '12px 16px',
               gap: '12px'
             }}>
-              <span style={{ color: '#64748b' }}>🔍</span>
+              <span style={{ color: '#94a3b8' }}>🔍</span>
               <input
                 type="text"
                 placeholder="Search..."
@@ -225,8 +225,8 @@ const App: React.FC = () => {
               position: 'relative',
               padding: '12px',
               borderRadius: '12px',
-              background: '#182820',
-              border: '1px solid #2a4034',
+              background: '#334155',
+              border: '1px solid #475569',
               cursor: 'pointer',
               color: '#94a3b8'
             }}>
@@ -237,9 +237,9 @@ const App: React.FC = () => {
                 right: '8px',
                 width: '8px',
                 height: '8px',
-                background: '#36e27b',
+                background: '#10b981',
                 borderRadius: '50%',
-                border: '2px solid #112117'
+                border: '2px solid #1e293b'
               }} />
             </button>
           </div>
