@@ -14,44 +14,19 @@ const SettingsPage: React.FC = () => {
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
-  // User Profile Settings
-  const [userProfile, setUserProfile] = useState({
-    name: 'Alex Morgan',
-    email: 'alex@inventory.com',
-    initials: 'AM'
-  });
+  // Profile customization states
+  const [profileName, setProfileName] = useState('Alex Morgan');
+  const [profileEmail, setProfileEmail] = useState('alex@inventory.com');
 
-  // Load user profile from localStorage on mount
+  // Load profile from localStorage
   useEffect(() => {
-    const storedProfile = localStorage.getItem('userProfile');
-    if (storedProfile) {
-      const profile = JSON.parse(storedProfile);
-      setUserProfile(profile);
+    const savedProfile = localStorage.getItem('userProfile');
+    if (savedProfile) {
+      const profile = JSON.parse(savedProfile);
+      setProfileName(profile.name || 'Alex Morgan');
+      setProfileEmail(profile.email || 'alex@inventory.com');
     }
   }, []);
-
-  const handleSaveProfile = () => {
-    // Generate initials from name
-    const initials = userProfile.name
-      .split(' ')
-      .map(n => n[0])
-      .join('')
-      .toUpperCase()
-      .substring(0, 2);
-    
-    const updatedProfile = { ...userProfile, initials };
-    
-    // Save to localStorage
-    localStorage.setItem('userProfile', JSON.stringify(updatedProfile));
-    setUserProfile(updatedProfile);
-    
-    // Show success message
-    setShowSuccessMessage(true);
-    setTimeout(() => setShowSuccessMessage(false), 3000);
-    
-    // Trigger page reload to update sidebar
-    setTimeout(() => window.location.reload(), 1000);
-  };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -93,8 +68,25 @@ const SettingsPage: React.FC = () => {
     setTimeout(() => setShowSuccessMessage(false), 3000);
   };
 
+  const handleSaveProfile = () => {
+    // Save profile to localStorage
+    const profile = {
+      name: profileName,
+      email: profileEmail
+    };
+    localStorage.setItem('userProfile', JSON.stringify(profile));
+    
+    // Trigger a custom event to notify other components
+    window.dispatchEvent(new CustomEvent('profileUpdated', { detail: profile }));
+    
+    // Show success message
+    setShowSuccessMessage(true);
+    setTimeout(() => setShowSuccessMessage(false), 3000);
+  };
+
   const menuItems = [
     { id: 'General', icon: '⚙️', label: 'General', color: '#4f46e5' },
+    { id: 'Profile', icon: '👤', label: 'Profile', color: '#64748b' },
     { id: 'User Management', icon: '👥', label: 'User Management', color: '#64748b' },
     { id: 'Billing & Plans', icon: '💳', label: 'Billing & Plans', color: '#64748b' },
     { id: 'Notifications', icon: '🔔', label: 'Notifications', color: '#64748b' },
@@ -217,6 +209,147 @@ const SettingsPage: React.FC = () => {
             Manage global configurations, branding, billing, and system preferences.
           </p>
         </div>
+
+        {/* Profile Tab */}
+        {activeTab === 'Profile' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+            <div style={{
+              background: '#1e293b',
+              border: '1px solid #334155',
+              borderRadius: '12px',
+              padding: '24px'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+                <h2 style={{ fontSize: '18px', fontWeight: '600', color: 'white' }}>Profile Settings</h2>
+                <button
+                  style={{
+                    padding: '8px 16px',
+                    background: '#4f46e5',
+                    border: 'none',
+                    borderRadius: '8px',
+                    color: 'white',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px'
+                  }}
+                  onClick={handleSaveProfile}
+                >
+                  💾 Save Profile
+                </button>
+              </div>
+              {showSuccessMessage && (
+                <div style={{
+                  padding: '12px 16px',
+                  background: '#10b98120',
+                  border: '1px solid #10b981',
+                  borderRadius: '8px',
+                  color: '#10b981',
+                  fontSize: '14px',
+                  marginBottom: '16px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}>
+                  ✅ Profile updated successfully! Changes will reflect in sidebar.
+                </div>
+              )}
+              <p style={{ fontSize: '13px', color: '#94a3b8', marginBottom: '24px' }}>
+                Customize your profile information that appears in the sidebar.
+              </p>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '24px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '13px', color: '#94a3b8', marginBottom: '8px', fontWeight: '500' }}>
+                    Display Name
+                  </label>
+                  <input
+                    type="text"
+                    value={profileName}
+                    onChange={(e) => setProfileName(e.target.value)}
+                    placeholder="Enter your name"
+                    style={{
+                      width: '100%',
+                      padding: '10px 14px',
+                      background: '#0f172a',
+                      border: '1px solid #334155',
+                      borderRadius: '8px',
+                      color: 'white',
+                      fontSize: '14px',
+                      outline: 'none',
+                      boxSizing: 'border-box'
+                    }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '13px', color: '#94a3b8', marginBottom: '8px', fontWeight: '500' }}>
+                    Email Address
+                  </label>
+                  <input
+                    type="email"
+                    value={profileEmail}
+                    onChange={(e) => setProfileEmail(e.target.value)}
+                    placeholder="Enter your email"
+                    style={{
+                      width: '100%',
+                      padding: '10px 14px',
+                      background: '#0f172a',
+                      border: '1px solid #334155',
+                      borderRadius: '8px',
+                      color: 'white',
+                      fontSize: '14px',
+                      outline: 'none',
+                      boxSizing: 'border-box'
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div style={{ 
+                padding: '16px', 
+                background: '#0f172a', 
+                borderRadius: '8px',
+                border: '1px solid #334155'
+              }}>
+                <h3 style={{ fontSize: '14px', fontWeight: '600', color: 'white', marginBottom: '12px' }}>Preview</h3>
+                <div style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '12px',
+                  padding: '12px',
+                  background: '#1e293b',
+                  borderRadius: '8px'
+                }}>
+                  <div style={{
+                    width: '40px',
+                    height: '40px',
+                    borderRadius: '50%',
+                    background: '#4f46e5',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '14px',
+                    fontWeight: 'bold',
+                    color: 'white'
+                  }}>
+                    {profileName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ fontSize: '14px', fontWeight: 'bold', color: 'white', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {profileName}
+                    </p>
+                    <p style={{ fontSize: '12px', color: '#64748b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {profileEmail}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* User Management Tab */}
         {activeTab === 'User Management' && (
@@ -567,128 +700,6 @@ const SettingsPage: React.FC = () => {
 
         {activeTab === 'General' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-            {/* User Profile Section */}
-            <div style={{
-              background: '#1e293b',
-              border: '1px solid #334155',
-              borderRadius: '12px',
-              padding: '24px'
-            }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-                <h2 style={{ fontSize: '18px', fontWeight: '600', color: 'white' }}>Your Profile</h2>
-                <button
-                  onClick={handleSaveProfile}
-                  style={{
-                    padding: '8px 16px',
-                    background: '#4f46e5',
-                    border: 'none',
-                    borderRadius: '8px',
-                    color: 'white',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px'
-                  }}
-                >
-                  💾 Save Profile
-                </button>
-              </div>
-              {showSuccessMessage && (
-                <div style={{
-                  padding: '12px 16px',
-                  background: '#10b98120',
-                  border: '1px solid #10b981',
-                  borderRadius: '8px',
-                  color: '#10b981',
-                  fontSize: '14px',
-                  marginBottom: '16px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px'
-                }}>
-                  ✅ Profile updated successfully!
-                </div>
-              )}
-              <p style={{ fontSize: '13px', color: '#94a3b8', marginBottom: '24px' }}>
-                Customize your name and email that appears in the sidebar.
-              </p>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '13px', color: '#94a3b8', marginBottom: '8px', fontWeight: '500' }}>
-                    Your Name
-                  </label>
-                  <input
-                    type="text"
-                    value={userProfile.name}
-                    onChange={(e) => setUserProfile({ ...userProfile, name: e.target.value })}
-                    placeholder="Enter your name"
-                    style={{
-                      width: '100%',
-                      padding: '10px 14px',
-                      background: '#0f172a',
-                      border: '1px solid #334155',
-                      borderRadius: '8px',
-                      color: 'white',
-                      fontSize: '14px',
-                      outline: 'none',
-                      boxSizing: 'border-box'
-                    }}
-                  />
-                </div>
-
-                <div>
-                  <label style={{ display: 'block', fontSize: '13px', color: '#94a3b8', marginBottom: '8px', fontWeight: '500' }}>
-                    Your Email
-                  </label>
-                  <input
-                    type="email"
-                    value={userProfile.email}
-                    onChange={(e) => setUserProfile({ ...userProfile, email: e.target.value })}
-                    placeholder="Enter your email"
-                    style={{
-                      width: '100%',
-                      padding: '10px 14px',
-                      background: '#0f172a',
-                      border: '1px solid #334155',
-                      borderRadius: '8px',
-                      color: 'white',
-                      fontSize: '14px',
-                      outline: 'none',
-                      boxSizing: 'border-box'
-                    }}
-                  />
-                </div>
-              </div>
-
-              <div style={{ marginTop: '16px', padding: '16px', background: '#0f172a', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '16px' }}>
-                <div style={{
-                  width: '60px',
-                  height: '60px',
-                  borderRadius: '50%',
-                  background: '#64748b',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '20px',
-                  fontWeight: 'bold',
-                  color: 'white'
-                }}>
-                  {userProfile.initials}
-                </div>
-                <div>
-                  <p style={{ fontSize: '14px', fontWeight: '600', color: 'white', marginBottom: '4px' }}>
-                    Profile Preview
-                  </p>
-                  <p style={{ fontSize: '12px', color: '#64748b' }}>
-                    This is how your profile will appear in the sidebar
-                  </p>
-                </div>
-              </div>
-            </div>
-
             {/* Platform Identity */}
             <div style={{
               background: '#1e293b',
@@ -1051,6 +1062,6 @@ const SettingsPage: React.FC = () => {
       </div>
     </div>
   );
-};
+}
 
 export default SettingsPage;
