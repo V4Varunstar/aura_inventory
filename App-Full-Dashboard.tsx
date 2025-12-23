@@ -176,8 +176,16 @@ const App: React.FC = () => {
   }
 
   // Dashboard Screen
+  console.log('🎯 Rendering Dashboard Screen for user:', currentUser);
+  console.log('🎯 Active page:', activePage);
+  
   return (
     <div style={{ display: 'flex', height: '100vh', width: '100%', overflow: 'hidden', background: '#0f172a', fontFamily: 'system-ui' }}>
+      {/* Debug indicator */}
+      <div style={{ position: 'fixed', top: 10, right: 10, background: 'red', color: 'white', padding: '10px', zIndex: 9999, fontSize: '12px', borderRadius: '4px' }}>
+        DEBUG: Logged in as {currentUser?.email}
+      </div>
+      
       {currentUser?.role === 'superadmin' && <Sidebar onLogout={handleLogout} activePage={activePage} setActivePage={setActivePage} />}
       
       <main style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', position: 'relative', background: '#0f172a' }}>
