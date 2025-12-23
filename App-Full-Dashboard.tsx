@@ -77,26 +77,77 @@ const App: React.FC = () => {
         justifyContent: 'center', 
         alignItems: 'center', 
         minHeight: '100vh',
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-        fontFamily: 'system-ui'
+        background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%)',
+        fontFamily: 'system-ui',
+        position: 'relative',
+        overflow: 'hidden'
       }}>
+        {/* Animated background elements */}
+        <div style={{
+          position: 'absolute',
+          top: '-50%',
+          left: '-50%',
+          width: '200%',
+          height: '200%',
+          background: 'radial-gradient(circle, rgba(16, 185, 129, 0.1) 0%, transparent 70%)',
+          animation: 'pulse 4s ease-in-out infinite'
+        }} />
+        
         <div style={{ 
-          background: 'white', 
-          padding: '40px', 
-          borderRadius: '8px', 
-          boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+          background: 'rgba(30, 41, 59, 0.8)', 
+          backdropFilter: 'blur(20px)',
+          padding: '48px', 
+          borderRadius: '24px', 
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.1)',
           width: '100%',
-          maxWidth: '400px'
+          maxWidth: '440px',
+          border: '1px solid rgba(255, 255, 255, 0.1)',
+          position: 'relative',
+          zIndex: 1
         }}>
-          <h1 style={{ marginBottom: '10px', color: '#333', fontSize: '24px' }}>Aura Inventory</h1>
-          <p style={{ color: '#666', marginBottom: '30px' }}>
-            {currentUser?.role === 'superadmin' ? 'Super Admin Panel' : 'Company User Login'}
+          {/* Logo/Icon */}
+          <div style={{ 
+            width: '72px', 
+            height: '72px', 
+            borderRadius: '20px', 
+            background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            margin: '0 auto 24px',
+            fontSize: '36px',
+            boxShadow: '0 10px 30px rgba(16, 185, 129, 0.4)'
+          }}>
+            📦
+          </div>
+          
+          <h1 style={{ 
+            marginBottom: '8px', 
+            color: 'white', 
+            fontSize: '32px', 
+            fontWeight: '700',
+            textAlign: 'center',
+            letterSpacing: '-0.02em'
+          }}>Aura Inventory</h1>
+          <p style={{ 
+            color: '#94a3b8', 
+            marginBottom: '32px',
+            textAlign: 'center',
+            fontSize: '15px'
+          }}>
+            Super Admin Dashboard
           </p>
           
           <form onSubmit={handleLogin}>
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{ display: 'block', marginBottom: '5px', color: '#555', fontSize: '14px' }}>
-                Email
+            <div style={{ marginBottom: '24px' }}>
+              <label style={{ 
+                display: 'block', 
+                marginBottom: '8px', 
+                color: '#e2e8f0', 
+                fontSize: '14px',
+                fontWeight: '500'
+              }}>
+                Email Address
               </label>
               <input
                 type="email"
@@ -106,45 +157,80 @@ const App: React.FC = () => {
                 required
                 style={{
                   width: '100%',
-                  padding: '10px',
-                  border: '1px solid #ddd',
-                  borderRadius: '4px',
-                  fontSize: '14px',
-                  boxSizing: 'border-box'
+                  padding: '14px 16px',
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  borderRadius: '12px',
+                  fontSize: '15px',
+                  boxSizing: 'border-box',
+                  background: 'rgba(15, 23, 42, 0.5)',
+                  color: 'white',
+                  transition: 'all 0.2s',
+                  outline: 'none'
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = '#10b981';
+                  e.currentTarget.style.boxShadow = '0 0 0 3px rgba(16, 185, 129, 0.1)';
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+                  e.currentTarget.style.boxShadow = 'none';
                 }}
               />
             </div>
 
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{ display: 'block', marginBottom: '5px', color: '#555', fontSize: '14px' }}>
+            <div style={{ marginBottom: '24px' }}>
+              <label style={{ 
+                display: 'block', 
+                marginBottom: '8px', 
+                color: '#e2e8f0', 
+                fontSize: '14px',
+                fontWeight: '500'
+              }}>
                 Password
               </label>
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="demo123"
+                placeholder="••••••••"
                 required
                 style={{
                   width: '100%',
-                  padding: '10px',
-                  border: '1px solid #ddd',
-                  borderRadius: '4px',
-                  fontSize: '14px',
-                  boxSizing: 'border-box'
+                  padding: '14px 16px',
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  borderRadius: '12px',
+                  fontSize: '15px',
+                  boxSizing: 'border-box',
+                  background: 'rgba(15, 23, 42, 0.5)',
+                  color: 'white',
+                  transition: 'all 0.2s',
+                  outline: 'none'
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = '#10b981';
+                  e.currentTarget.style.boxShadow = '0 0 0 3px rgba(16, 185, 129, 0.1)';
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+                  e.currentTarget.style.boxShadow = 'none';
                 }}
               />
             </div>
 
             {error && (
               <div style={{ 
-                padding: '10px', 
-                background: '#ffebee', 
-                color: '#c62828', 
-                borderRadius: '4px',
-                marginBottom: '20px',
-                fontSize: '14px'
+                padding: '14px 16px', 
+                background: 'rgba(239, 68, 68, 0.1)', 
+                color: '#fca5a5', 
+                borderRadius: '12px',
+                marginBottom: '24px',
+                fontSize: '14px',
+                border: '1px solid rgba(239, 68, 68, 0.2)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
               }}>
+                <span>⚠️</span>
                 {error}
               </div>
             )}
@@ -153,22 +239,45 @@ const App: React.FC = () => {
               type="submit"
               style={{
                 width: '100%',
-                padding: '12px',
-                background: '#667eea',
+                padding: '14px',
+                background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
                 color: 'white',
                 border: 'none',
-                borderRadius: '4px',
+                borderRadius: '12px',
                 fontSize: '16px',
                 cursor: 'pointer',
-                fontWeight: '500'
+                fontWeight: '600',
+                boxShadow: '0 10px 25px rgba(16, 185, 129, 0.3)',
+                transition: 'all 0.2s',
+                position: 'relative',
+                overflow: 'hidden'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'translateY(-2px)';
+                e.currentTarget.style.boxShadow = '0 15px 30px rgba(16, 185, 129, 0.4)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = '0 10px 25px rgba(16, 185, 129, 0.3)';
               }}
             >
-              Login
+              Sign In
             </button>
           </form>
 
-          <div style={{ marginTop: '20px', fontSize: '12px', color: '#999', textAlign: 'center' }}>
-            Demo credentials: demo@aura.com / demo123
+          <div style={{ 
+            marginTop: '24px', 
+            padding: '16px',
+            background: 'rgba(16, 185, 129, 0.1)',
+            borderRadius: '12px',
+            border: '1px solid rgba(16, 185, 129, 0.2)'
+          }}>
+            <div style={{ fontSize: '12px', color: '#94a3b8', textAlign: 'center', marginBottom: '8px', fontWeight: '500' }}>
+              Demo Credentials
+            </div>
+            <div style={{ fontSize: '13px', color: '#10b981', textAlign: 'center', fontFamily: 'monospace' }}>
+              demo@aura.com / demo123
+            </div>
           </div>
         </div>
       </div>
@@ -181,11 +290,6 @@ const App: React.FC = () => {
   
   return (
     <div style={{ display: 'flex', height: '100vh', width: '100%', overflow: 'hidden', background: '#0f172a', fontFamily: 'system-ui' }}>
-      {/* Debug indicator */}
-      <div style={{ position: 'fixed', top: 10, right: 10, background: 'red', color: 'white', padding: '10px', zIndex: 9999, fontSize: '12px', borderRadius: '4px' }}>
-        DEBUG: Logged in as {currentUser?.email}
-      </div>
-      
       {currentUser?.role === 'superadmin' && <Sidebar onLogout={handleLogout} activePage={activePage} setActivePage={setActivePage} />}
       
       <main style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', position: 'relative', background: '#0f172a' }}>

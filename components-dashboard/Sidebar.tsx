@@ -1,6 +1,36 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 
 const Sidebar: React.FC<{ onLogout?: () => void; activePage: string; setActivePage: (page: string) => void }> = ({ onLogout, activePage, setActivePage }) => {
+  const [profileName, setProfileName] = useState('Alex Morgan');
+  const [profileEmail, setProfileEmail] = useState('alex@inventory.com');
+
+  useEffect(() => {
+    const savedProfile = localStorage.getItem('userProfile');
+    if (savedProfile) {
+      const profile = JSON.parse(savedProfile);
+      setProfileName(profile.name);
+      setProfileEmail(profile.email);
+    }
+
+    const handleProfileUpdate = (event: any) => {
+      const profile = event.detail;
+      setProfileName(profile.name);
+      setProfileEmail(profile.email);
+    };
+
+    window.addEventListener('profileUpdated', handleProfileUpdate);
+    return () => window.removeEventListener('profileUpdated', handleProfileUpdate);
+  }, []);
+
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(n => n[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
   const menuItems = [
     { label: 'Dashboard', icon: '📊' },
     { label: 'Companies', icon: '🏢' },
