@@ -1,7 +1,7 @@
 
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import App from './App';
+import AppTest from './App-Test';
 import './index.css';
 
 console.log('🎯 index.tsx loaded at', new Date().toISOString());
@@ -24,7 +24,7 @@ if (!rootElement) {
     const root = ReactDOM.createRoot(rootElement);
     
     console.log('🎯 Rendering App component...');
-    root.render(<App />);
+    root.render(<AppTest />);
     
     console.log('✅ App rendered successfully');
   } catch (error) {
