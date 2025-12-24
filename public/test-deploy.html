@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Deployment Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .container {
+            text-align: center;
+            padding: 40px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 20px;
+        }
+        h1 { font-size: 48px; margin: 0 0 20px 0; }
+        p { font-size: 18px; margin: 10px 0; }
+        .success { color: #4ade80; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>✅ Deployment Working!</h1>
+        <p class="success">Vercel deployment is live and serving files correctly.</p>
+        <p>Build Version: v1.0.1</p>
+        <p>Timestamp: <span id="time"></span></p>
+        <p style="margin-top: 30px;">
+            <a href="/" style="color: white; text-decoration: none; background: #4ade80; padding: 12px 24px; border-radius: 8px; display: inline-block;">
+                Go to Main App
+            </a>
+        </p>
+    </div>
+    <script>
+        document.getElementById('time').textContent = new Date().toLocaleString();
+    </script>
+</body>
+</html>

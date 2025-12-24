@@ -1,5 +1,5 @@
 import React, { Suspense, lazy } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { CompanyProvider } from './context/CompanyContext';
 import { ToastProvider } from './context/ToastContext';
@@ -234,9 +234,9 @@ function App() {
         <AuthProvider>
           <CompanyProvider>
             <WarehouseProvider>
-              <BrowserRouter>
+              <HashRouter>
                  <AppRoutes />
-              </BrowserRouter>
+              </HashRouter>
             </WarehouseProvider>
           </CompanyProvider>
         </AuthProvider>
