@@ -80,16 +80,13 @@ const LoadingSpinner: React.FC = () => (
 const ProtectedRoute: React.FC<{ children: React.ReactElement }> = ({ children }) => {
   const { user, loading } = useAuth();
 
-  if (loading) {
-    return <LoadingSpinner />;
-  }
-
-  if (!user) {
+  // Don't block on loading - just redirect if no user after loaded
+  if (!loading && !user) {
     return <Navigate to="/login" replace />;
   }
 
   // Redirect Super Admin to Super Admin panel
-  if (user.role === 'SuperAdmin') {
+  if (user && user.role === 'SuperAdmin') {
     return <Navigate to="/super-admin/dashboard" replace />;
   }
 
