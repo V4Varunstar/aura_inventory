@@ -80,7 +80,14 @@ const ProductForm: React.FC<{
     <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
       <Input name="sku" label="SKU" value={formData.sku || ''} onChange={handleChange} required />
       <Input name="name" label="Product Name" value={formData.name || ''} onChange={handleChange} required />
-      <Input name="ean" label="EAN (Optional)" value={formData.ean || ''} onChange={handleChange} placeholder="Enter EAN barcode" />
+      <Input 
+        name="ean" 
+        label="EAN / Barcode *" 
+        value={formData.ean || ''} 
+        onChange={handleChange} 
+        placeholder="Enter EAN barcode (mandatory)" 
+        required 
+      />
       <div>
         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Category *</label>
         <div className="flex gap-2">
@@ -148,9 +155,37 @@ const ProductForm: React.FC<{
       <Select name="unit" label="Unit" value={formData.unit || ''} onChange={handleChange} required>
         {Object.values(ProductUnit).map(unit => <option key={unit} value={unit}>{unit}</option>)}
       </Select>
-      <Input name="mrp" label="MRP (₹)" type="number" value={formData.mrp || ''} onChange={handleChange} required />
-      <Input name="costPrice" label="Cost Price (₹)" type="number" value={formData.costPrice || ''} onChange={handleChange} required />
-      <Input name="lowStockThreshold" label="Low Stock Threshold" type="number" value={formData.lowStockThreshold || ''} onChange={handleChange} required />
+      <Input name="mrp" label="MRP (₹)" type="number" step="0.01" value={formData.mrp || ''} onChange={handleChange} required />
+      <Input name="costPrice" label="Cost Price (₹)" type="number" step="0.01" value={formData.costPrice || ''} onChange={handleChange} required />
+      <Input 
+        name="sellingPrice" 
+        label="Selling Price (₹)" 
+        type="number" 
+        step="0.01" 
+        value={formData.sellingPrice || ''} 
+        onChange={handleChange} 
+        placeholder="Selling price (optional)"
+      />
+      <Input 
+        name="gstPercentage" 
+        label="GST %" 
+        type="number" 
+        step="0.01" 
+        min="0" 
+        max="100"
+        value={formData.gstPercentage || ''} 
+        onChange={handleChange} 
+        placeholder="GST percentage (optional)"
+      />
+      <Input 
+        name="lowStockThreshold" 
+        label="Minimum Stock Threshold *" 
+        type="number" 
+        value={formData.lowStockThreshold || ''} 
+        onChange={handleChange} 
+        required 
+        placeholder="Alert when stock reaches this level"
+      />
       <div className="md:col-span-2">
         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Product Image</label>
         <div className="space-y-3">

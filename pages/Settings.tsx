@@ -3,22 +3,28 @@ import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import { useToast } from '../context/ToastContext';
-import { PlusCircle, Trash2, Settings as SettingsIcon } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { PlusCircle, Trash2, Settings as SettingsIcon, Lock } from 'lucide-react';
 import { 
   getInwardSources, 
   addInwardSource, 
   removeInwardSource,
   getOutwardDestinations,
   addOutwardDestination,
-  removeOutwardDestination
+  removeOutwardDestination,
+  updatePassword
 } from '../services/firebaseService';
 import { PermissionGate } from '../components/auth/PermissionGate';
 
 const Settings: React.FC = () => {
+  const { user } = useAuth();
   const [inwardSources, setInwardSources] = useState<string[]>([]);
   const [outwardDestinations, setOutwardDestinations] = useState<string[]>([]);
   const [newSource, setNewSource] = useState('');
   const [newDestination, setNewDestination] = useState('');
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(true);
   const { addToast } = useToast();
 
@@ -100,6 +106,38 @@ const Settings: React.FC = () => {
     }
   };
 
+  const handleChangePassword = async () => {
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      addToast('Please fill all password fields.', 'error');
+      return;
+    }
+    
+    if (newPassword.length < 6) {
+      addToast('New password must be at least 6 characters long.', 'error');
+      return;
+    }
+    
+    if (newPassword !== confirmPassword) {
+      addToast('New password and confirm password do not match.', 'error');
+      return;
+    }
+    
+    if (!user) {
+      addToast('User not found.', 'error');
+      return;
+    }
+    
+    try {
+      await updatePassword(user.id, currentPassword, newPassword);
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      addToast('Password changed successfully!', 'success');
+    } catch (error: any) {
+      addToast(error.message || 'Failed to change password.', 'error');
+    }
+  };
+
   return (
     <PermissionGate permission="settings:update">
       <div className="space-y-6">
@@ -112,6 +150,43 @@ const Settings: React.FC = () => {
           <p>Loading settings...</p>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Change Password */}
+            <Card title="Change Password">
+              <div className="space-y-4">
+                <Input
+                  label="Current Password *"
+                  type="password"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  placeholder="Enter current password"
+                />
+                <Input
+                  label="New Password *"
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="Enter new password (min 6 characters)"
+                />
+                <Input
+                  label="Confirm New Password *"
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Re-enter new password"
+                />
+                <Button 
+                  onClick={handleChangePassword} 
+                  leftIcon={<Lock size={16} />}
+                  className="w-full"
+                >
+                  Change Password
+                </Button>
+                <div className="text-xs text-gray-500 dark:text-gray-400">
+                  💡 Your password will be changed immediately and synced with Super Admin panel
+                </div>
+              </div>
+            </Card>
+
             {/* Inward Sources */}
             <Card title="Inward Sources">
               <div className="space-y-4">
@@ -152,48 +227,50 @@ const Settings: React.FC = () => {
                 </div>
               </div>
             </Card>
-
-            {/* Outward Destinations */}
-            <Card title="Outward Destinations / Channels">
-              <div className="space-y-4">
-                <div className="flex space-x-2">
-                  <Input
-                    value={newDestination}
-                    onChange={(e) => setNewDestination(e.target.value)}
-                    placeholder="Enter new destination (e.g., Shopify)"
-                    onKeyPress={(e) => e.key === 'Enter' && handleAddDestination()}
-                  />
-                  <Button onClick={handleAddDestination} leftIcon={<PlusCircle size={16} />}>
-                    Add
-                  </Button>
-                </div>
-
-                <div className="border dark:border-gray-700 rounded-lg divide-y dark:divide-gray-700">
-                  {outwardDestinations.length === 0 ? (
-                    <div className="p-4 text-center text-gray-500">No destinations configured</div>
-                  ) : (
-                    outwardDestinations.map((destination) => (
-                      <div key={destination} className="flex items-center justify-between p-3 hover:bg-gray-50 dark:hover:bg-gray-700">
-                        <span className="text-gray-800 dark:text-gray-200">{destination}</span>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => handleRemoveDestination(destination)}
-                          className="text-red-500 hover:bg-red-50"
-                        >
-                          <Trash2 size={16} />
-                        </Button>
-                      </div>
-                    ))
-                  )}
-                </div>
-
-                <div className="text-xs text-gray-500 dark:text-gray-400">
-                  💡 These destinations will appear in the Outward Stock form
-                </div>
-              </div>
-            </Card>
           </div>
+        )}
+
+        {/* Outward Destinations - Full Width Row */}
+        {!loading && (
+          <Card title="Outward Destinations / Channels">
+            <div className="space-y-4">
+              <div className="flex space-x-2">
+                <Input
+                  value={newDestination}
+                  onChange={(e) => setNewDestination(e.target.value)}
+                  placeholder="Enter new destination (e.g., Shopify)"
+                  onKeyPress={(e) => e.key === 'Enter' && handleAddDestination()}
+                />
+                <Button onClick={handleAddDestination} leftIcon={<PlusCircle size={16} />}>
+                  Add
+                </Button>
+              </div>
+
+              <div className="border dark:border-gray-700 rounded-lg divide-y dark:divide-gray-700">
+                {outwardDestinations.length === 0 ? (
+                  <div className="p-4 text-center text-gray-500">No destinations configured</div>
+                ) : (
+                  outwardDestinations.map((destination) => (
+                    <div key={destination} className="flex items-center justify-between p-3 hover:bg-gray-50 dark:hover:bg-gray-700">
+                      <span className="text-gray-800 dark:text-gray-200">{destination}</span>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => handleRemoveDestination(destination)}
+                        className="text-red-500 hover:bg-red-50"
+                      >
+                        <Trash2 size={16} />
+                      </Button>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              <div className="text-xs text-gray-500 dark:text-gray-400">
+                💡 These destinations will appear in the Outward Stock form
+              </div>
+            </div>
+          </Card>
         )}
 
         {/* Info Box */}

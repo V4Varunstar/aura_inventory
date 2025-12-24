@@ -1,9 +1,9 @@
-
 import React, { Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { CompanyProvider } from './context/CompanyContext';
 import { ToastProvider } from './context/ToastContext';
+import { WarehouseProvider } from './context/WarehouseContext';
 
 import Layout from './components/layout/Layout';
 // Eager load critical components
@@ -53,6 +53,10 @@ const DashboardHTML = lazy(() => import('./pages/DashboardHTML'));
 // Lazy load new outward stock pages
 const OutwardStockPage = lazy(() => import('./pages/OutwardStockPage'));
 const OutwardInventoryPage = lazy(() => import('./pages/OutwardInventoryPage'));
+
+// NEW: Lazy load party and stock adjustment pages
+const Parties = lazy(() => import('./pages/Parties'));
+const StockAdjustment = lazy(() => import('./pages/StockAdjustment'));
 
 // Critical components that should NOT be lazy loaded
 import SuperAdminRoute from './components/auth/SuperAdminRoute';
@@ -129,6 +133,8 @@ const AppRoutes: React.FC = () => {
                 <Route path="/outward-stock" element={<ProtectedRoute><Layout><OutwardStockPage /></Layout></ProtectedRoute>} />
                 <Route path="/outward-inventory" element={<OutwardInventoryPage />} />
                 <Route path="/adjustments" element={<ProtectedRoute><Layout><Adjustments /></Layout></ProtectedRoute>} />
+                <Route path="/stock-adjustment" element={<ProtectedRoute><Layout><StockAdjustment /></Layout></ProtectedRoute>} />
+                <Route path="/parties" element={<ProtectedRoute><Layout><Parties /></Layout></ProtectedRoute>} />
             <Route path="/audit" element={<ProtectedRoute><Layout><Audit /></Layout></ProtectedRoute>} />
             <Route path="/warehouses" element={<ProtectedRoute><Layout><Warehouses /></Layout></ProtectedRoute>} />
             <Route path="/amazon-fba" element={<ProtectedRoute><Layout><FbaShipments /></Layout></ProtectedRoute>} />
@@ -171,24 +177,33 @@ const AppRoutes: React.FC = () => {
 }
 
 // Error Boundary Component
-class ErrorBoundary extends React.Component<
-  { children: React.ReactNode },
-  { hasError: boolean; error?: Error }
-> {
-  constructor(props: { children: React.ReactNode }) {
+interface ErrorBoundaryProps {
+  children: React.ReactNode;
+}
+
+interface ErrorBoundaryState {
+  hasError: boolean;
+  error?: Error;
+}
+
+class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  props: ErrorBoundaryProps;
+  state: ErrorBoundaryState = { hasError: false };
+
+  constructor(props: ErrorBoundaryProps) {
     super(props);
-    this.state = { hasError: false };
+    this.props = props;
   }
 
-  static getDerivedStateFromError(error: Error) {
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
     return { hasError: true, error };
   }
 
-  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo): void {
     console.error('App Error:', error, errorInfo);
   }
 
-  render() {
+  render(): React.ReactNode {
     if (this.state.hasError) {
       return (
         <div className="flex items-center justify-center h-screen bg-gray-50">
@@ -218,9 +233,11 @@ function App() {
       <ToastProvider>
         <AuthProvider>
           <CompanyProvider>
-            <BrowserRouter>
-               <AppRoutes />
-            </BrowserRouter>
+            <WarehouseProvider>
+              <BrowserRouter>
+                 <AppRoutes />
+              </BrowserRouter>
+            </WarehouseProvider>
           </CompanyProvider>
         </AuthProvider>
       </ToastProvider>

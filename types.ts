@@ -35,23 +35,33 @@ export interface Product {
   unit: string;
   mrp: number;
   costPrice: number;
+  sellingPrice?: number; // NEW: Selling price for analytics
+  gstPercentage?: number; // NEW: GST percentage
+  ean?: string; // NEW: EAN/Barcode - mandatory and unique
   batchTracking?: boolean;
-  lowStockThreshold?: number;
+  lowStockThreshold?: number; // Minimum stock threshold for alerts
+  minStockThreshold?: number; // Alias for lowStockThreshold
+  warehouseIds?: string[]; // NEW: Warehouses where product is available
   createdAt: Date;
   updatedAt: Date;
   companyId?: string;
   orgId?: string;
+  isDeleted?: boolean; // NEW: Soft delete flag
 }
 
 // Warehouse type
 export interface Warehouse {
   id: string;
   name: string;
+  code?: string; // NEW: Warehouse code
   location?: string;
+  address?: string; // NEW: Full address
+  status?: 'Active' | 'Inactive'; // NEW: Warehouse status
   createdAt: Date;
   updatedAt?: Date;
   companyId?: string;
   orgId?: string;
+  isDeleted?: boolean; // NEW: Soft delete flag
 }
 
 // Inward/Outward Sources
@@ -88,6 +98,7 @@ export interface Inward {
   id: string;
   productId: string;
   sku: string;
+  ean?: string; // EAN / Barcode
   productName?: string;
   batchNo?: string;
   quantity: number;
@@ -95,32 +106,53 @@ export interface Inward {
   expDate?: Date;
   costPrice: number;
   source: string;
+  partyId?: string; // NEW: Party ID reference
+  partyName?: string; // NEW: Party name
+  awbNumber?: string; // NEW: AWB/Reference number
+  documentType?: string; // NEW: Document type
+  documentNo?: string; // NEW: Invoice/Document number
   notes?: string;
   attachmentUrl?: string;
   warehouseId: string;
   warehouseName?: string;
   createdBy: string;
   createdAt: Date;
+  transactionDate?: Date; // NEW: Transaction date
   companyId?: string;
   orgId?: string;
+  isDeleted?: boolean; // NEW: Soft delete
 }
 
 export interface Outward {
   id: string;
   productId: string;
   sku: string;
+  ean?: string; // EAN / Barcode
   productName?: string;
   quantity: number;
   shipmentRef?: string;
+  awbNumber?: string; // NEW: AWB/Order/Reference number
+  orderNumber?: string; // NEW: Order number
+  documentType?: string; // NEW: Document type
+  platform?: string; // NEW: Platform/Channel (Amazon, Flipkart, etc.)
   warehouseId: string;
   warehouseName?: string;
-  destination: string;
+  destination: string; // Platform/Channel
+  partyId?: string; // NEW: Party ID for custom parties
+  partyName?: string; // NEW: Party name
   notes?: string;
   attachmentUrl?: string;
+  courierPartner?: string;
+  batchNo?: string;
+  manufacturingDate?: Date;
+  expiryDate?: Date;
+  costPrice?: number;
   createdBy: string;
   createdAt: Date;
   companyId?: string;
   orgId?: string;
+  transactionDate?: Date;
+  isDeleted?: boolean; // NEW: Soft delete
 }
 
 export interface Adjustment {
@@ -130,6 +162,8 @@ export interface Adjustment {
   productName?: string;
   quantity: number;
   type: string;
+  adjustmentType?: 'Increase' | 'Decrease'; // NEW: Increase or Decrease
+  reason: string; // NEW: Mandatory reason
   warehouseId: string;
   warehouseName?: string;
   notes?: string;
@@ -139,6 +173,7 @@ export interface Adjustment {
   createdAt: Date;
   companyId?: string;
   orgId?: string;
+  isDeleted?: boolean; // NEW: Soft delete
 }
 
 export enum AdjustmentType {
@@ -148,7 +183,62 @@ export enum AdjustmentType {
   Lost = 'Lost',
   Found = 'Found',
   AuditCorrection = 'Audit Correction',
+  Increase = 'Increase',
+  Decrease = 'Decrease',
   Other = 'Other'
+}
+
+// NEW: Party/Customer Management
+export interface Party {
+  id: string;
+  name: string;
+  type: 'Customer' | 'Supplier' | 'Both'; // Party type
+  contactPerson?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  gstNumber?: string;
+  notes?: string;
+  createdAt: Date;
+  updatedAt: Date;
+  companyId?: string;
+  orgId?: string;
+  isDeleted?: boolean; // Soft delete
+}
+
+// NEW: Password Reset Log
+export interface PasswordResetLog {
+  id: string;
+  userId: string;
+  userName: string;
+  resetBy: string; // 'self' or admin user ID
+  resetAt: Date;
+  companyId?: string;
+  orgId?: string;
+}
+
+// NEW: Warehouse Selection Context
+export interface WarehouseContextType {
+  selectedWarehouse: Warehouse | null;
+  warehouses: Warehouse[];
+  loading: boolean;
+  selectWarehouse: (warehouseId: string) => void;
+  refreshWarehouses: () => Promise<void>;
+}
+
+// NEW: Warehouse Inventory (for stock tracking per warehouse)
+export interface WarehouseInventory {
+  id: string;
+  warehouseId: string;
+  warehouseName: string;
+  productId: string;
+  sku: string;
+  productName: string;
+  quantity: number;
+  costValue: number; // quantity * cost price
+  lastUpdated: Date;
+  companyId?: string;
+  orgId?: string;
 }
 
 // Activity logging
@@ -165,6 +255,10 @@ export enum ActivityType {
   WarehouseCreated = 'WarehouseCreated',
   WarehouseUpdated = 'WarehouseUpdated',
   WarehouseDeleted = 'WarehouseDeleted',
+  PartyCreated = 'PartyCreated', // NEW
+  PartyUpdated = 'PartyUpdated', // NEW
+  PartyDeleted = 'PartyDeleted', // NEW
+  PasswordReset = 'PasswordReset', // NEW
   Login = 'Login',
   Logout = 'Logout',
   SettingsChanged = 'SettingsChanged'

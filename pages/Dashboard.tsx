@@ -2,13 +2,14 @@
 import React, { useState, useEffect, useMemo, useCallback, memo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Card from '../components/ui/Card';
-import { getDashboardData, getTodaysSalesData } from '../services/firebaseService';
-import { DollarSign, Package, ArrowUpCircle, ArrowDownCircle, AlertTriangle, Users, ShoppingCart, Clock } from 'lucide-react';
+import { getDashboardData, getTodaysSalesData, getProducts, getInwardRecords, getOutwardRecords } from '../services/firebaseService';
+import { DollarSign, Package, ArrowUpCircle, ArrowDownCircle, AlertTriangle, Users, ShoppingCart, Clock, Warehouse as WarehouseIcon } from 'lucide-react';
 import Select from '../components/ui/Select';
 import Button from '../components/ui/Button';
 import TodaysSalesChart from '../components/analytics/TodaysSalesChart';
 import InHandInventoryPieChart from '../components/analytics/InHandInventoryPieChart';
 import CategoryWiseSalesPieChart from '../components/analytics/CategoryWiseSalesPieChart';
+import { useWarehouse } from '../context/WarehouseContext';
 import {
   LineChart,
   Line,
@@ -24,7 +25,7 @@ import {
   Pie,
   Cell
 } from 'recharts';
-import { ActivityLog, Product, Role } from '../types';
+import { ActivityLog, Product, Role, Inward, Outward } from '../types';
 import Table from '../components/ui/Table';
 import { useAuth } from '../context/AuthContext';
 
@@ -77,11 +78,19 @@ const COLORS = ['#10b981', '#3b82f6', '#ef4444', '#f97316', '#8b5cf6'];
 
 const Dashboard: React.FC = () => {
     const navigate = useNavigate();
+    const { user } = useAuth();
+    const { selectedWarehouse } = useWarehouse();
     const [data, setData] = useState<DashboardData | null>(null);
     const [todaysSalesData, setTodaysSalesData] = useState<TodaysSalesData | null>(null);
+    const [warehouseStats, setWarehouseStats] = useState<{
+        totalProducts: number;
+        totalQuantity: number;
+        inventoryValue: number;
+        lowStockProducts: Product[];
+        platformWiseOutward: { name: string; value: number }[];
+    } | null>(null);
     const [loading, setLoading] = useState(true);
     const [analyticsView, setAnalyticsView] = useState<'overview' | 'todaysSales'>('overview');
-    const { user } = useAuth();
     
     useEffect(() => {
         const fetchData = async () => {
@@ -104,6 +113,94 @@ const Dashboard: React.FC = () => {
         };
         fetchData();
     }, []);
+
+    // Fetch warehouse-specific stats when warehouse changes
+    useEffect(() => {
+        const fetchWarehouseStats = async () => {
+            if (!selectedWarehouse) {
+                setWarehouseStats(null);
+                return;
+            }
+
+            try {
+                const [products, inwardRecords, outwardRecords] = await Promise.all([
+                    getProducts(),
+                    getInwardRecords(),
+                    getOutwardRecords()
+                ]);
+
+                // Filter data for selected warehouse
+                const warehouseInward = inwardRecords.filter((r: Inward) => r.warehouseId === selectedWarehouse.id);
+                const warehouseOutward = outwardRecords.filter((r: Outward) => r.warehouseId === selectedWarehouse.id);
+
+                // Calculate stock per product
+                const stockMap = new Map<string, { product: Product; inward: number; outward: number; stock: number }>();
+                
+                warehouseInward.forEach((r: Inward) => {
+                    const existing = stockMap.get(r.productId) || { 
+                        product: products.find(p => p.id === r.productId)!, 
+                        inward: 0, 
+                        outward: 0,
+                        stock: 0
+                    };
+                    existing.inward += r.quantity;
+                    stockMap.set(r.productId, existing);
+                });
+
+                warehouseOutward.forEach((r: Outward) => {
+                    const existing = stockMap.get(r.productId) || { 
+                        product: products.find(p => p.id === r.productId)!, 
+                        inward: 0, 
+                        outward: 0,
+                        stock: 0
+                    };
+                    existing.outward += r.quantity;
+                    stockMap.set(r.productId, existing);
+                });
+
+                // Calculate final stock
+                let totalQty = 0;
+                let totalValue = 0;
+                const lowStock: Product[] = [];
+
+                stockMap.forEach((data, productId) => {
+                    data.stock = data.inward - data.outward;
+                    totalQty += data.stock;
+                    if (data.product?.costPrice) {
+                        totalValue += data.stock * data.product.costPrice;
+                    }
+
+                    // Check low stock threshold
+                    if (data.product && data.product.minStockThreshold && data.stock <= data.product.minStockThreshold && data.stock > 0) {
+                        lowStock.push({ ...data.product, quantity: data.stock });
+                    }
+                });
+
+                // Platform-wise outward analysis
+                const platformMap = new Map<string, number>();
+                warehouseOutward.forEach((r: Outward) => {
+                    const platform = r.platform || 'Other';
+                    platformMap.set(platform, (platformMap.get(platform) || 0) + r.quantity);
+                });
+
+                const platformWiseOutward = Array.from(platformMap.entries())
+                    .map(([name, value]) => ({ name, value }))
+                    .sort((a, b) => b.value - a.value);
+
+                setWarehouseStats({
+                    totalProducts: stockMap.size,
+                    totalQuantity: totalQty,
+                    inventoryValue: totalValue,
+                    lowStockProducts: lowStock,
+                    platformWiseOutward
+                });
+            } catch (error) {
+                console.error('Failed to fetch warehouse stats:', error);
+            }
+        };
+
+        fetchWarehouseStats();
+    }, [selectedWarehouse]);
 
     if (loading || !data) {
         return <div className="text-center p-8">Loading Dashboard...</div>;
@@ -157,6 +254,50 @@ const Dashboard: React.FC = () => {
                 </div>
             </div>
 
+            {/* Warehouse-Specific Summary */}
+            {selectedWarehouse && warehouseStats && (
+                <Card title={`${selectedWarehouse.name} - Warehouse Analytics`}>
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <div className="flex items-center space-x-3">
+                            <div className="p-3 rounded-full bg-purple-500">
+                                <WarehouseIcon className="text-white" size={24} />
+                            </div>
+                            <div>
+                                <p className="text-sm text-gray-500 dark:text-gray-400">Total Products</p>
+                                <p className="text-2xl font-bold text-gray-800 dark:text-gray-200">{warehouseStats.totalProducts}</p>
+                            </div>
+                        </div>
+                        <div className="flex items-center space-x-3">
+                            <div className="p-3 rounded-full bg-blue-500">
+                                <Package className="text-white" size={24} />
+                            </div>
+                            <div>
+                                <p className="text-sm text-gray-500 dark:text-gray-400">Total Quantity</p>
+                                <p className="text-2xl font-bold text-gray-800 dark:text-gray-200">{warehouseStats.totalQuantity}</p>
+                            </div>
+                        </div>
+                        <div className="flex items-center space-x-3">
+                            <div className="p-3 rounded-full bg-green-500">
+                                <DollarSign className="text-white" size={24} />
+                            </div>
+                            <div>
+                                <p className="text-sm text-gray-500 dark:text-gray-400">Inventory Value</p>
+                                <p className="text-2xl font-bold text-gray-800 dark:text-gray-200">{formatCurrency(warehouseStats.inventoryValue)}</p>
+                            </div>
+                        </div>
+                        <div className="flex items-center space-x-3">
+                            <div className="p-3 rounded-full bg-red-500">
+                                <AlertTriangle className="text-white" size={24} />
+                            </div>
+                            <div>
+                                <p className="text-sm text-gray-500 dark:text-gray-400">Low Stock Items</p>
+                                <p className="text-2xl font-bold text-gray-800 dark:text-gray-200">{warehouseStats.lowStockProducts.length}</p>
+                            </div>
+                        </div>
+                    </div>
+                </Card>
+            )}
+
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-7 gap-6">
                 <SummaryCard title="Total Stock Value" value={formatCurrency(summary.totalStockValue)} icon={<DollarSign className="text-white"/>} color="bg-green-500" />
                 <SummaryCard title="Total Units" value={summary.totalUnits.toLocaleString()} icon={<Package className="text-white"/>} color="bg-blue-500" />
@@ -183,6 +324,52 @@ const Dashboard: React.FC = () => {
 
             {analyticsView === 'overview' ? (
                 <>
+                    {/* Low Stock Alerts for Selected Warehouse */}
+                    {selectedWarehouse && warehouseStats && warehouseStats.lowStockProducts.length > 0 && (
+                        <Card title={`⚠️ Low Stock Alerts - ${selectedWarehouse.name}`}>
+                            <div className="overflow-x-auto">
+                                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                                    <thead className="bg-gray-50 dark:bg-gray-800">
+                                        <tr>
+                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">SKU</th>
+                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Product Name</th>
+                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Current Stock</th>
+                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Min Threshold</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
+                                        {warehouseStats.lowStockProducts.map((product) => (
+                                            <tr key={product.id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
+                                                <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-100">{product.sku}</td>
+                                                <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-100">{product.name}</td>
+                                                <td className="px-4 py-3 text-sm">
+                                                    <span className="text-red-600 dark:text-red-400 font-semibold">{product.quantity}</span>
+                                                </td>
+                                                <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">{product.minStockThreshold || 0}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </Card>
+                    )}
+
+                    {/* Platform-wise Outward for Selected Warehouse */}
+                    {selectedWarehouse && warehouseStats && warehouseStats.platformWiseOutward.length > 0 && (
+                        <Card title={`Platform-wise Outward - ${selectedWarehouse.name}`}>
+                            <ResponsiveContainer width="100%" height={300}>
+                                <BarChart data={warehouseStats.platformWiseOutward}>
+                                    <CartesianGrid strokeDasharray="3 3" />
+                                    <XAxis dataKey="name" />
+                                    <YAxis />
+                                    <Tooltip />
+                                    <Legend />
+                                    <Bar dataKey="value" fill="#8b5cf6" name="Quantity" />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </Card>
+                    )}
+
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                         <Card title="Inward vs Outward Trend" className="lg:col-span-2">
                             <ResponsiveContainer width="100%" height={300}>

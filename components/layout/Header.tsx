@@ -2,6 +2,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Menu, User, LogOut, Search } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import WarehouseSelector from '../ui/WarehouseSelector';
 
 interface HeaderProps {
   setSidebarOpen: (open: boolean) => void;
@@ -24,13 +25,17 @@ const Header: React.FC<HeaderProps> = ({ setSidebarOpen }) => {
 
   return (
     <header className="flex items-center justify-between p-4 bg-white dark:bg-gray-800 border-b dark:border-gray-700">
-      <div className="flex items-center">
+      <div className="flex items-center gap-4">
         <button
           onClick={() => setSidebarOpen(true)}
           className="text-gray-500 dark:text-gray-400 focus:outline-none lg:hidden"
         >
           <Menu size={24} />
         </button>
+        
+        {/* Warehouse Selector */}
+        <WarehouseSelector />
+        
         <div className="relative ml-4 hidden md:block">
           <span className="absolute inset-y-0 left-0 flex items-center pl-3">
              <Search className="h-5 w-5 text-gray-400" />

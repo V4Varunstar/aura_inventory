@@ -18,9 +18,9 @@ const WarehouseForm: React.FC<{
   onSave: (warehouse: Partial<Warehouse>) => void;
   onCancel: () => void;
 }> = ({ warehouse, onSave, onCancel }) => {
-  const [formData, setFormData] = useState(warehouse || {});
+  const [formData, setFormData] = useState(warehouse || { status: 'Active' });
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
@@ -32,7 +32,21 @@ const WarehouseForm: React.FC<{
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <Input name="name" label="Warehouse Name" value={formData.name || ''} onChange={handleChange} required />
-      <Input name="location" label="Location" value={formData.location || ''} onChange={handleChange} required />
+      <Input name="code" label="Warehouse Code" value={formData.code || ''} onChange={handleChange} placeholder="Short code (optional)" />
+      <Input name="location" label="Location / City" value={formData.location || ''} onChange={handleChange} placeholder="City or region" />
+      <Input name="address" label="Full Address" value={formData.address || ''} onChange={handleChange} placeholder="Complete address (optional)" />
+      <div>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Status</label>
+        <select
+          name="status"
+          value={formData.status || 'Active'}
+          onChange={handleChange}
+          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-primary-500"
+        >
+          <option value="Active">Active</option>
+          <option value="Inactive">Inactive</option>
+        </select>
+      </div>
       <div className="flex justify-end space-x-2 pt-4">
         <Button type="button" variant="secondary" onClick={onCancel}>Cancel</Button>
         <Button type="submit">{warehouse?.id ? 'Update' : 'Create'} Warehouse</Button>
@@ -135,7 +149,21 @@ const Warehouses: React.FC = () => {
     
     const columns = [
         { header: 'Name', accessor: 'name' as keyof Warehouse },
+        { header: 'Code', accessor: 'code' as keyof Warehouse },
         { header: 'Location', accessor: 'location' as keyof Warehouse },
+        { 
+          header: 'Status', 
+          accessor: 'status' as keyof Warehouse,
+          render: (item: Warehouse) => (
+            <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+              item.status === 'Active' 
+                ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
+                : 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
+            }`}>
+              {item.status || 'Active'}
+            </span>
+          )
+        },
         { header: 'Created At', accessor: 'createdAt' as keyof Warehouse, render: (item: Warehouse) => new Date(item.createdAt).toLocaleDateString() },
         {
           header: 'Actions',

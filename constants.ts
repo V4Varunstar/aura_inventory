@@ -11,7 +11,8 @@ import {
   BarChart3,
   Shuffle,
   Barcode,
-  TrendingUp
+  TrendingUp,
+  UserCircle
 } from 'lucide-react';
 
 export const APP_NAME = 'Aura Inventory';
@@ -26,6 +27,7 @@ export const NAV_ITEMS = [
   { label: 'Inward Stock', href: '/inward', icon: ArrowDownToLine, roles: [Role.Admin, Role.Manager, Role.Employee] },
   { label: 'Outward Stock', href: '/outward', icon: ArrowUpFromLine, roles: [Role.Admin, Role.Manager, Role.Employee] },
   { label: 'Adjustments', href: '/adjustments', icon: Shuffle, roles: [Role.Admin, Role.Manager] },
+  { label: 'Stock Adjustment', href: '/stock-adjustment', icon: Shuffle, roles: [Role.Admin, Role.Manager] },
   { label: 'Audit', href: '/audit', icon: FileText, roles: [Role.Admin, Role.Manager, Role.Viewer] },
   
   { label: 'Platform Management', isHeader: true, roles: [Role.Admin, Role.Manager, Role.Employee] },
@@ -37,6 +39,7 @@ export const NAV_ITEMS = [
   
   { label: 'Master Data', isHeader: true, roles: [Role.Admin, Role.Manager, Role.Viewer] },
   { label: 'Warehouses', href: '/warehouses', icon: WarehouseIcon, roles: [Role.Admin, Role.Manager] },
+  { label: 'Parties', href: '/parties', icon: UserCircle, roles: [Role.Admin, Role.Manager] },
   { label: 'Sources & Destinations', href: '/settings/sources', icon: Shuffle, roles: [Role.Admin, Role.Manager] },
   { label: 'EAN / Barcode Mapping', href: '/product-mapping', icon: Barcode, roles: [Role.Admin, Role.Manager] },
   { label: 'Expiring Items', href: '/expiring-products', icon: TrendingUp, roles: [Role.Admin, Role.Manager, Role.Viewer] },

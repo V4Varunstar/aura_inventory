@@ -585,6 +585,40 @@ export const updateUser = (id: string, data: Partial<User>) => {
     return Promise.reject('User not found');
 };
 
+export const updatePassword = (userId: string, currentPassword: string, newPassword: string): Promise<void> => {
+    const user = users.find(u => u.id === userId);
+    if (!user) {
+        return Promise.reject(new Error('User not found'));
+    }
+    
+    // Verify current password
+    if (user.password !== currentPassword) {
+        return Promise.reject(new Error('Current password is incorrect'));
+    }
+    
+    // Update password
+    user.password = newPassword;
+    
+    // Create password reset log
+    const passwordResetLog = {
+        id: `reset_${Date.now()}`,
+        userId: user.id,
+        userName: user.name,
+        userEmail: user.email,
+        resetAt: new Date(),
+        resetBy: user.id,
+        resetByName: user.name,
+        companyId: user.companyId
+    };
+    
+    // Get existing logs
+    const existingLogs = loadFromStorage('passwordResetLogs', []);
+    existingLogs.push(passwordResetLog);
+    saveToStorage('passwordResetLogs', existingLogs);
+    
+    return simulateApi(undefined);
+};
+
 
 // Products
 export const getProducts = () => simulateApi(products);
@@ -883,11 +917,12 @@ export const addWarehouse = (data: Partial<Warehouse>) => {
     const newWarehouse: Warehouse = {
         id: `wh_${Date.now()}`,
         name: data.name!,
-        location: data.location!,
+        location: data.location,
+        code: data.code,
+        address: data.address,
+        status: data.status || 'Active',
         createdAt: new Date(),
         companyId: 'demo-company-001',
-        isActive: true,
-        createdBy: currentUser?.id || 'unknown',
         updatedAt: new Date()
     };
     warehouses.push(newWarehouse);
@@ -1443,9 +1478,9 @@ export const getOutwardReport = async (format: 'csv' | 'xlsx') => {
             Quantity: record.quantity,
             Warehouse: warehouse?.name || 'Unknown',
             Destination: destinationName,
+            Platform: record.platform || '-',
             'Courier Partner': record.courierPartner || '-',
             'Shipment Ref': record.shipmentRef || '-',
-            Channel: record.channel || '-',
             Notes: record.notes || '-'
         };
     });

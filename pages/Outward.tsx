@@ -7,15 +7,18 @@ import Select from '../components/ui/Select';
 import { useToast } from '../context/ToastContext';
 import { useCompany } from '../context/CompanyContext';
 import { useAuth } from '../context/AuthContext';
-import { Product, Warehouse, Source, Inward } from '../types';
+import { useWarehouse } from '../context/WarehouseContext';
+import { Product, Warehouse, Inward, Party } from '../types';
 import { getProducts, getWarehouses, addOutward, getProductStock, getCourierPartners, addCourierPartner, getInwardRecords } from '../services/firebaseService';
-import { getSources } from '../services/sourceService';
-// Removed validateStockAvailability - validation happens in addOutward service
+import { getSources, Source } from '../services/sourceService';
+import { getParties } from '../services/partyService';
 import EanInput from '../components/inventory/EanInput';
 import ProductSearchSelect from '../components/inventory/ProductSearchSelect';
 import SourceSelector from '../components/inventory/SourceSelector';
 import BulkOutwardUpload from '../components/inventory/BulkOutwardUpload';
-import { Upload } from 'lucide-react';
+import EANScanner from '../components/ean/EANScanner';
+import InlinePartyModal from '../components/ui/InlinePartyModal';
+import { Upload, UserPlus } from 'lucide-react';
 
 interface OutwardItem {
     id: string;
@@ -38,6 +41,7 @@ const Outward: React.FC = () => {
     const { company } = useCompany();
     const { user } = useAuth();
     const { addToast } = useToast();
+    const { selectedWarehouse } = useWarehouse();
     
     // Use user.companyId for consistency with Sources page and dashboard
     const companyId = user?.companyId || company?.id || 'default';
@@ -46,8 +50,14 @@ const Outward: React.FC = () => {
     const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
     const [outwardDestinations, setOutwardDestinations] = useState<Source[]>([]);
     const [courierPartners, setCourierPartners] = useState<string[]>([]);
+    const [parties, setParties] = useState<Party[]>([]);
     const [transactionDate, setTransactionDate] = useState(new Date().toISOString().split('T')[0]);
+    const [platform, setPlatform] = useState('Amazon');
     const [destination, setDestination] = useState('');
+    const [partyId, setPartyId] = useState('');
+    const [awbNumber, setAwbNumber] = useState('');
+    const [orderNumber, setOrderNumber] = useState('');
+    const [documentType, setDocumentType] = useState('Invoice');
     const [courierPartner, setCourierPartner] = useState('');
     const [shipmentRef, setShipmentRef] = useState('');
     const [notes, setNotes] = useState('');
@@ -56,28 +66,43 @@ const Outward: React.FC = () => {
     const [showAddCourier, setShowAddCourier] = useState(false);
     const [newCourier, setNewCourier] = useState('');
     const [showBulkUpload, setShowBulkUpload] = useState(false);
+    const [showPartyModal, setShowPartyModal] = useState(false);
+    const [showEanScanner, setShowEanScanner] = useState<string | null>(null);
     const [allBatches, setAllBatches] = useState<Inward[]>([]);
 
     useEffect(() => {
         const fetchData = async () => {
             if (!companyId) return;
-            const [productsData, warehousesData, destinationsData, couriersData, batchesData] = await Promise.all([
+            const [productsData, warehousesData, destinationsData, couriersData, partiesData, batchesData] = await Promise.all([
                 getProducts(),
                 getWarehouses(),
                 getSources(companyId, 'outward'),
                 getCourierPartners(),
+                getParties(),
                 getInwardRecords()
             ]);
             setProducts(productsData);
             setWarehouses(warehousesData);
             setOutwardDestinations(destinationsData);
             setCourierPartners(couriersData);
+            setParties(partiesData.filter(p => p.type === 'Customer' || p.type === 'Both'));
             setAllBatches(batchesData);
             if (destinationsData.length > 0) setDestination(destinationsData[0].id);
             if (couriersData.length > 0) setCourierPartner(couriersData[0]);
         };
         fetchData();
     }, [companyId]);
+
+    // Auto-select warehouse from context
+    useEffect(() => {
+        if (selectedWarehouse) {
+            // Update all items to use selected warehouse
+            setItems(items.map(item => ({
+                ...item,
+                warehouseId: selectedWarehouse.id
+            })));
+        }
+    }, [selectedWarehouse]);
 
     const handleDestinationCreated = async () => {
         if (!companyId) return;
@@ -191,9 +216,31 @@ const Outward: React.FC = () => {
         setItems(updated);
     };
 
+    const handlePartyCreated = async (party: Party) => {
+        const updatedParties = await getParties();
+        setParties(updatedParties.filter(p => p.type === 'Customer' || p.type === 'Both'));
+        setPartyId(party.id);
+    };
+
+    const handleEanScanned = (itemId: string, ean: string) => {
+        const product = products.find(p => p.ean?.toLowerCase() === ean.toLowerCase());
+        if (product) {
+            updateItem(itemId, 'ean', ean);
+            addToast(`Product found: ${product.name}`, 'success');
+        } else {
+            addToast('Product not found with this EAN', 'error');
+        }
+        setShowEanScanner(null);
+    };
+
     const resetForm = () => {
         setTransactionDate(new Date().toISOString().split('T')[0]);
+        setPlatform('Amazon');
         setDestination(outwardDestinations[0]?.id || '');
+        setPartyId('');
+        setAwbNumber('');
+        setOrderNumber('');
+        setDocumentType('Invoice');
         setCourierPartner(courierPartners[0] || '');
         setShipmentRef('');
         setNotes('');
@@ -240,9 +287,11 @@ const Outward: React.FC = () => {
         setIsLoading(true);
 
         try {
-            // Get the destination name from the source ID
+            // Get the destination name and party name
             const destinationSource = outwardDestinations.find(s => s.id === destination);
             const destinationName = destinationSource ? destinationSource.name : destination;
+            const party = parties.find(p => p.id === partyId);
+            const partyName = party ? party.name : '';
             
             // Process each item
             for (const item of items) {
@@ -253,7 +302,13 @@ const Outward: React.FC = () => {
                     ean: item.ean,
                     quantity: item.quantity,
                     warehouseId: item.warehouseId,
-                    destination: destinationName, // Use the name instead of ID
+                    destination: destinationName,
+                    platform: platform || undefined,
+                    partyId: partyId || undefined,
+                    partyName: partyName || undefined,
+                    awbNumber: awbNumber || undefined,
+                    orderNumber: orderNumber || undefined,
+                    documentType,
                     courierPartner,
                     shipmentRef,
                     notes,
@@ -288,7 +343,7 @@ const Outward: React.FC = () => {
             </div>
             <Card title="Create New Outward Shipment">
                 <form onSubmit={handleSubmit}>
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
                         <Input 
                             label="Transaction Date *" 
                             type="date" 
@@ -296,14 +351,78 @@ const Outward: React.FC = () => {
                             onChange={e => setTransactionDate(e.target.value)} 
                             required 
                         />
+                        <Select 
+                            label="Platform / Channel *" 
+                            value={platform} 
+                            onChange={e => setPlatform(e.target.value)} 
+                            required
+                        >
+                            <option value="Amazon">Amazon</option>
+                            <option value="Flipkart">Flipkart</option>
+                            <option value="Myntra">Myntra</option>
+                            <option value="Meesho">Meesho</option>
+                            <option value="Retail">Retail</option>
+                            <option value="Custom">Custom</option>
+                        </Select>
+                        {platform === 'Custom' && (
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                    Party / Customer *
+                                </label>
+                                <div className="flex gap-2">
+                                    <select
+                                        value={partyId}
+                                        onChange={(e) => setPartyId(e.target.value)}
+                                        className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                                        required
+                                    >
+                                        <option value="">Select party</option>
+                                        {parties.map(p => (
+                                            <option key={p.id} value={p.id}>{p.name}</option>
+                                        ))}
+                                    </select>
+                                    <Button
+                                        type="button"
+                                        variant="secondary"
+                                        size="sm"
+                                        onClick={() => setShowPartyModal(true)}
+                                        title="Create new party"
+                                    >
+                                        <UserPlus size={16} />
+                                    </Button>
+                                </div>
+                            </div>
+                        )}
+                        <Input 
+                            label="AWB Number" 
+                            value={awbNumber} 
+                            onChange={e => setAwbNumber(e.target.value)} 
+                            placeholder="Enter AWB number"
+                        />
+                        <Input 
+                            label="Order Number" 
+                            value={orderNumber} 
+                            onChange={e => setOrderNumber(e.target.value)} 
+                            placeholder="Enter order number"
+                        />
+                        <Select 
+                            label="Document Type *" 
+                            value={documentType} 
+                            onChange={e => setDocumentType(e.target.value)} 
+                            required
+                        >
+                            <option value="Invoice">Invoice</option>
+                            <option value="Challan">Challan</option>
+                            <option value="DeliveryNote">Delivery Note</option>
+                            <option value="Other">Other</option>
+                        </Select>
                         <SourceSelector
-                            label="Destination / Channel *"
+                            label="Destination / Additional Info"
                             value={destination}
                             onChange={(e) => setDestination(e.target.value)}
                             type="outward"
                             sources={outwardDestinations}
                             onSourceCreated={handleDestinationCreated}
-                            required
                         />
                         <div>
                             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -399,12 +518,37 @@ const Outward: React.FC = () => {
                                             </Button>
                                         </div>
                                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                                            <Input
-                                                label="EAN / Barcode"
-                                                value={item.ean}
-                                                onChange={e => updateItem(item.id, 'ean', e.target.value)}
-                                                placeholder="Scan EAN"
-                                            />
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                                    EAN / Barcode
+                                                </label>
+                                                <div className="flex gap-2">
+                                                    <Input
+                                                        value={item.ean}
+                                                        onChange={e => updateItem(item.id, 'ean', e.target.value)}
+                                                        placeholder="Scan or enter EAN"
+                                                        className="flex-1"
+                                                    />
+                                                    <Button
+                                                        type="button"
+                                                        variant="secondary"
+                                                        size="sm"
+                                                        onClick={() => setShowEanScanner(item.id)}
+                                                        title="Scan EAN"
+                                                    >
+                                                        📷
+                                                    </Button>
+                                                </div>
+                                                {showEanScanner === item.id && (
+                                                    <div className="mt-2 border rounded-lg p-3 bg-white dark:bg-gray-800">
+                                                        <EANScanner
+                                                            onScan={(ean) => handleEanScanned(item.id, ean)}
+                                                            onClose={() => setShowEanScanner(null)}
+                                                            placeholder="Scan EAN"
+                                                        />
+                                                    </div>
+                                                )}
+                                            </div>
                                             <Select 
                                                 label="Product (SKU) *"
                                                 value={item.sku}
@@ -524,6 +668,12 @@ const Outward: React.FC = () => {
                     setShowBulkUpload(false);
                     addToast('Bulk outward upload completed successfully!', 'success');
                 }}
+            />
+            <InlinePartyModal
+                isOpen={showPartyModal}
+                onClose={() => setShowPartyModal(false)}
+                onPartyCreated={handlePartyCreated}
+                defaultType="Customer"
             />
         </div>
     );
