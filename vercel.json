@@ -31,10 +31,6 @@
   ],
   "rewrites": [
     {
-      "source": "/",
-      "destination": "/index.html"
-    },
-    {
       "source": "/simple",
       "destination": "/simple-app.html"
     },
@@ -43,24 +39,12 @@
       "destination": "/landing.html"
     },
     {
-      "source": "/app",
-      "destination": "/index.html"
-    },
-    {
-      "source": "/dashboard",
-      "destination": "/index.html"
-    },
-    {
-      "source": "/login",
-      "destination": "/index.html"
-    },
-    {
-      "source": "/super-admin/(.*)",
-      "destination": "/index.html"
-    },
-    {
       "source": "/test",
       "destination": "/simple.html"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
   ],
   "cleanUrls": true,
