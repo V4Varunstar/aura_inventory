@@ -1,10 +1,78 @@
-import React, { Suspense, lazy } from 'react';
+import React, { Suspense, lazy, Component, ErrorInfo, ReactNode } from 'react';
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { CompanyProvider } from './context/CompanyContext';
 import { ToastProvider } from './context/ToastContext';
 import { WarehouseProvider } from './context/WarehouseContext';
 
+// Error Boundary Component
+interface ErrorBoundaryProps {
+  children: ReactNode;
+}
+
+interface ErrorBoundaryState {
+  hasError: boolean;
+  error: Error | null;
+}
+
+class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  constructor(props: ErrorBoundaryProps) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error('❌ React Error Boundary caught:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          height: '100vh',
+          background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+          color: 'white',
+          fontFamily: 'Arial, sans-serif',
+          padding: '40px',
+          textAlign: 'center'
+        }}>
+          <div>
+            <div style={{ fontSize: '64px', marginBottom: '20px' }}>⚠️</div>
+            <h1 style={{ fontSize: '32px', marginBottom: '16px' }}>Something Went Wrong</h1>
+            <p style={{ fontSize: '16px', marginBottom: '8px', opacity: 0.9 }}>
+              {this.state.error?.message || 'Unknown error occurred'}
+            </p>
+            <button
+              onClick={() => window.location.reload()}
+              style={{
+                marginTop: '20px',
+                padding: '12px 24px',
+                background: 'white',
+                color: '#dc2626',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontSize: '16px',
+                fontWeight: 'bold'
+              }}
+            >
+              Reload Application
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
 import Layout from './components/layout/Layout';
 // Eager load critical components
 import Landing from './pages/Landing';
@@ -171,55 +239,6 @@ const AppRoutes: React.FC = () => {
             </Routes>
         </Suspense>
     )
-}
-
-// Error Boundary Component
-interface ErrorBoundaryProps {
-  children: React.ReactNode;
-}
-
-interface ErrorBoundaryState {
-  hasError: boolean;
-  error?: Error;
-}
-
-class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
-  props: ErrorBoundaryProps;
-  state: ErrorBoundaryState = { hasError: false };
-
-  constructor(props: ErrorBoundaryProps) {
-    super(props);
-    this.props = props;
-  }
-
-  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
-    return { hasError: true, error };
-  }
-
-  componentDidCatch(error: Error, errorInfo: React.ErrorInfo): void {
-    console.error('App Error:', error, errorInfo);
-  }
-
-  render(): React.ReactNode {
-    if (this.state.hasError) {
-      return (
-        <div className="flex items-center justify-center h-screen bg-gray-50">
-          <div className="text-center p-8">
-            <h1 className="text-2xl font-bold text-red-600 mb-4">Something went wrong</h1>
-            <p className="text-gray-600 mb-4">Please refresh the page or try again later.</p>
-            <button 
-              onClick={() => window.location.reload()} 
-              className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-            >
-              Refresh Page
-            </button>
-          </div>
-        </div>
-      );
-    }
-
-    return this.props.children;
-  }
 }
 
 function App() {
