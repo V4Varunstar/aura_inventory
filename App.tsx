@@ -225,27 +225,21 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
 function App() {
   console.log('🎯 App component rendering...');
   
-  try {
-    return (
-      <ErrorBoundary>
-        <ToastProvider>
-          <HashRouter>
-            <Routes>
-              <Route path="/" element={<Landing />} />
-              <Route path="/login" element={<Login />} />
-              <Route path="*" element={<div style={{padding: '40px', textAlign: 'center'}}>
-                <h1>404 - Page Not Found</h1>
-                <a href="/#/">Go Home</a>
-              </div>} />
-            </Routes>
-          </HashRouter>
-        </ToastProvider>
-      </ErrorBoundary>
-    );
-  } catch (error) {
-    console.error('App render error:', error);
-    return <div>Error loading app</div>;
-  }
+  return (
+    <ErrorBoundary>
+      <ToastProvider>
+        <AuthProvider>
+          <CompanyProvider>
+            <WarehouseProvider>
+              <HashRouter>
+                <AppRoutes />
+              </HashRouter>
+            </WarehouseProvider>
+          </CompanyProvider>
+        </AuthProvider>
+      </ToastProvider>
+    </ErrorBoundary>
+  );
 }
 
 export default App;
