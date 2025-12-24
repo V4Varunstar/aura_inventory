@@ -24,11 +24,7 @@ if (!rootElement) {
     const root = ReactDOM.createRoot(rootElement);
     
     console.log('🎯 Rendering App component...');
-    root.render(
-      <React.StrictMode>
-        <App />
-      </React.StrictMode>
-    );
+    root.render(<App />);
     
     console.log('✅ App rendered successfully');
   } catch (error) {
