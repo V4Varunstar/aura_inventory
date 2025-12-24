@@ -66,6 +66,9 @@ const Landing: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-gray-800">
+      {/* Version Marker for Debugging */}
+      <div className="hidden" data-version="v1.0.1" data-build="2025-12-24-16:10"></div>
+      
       {/* Hero Section */}
       <header className="container mx-auto px-4 py-6">
         <nav className="flex items-center justify-between">
