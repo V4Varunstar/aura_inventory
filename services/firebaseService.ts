@@ -69,6 +69,7 @@ setInterval(() => cache.cleanup(), 10 * 60 * 1000);
 // --- MOCK DATABASE ---
 const users: User[] = [
   { id: '1', name: 'Super Admin', email: 'superadmin@aura.com', role: 'SuperAdmin' as any, isEnabled: true, createdAt: new Date(), updatedAt: new Date() },
+  { id: '2', name: 'Test Admin', email: 'admin@test.com', role: 'Admin' as Role, orgId: 'org-test-001', isEnabled: true, createdAt: new Date(), updatedAt: new Date() },
 ];
 
 // Optimized localStorage operations with batching
@@ -450,6 +451,8 @@ export const mockLogin = (email: string, pass: string): Promise<User> => {
       if (email === 'Test@orgatre.com' && pass === 'Test@1234') {
         validPassword = true;
       } else if (email === 'superadmin@aura.com' && pass === 'SuperAdmin@123') {
+        validPassword = true;
+      } else if (email === 'admin@test.com' && pass === 'Admin@123') {
         validPassword = true;
       } else if (pass === 'password123') {
         validPassword = true;
