@@ -3,6 +3,8 @@ import ReactDOM from 'react-dom/client';
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ToastProvider } from './context/ToastContext';
+import { MockCompanyProvider } from './context/MockCompanyContext';
+import { MockWarehouseProvider } from './context/MockWarehouseContext';
 import Layout from './components/layout/Layout';
 import './index.css';
 
@@ -37,21 +39,25 @@ function App() {
   return (
     <ToastProvider>
       <AuthProvider>
-        <HashRouter>
-          <Suspense fallback={<LoadingSpinner />}>
-            <Routes>
-              <Route path="/" element={<Landing />} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/dashboard" element={<ProtectedRoute><Layout><Dashboard /></Layout></ProtectedRoute>} />
-              <Route path="/products" element={<ProtectedRoute><Layout><Products /></Layout></ProtectedRoute>} />
-              <Route path="/inward" element={<ProtectedRoute><Layout><Inward /></Layout></ProtectedRoute>} />
-              <Route path="/outward" element={<ProtectedRoute><Layout><Outward /></Layout></ProtectedRoute>} />
-              <Route path="/reports" element={<ProtectedRoute><Layout><Reports /></Layout></ProtectedRoute>} />
-              <Route path="/settings" element={<ProtectedRoute><Layout><Settings /></Layout></ProtectedRoute>} />
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-          </Suspense>
-        </HashRouter>
+        <MockCompanyProvider>
+          <MockWarehouseProvider>
+            <HashRouter>
+              <Suspense fallback={<LoadingSpinner />}>
+                <Routes>
+                  <Route path="/" element={<Landing />} />
+                  <Route path="/login" element={<Login />} />
+                  <Route path="/dashboard" element={<ProtectedRoute><Layout><Dashboard /></Layout></ProtectedRoute>} />
+                  <Route path="/products" element={<ProtectedRoute><Layout><Products /></Layout></ProtectedRoute>} />
+                  <Route path="/inward" element={<ProtectedRoute><Layout><Inward /></Layout></ProtectedRoute>} />
+                  <Route path="/outward" element={<ProtectedRoute><Layout><Outward /></Layout></ProtectedRoute>} />
+                  <Route path="/reports" element={<ProtectedRoute><Layout><Reports /></Layout></ProtectedRoute>} />
+                  <Route path="/settings" element={<ProtectedRoute><Layout><Settings /></Layout></ProtectedRoute>} />
+                  <Route path="*" element={<Navigate to="/" replace />} />
+                </Routes>
+              </Suspense>
+            </HashRouter>
+          </MockWarehouseProvider>
+        </MockCompanyProvider>
       </AuthProvider>
     </ToastProvider>
   );
