@@ -9,7 +9,8 @@ import Button from '../components/ui/Button';
 import TodaysSalesChart from '../components/analytics/TodaysSalesChart';
 import InHandInventoryPieChart from '../components/analytics/InHandInventoryPieChart';
 import CategoryWiseSalesPieChart from '../components/analytics/CategoryWiseSalesPieChart';
-import { useSafeWarehouse } from '../context/SafeWarehouseContext';
+// Safe warehouse - use optional
+// import { useSafeWarehouse } from '../context/SafeWarehouseContext';
 import {
   LineChart,
   Line,
@@ -79,7 +80,8 @@ const COLORS = ['#10b981', '#3b82f6', '#ef4444', '#f97316', '#8b5cf6'];
 const Dashboard: React.FC = () => {
     const navigate = useNavigate();
     const { user } = useAuth();
-    const { selectedWarehouse } = useSafeWarehouse();
+    // const { selectedWarehouse } = useSafeWarehouse();
+    const selectedWarehouse = null; // Temporary: no warehouse context
     const [data, setData] = useState<DashboardData | null>(null);
     const [todaysSalesData, setTodaysSalesData] = useState<TodaysSalesData | null>(null);
     const [warehouseStats, setWarehouseStats] = useState<{
