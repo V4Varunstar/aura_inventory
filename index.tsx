@@ -3,20 +3,15 @@ import ReactDOM from 'react-dom/client';
 import { HashRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ToastProvider, useToast } from './context/ToastContext';
-import { CompanyProvider } from './context/CompanyContext';
-import { WarehouseProvider } from './context/WarehouseContext';
 import './index.css';
 
-// Lazy load pages
-const Dashboard = lazy(() => import('./pages/Dashboard'));
-const Products = lazy(() => import('./pages/Products'));
-const Inward = lazy(() => import('./pages/Inward'));
-const Outward = lazy(() => import('./pages/Outward'));
-const Reports = lazy(() => import('./pages/Reports'));
-const Settings = lazy(() => import('./pages/Settings'));
-const Parties = lazy(() => import('./pages/Parties'));
-const StockAdjustment = lazy(() => import('./pages/StockAdjustment'));
-const Layout = lazy(() => import('./components/layout/Layout'));
+// NO lazy loading for now - direct imports work better on Vercel
+import Dashboard from './pages/Dashboard';
+import Products from './pages/Products';
+import Inward from './pages/Inward';
+import Outward from './pages/Outward';
+import Reports from './pages/Reports';
+import Settings from './pages/Settings';
 
 // Inline Landing Page
 function Landing() {
@@ -92,29 +87,11 @@ function Login() {
   );
 }
 
-// Loading Component
-const LoadingFallback = () => (
-  <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100vh',background:'#f1f5f9'}}>
-    <div style={{textAlign:'center'}}>
-      <div style={{width:'48px',height:'48px',border:'4px solid #e2e8f0',borderTopColor:'#667eea',borderRadius:'50%',margin:'0 auto 16px',animation:'spin 1s linear infinite'}}></div>
-      <p style={{color:'#64748b',fontSize:'14px'}}>Loading...</p>
-    </div>
-  </div>
-);
-
-// Protected Route Component  
+// Protected Route Component - NO contexts for now
 const ProtectedRoute: React.FC<{children: React.ReactElement}> = ({children}) => {
   const {user} = useAuth();
   if (!user) return <Navigate to="/login" replace />;
-  return (
-    <CompanyProvider>
-      <WarehouseProvider>
-        <Suspense fallback={<LoadingFallback />}>
-          {children}
-        </Suspense>
-      </WarehouseProvider>
-    </CompanyProvider>
-  );
+  return children;
 };
 
 // Main App Component
@@ -126,46 +103,12 @@ function App() {
           <Routes>
             <Route path="/" element={<Landing />} />
             <Route path="/login" element={<Login />} />
-            <Route path="/dashboard" element={
-              <ProtectedRoute>
-                <Layout><Dashboard /></Layout>
-              </ProtectedRoute>
-            } />
-            <Route path="/products" element={
-              <ProtectedRoute>
-                <Layout><Products /></Layout>
-              </ProtectedRoute>
-            } />
-            <Route path="/inward" element={
-              <ProtectedRoute>
-                <Layout><Inward /></Layout>
-              </ProtectedRoute>
-            } />
-            <Route path="/outward" element={
-              <ProtectedRoute>
-                <Layout><Outward /></Layout>
-              </ProtectedRoute>
-            } />
-            <Route path="/reports" element={
-              <ProtectedRoute>
-                <Layout><Reports /></Layout>
-              </ProtectedRoute>
-            } />
-            <Route path="/settings" element={
-              <ProtectedRoute>
-                <Layout><Settings /></Layout>
-              </ProtectedRoute>
-            } />
-            <Route path="/parties" element={
-              <ProtectedRoute>
-                <Layout><Parties /></Layout>
-              </ProtectedRoute>
-            } />
-            <Route path="/stock-adjustment" element={
-              <ProtectedRoute>
-                <Layout><StockAdjustment /></Layout>
-              </ProtectedRoute>
-            } />
+            <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+            <Route path="/products" element={<ProtectedRoute><Products /></ProtectedRoute>} />
+            <Route path="/inward" element={<ProtectedRoute><Inward /></ProtectedRoute>} />
+            <Route path="/outward" element={<ProtectedRoute><Outward /></ProtectedRoute>} />
+            <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
+            <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </HashRouter>
