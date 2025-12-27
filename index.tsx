@@ -70,8 +70,13 @@ function Login() {
 
 function DashboardPage() {
   const { user, logout } = useAuth();
+  const { addToast } = useToast();
   const [darkMode, setDarkMode] = React.useState(true);
   const [currentPage, setCurrentPage] = React.useState('dashboard');
+  
+  const handleAction = (action: string) => {
+    addToast(`${action} - Feature coming soon!`, 'success');
+  };
   
   if (!user) return <Navigate to="/login" replace />;
   
@@ -264,7 +269,7 @@ function DashboardPage() {
               <div style={{fontSize:'64px',marginBottom:'20px'}}>📦</div>
               <h2 style={{fontSize:'28px',fontWeight:'bold',color:theme.text,marginBottom:'12px'}}>Products Management</h2>
               <p style={{fontSize:'16px',color:theme.textSecondary,marginBottom:'24px'}}>Manage your product inventory here</p>
-              <button style={{padding:'12px 32px',background:'#3b82f6',color:'white',border:'none',borderRadius:'8px',fontSize:'14px',fontWeight:'600',cursor:'pointer'}}>Add New Product</button>
+              <button onClick={()=>handleAction('Add Product')} style={{padding:'12px 32px',background:'#3b82f6',color:'white',border:'none',borderRadius:'8px',fontSize:'14px',fontWeight:'600',cursor:'pointer'}}>Add New Product</button>
             </div>
           )}
           
@@ -274,7 +279,7 @@ function DashboardPage() {
               <div style={{fontSize:'64px',marginBottom:'20px'}}>📥</div>
               <h2 style={{fontSize:'28px',fontWeight:'bold',color:theme.text,marginBottom:'12px'}}>Stock Inward</h2>
               <p style={{fontSize:'16px',color:theme.textSecondary,marginBottom:'24px'}}>Record incoming stock entries</p>
-              <button style={{padding:'12px 32px',background:'#10b981',color:'white',border:'none',borderRadius:'8px',fontSize:'14px',fontWeight:'600',cursor:'pointer'}}>Add Inward Entry</button>
+              <button onClick={()=>handleAction('Add Inward Entry')} style={{padding:'12px 32px',background:'#10b981',color:'white',border:'none',borderRadius:'8px',fontSize:'14px',fontWeight:'600',cursor:'pointer'}}>Add Inward Entry</button>
             </div>
           )}
           
@@ -284,7 +289,7 @@ function DashboardPage() {
               <div style={{fontSize:'64px',marginBottom:'20px'}}>📤</div>
               <h2 style={{fontSize:'28px',fontWeight:'bold',color:theme.text,marginBottom:'12px'}}>Stock Outward</h2>
               <p style={{fontSize:'16px',color:theme.textSecondary,marginBottom:'24px'}}>Record outgoing stock shipments</p>
-              <button style={{padding:'12px 32px',background:'#f59e0b',color:'white',border:'none',borderRadius:'8px',fontSize:'14px',fontWeight:'600',cursor:'pointer'}}>Create Shipment</button>
+              <button onClick={()=>handleAction('Create Shipment')} style={{padding:'12px 32px',background:'#f59e0b',color:'white',border:'none',borderRadius:'8px',fontSize:'14px',fontWeight:'600',cursor:'pointer'}}>Create Shipment</button>
             </div>
           )}
           
@@ -294,7 +299,7 @@ function DashboardPage() {
               <div style={{fontSize:'64px',marginBottom:'20px'}}>👥</div>
               <h2 style={{fontSize:'28px',fontWeight:'bold',color:theme.text,marginBottom:'12px'}}>Parties Management</h2>
               <p style={{fontSize:'16px',color:theme.textSecondary,marginBottom:'24px'}}>Manage suppliers and customers</p>
-              <button style={{padding:'12px 32px',background:'#8b5cf6',color:'white',border:'none',borderRadius:'8px',fontSize:'14px',fontWeight:'600',cursor:'pointer'}}>Add Party</button>
+              <button onClick={()=>handleAction('Add Party')} style={{padding:'12px 32px',background:'#8b5cf6',color:'white',border:'none',borderRadius:'8px',fontSize:'14px',fontWeight:'600',cursor:'pointer'}}>Add Party</button>
             </div>
           )}
           
@@ -304,7 +309,7 @@ function DashboardPage() {
               <div style={{fontSize:'64px',marginBottom:'20px'}}>📈</div>
               <h2 style={{fontSize:'28px',fontWeight:'bold',color:theme.text,marginBottom:'12px'}}>Reports & Analytics</h2>
               <p style={{fontSize:'16px',color:theme.textSecondary,marginBottom:'24px'}}>Generate detailed business reports</p>
-              <button style={{padding:'12px 32px',background:'#06b6d4',color:'white',border:'none',borderRadius:'8px',fontSize:'14px',fontWeight:'600',cursor:'pointer'}}>Generate Report</button>
+              <button onClick={()=>handleAction('Generate Report')} style={{padding:'12px 32px',background:'#06b6d4',color:'white',border:'none',borderRadius:'8px',fontSize:'14px',fontWeight:'600',cursor:'pointer'}}>Generate Report</button>
             </div>
           )}
           
@@ -315,9 +320,9 @@ function DashboardPage() {
               <h2 style={{fontSize:'28px',fontWeight:'bold',color:theme.text,marginBottom:'12px'}}>Settings</h2>
               <p style={{fontSize:'16px',color:theme.textSecondary,marginBottom:'24px'}}>Configure your application preferences</p>
               <div style={{display:'flex',gap:'12px',justifyContent:'center',flexWrap:'wrap'}}>
-                <button style={{padding:'12px 24px',background:theme.sidebarHover,color:theme.text,border:`1px solid ${theme.border}`,borderRadius:'8px',fontSize:'14px',fontWeight:'600',cursor:'pointer'}}>Profile Settings</button>
-                <button style={{padding:'12px 24px',background:theme.sidebarHover,color:theme.text,border:`1px solid ${theme.border}`,borderRadius:'8px',fontSize:'14px',fontWeight:'600',cursor:'pointer'}}>Warehouse Config</button>
-                <button style={{padding:'12px 24px',background:theme.sidebarHover,color:theme.text,border:`1px solid ${theme.border}`,borderRadius:'8px',fontSize:'14px',fontWeight:'600',cursor:'pointer'}}>Integration</button>
+                <button onClick={()=>handleAction('Profile Settings')} style={{padding:'12px 24px',background:theme.sidebarHover,color:theme.text,border:`1px solid ${theme.border}`,borderRadius:'8px',fontSize:'14px',fontWeight:'600',cursor:'pointer'}}>Profile Settings</button>
+                <button onClick={()=>handleAction('Warehouse Config')} style={{padding:'12px 24px',background:theme.sidebarHover,color:theme.text,border:`1px solid ${theme.border}`,borderRadius:'8px',fontSize:'14px',fontWeight:'600',cursor:'pointer'}}>Warehouse Config</button>
+                <button onClick={()=>handleAction('Integration')} style={{padding:'12px 24px',background:theme.sidebarHover,color:theme.text,border:`1px solid ${theme.border}`,borderRadius:'8px',fontSize:'14px',fontWeight:'600',cursor:'pointer'}}>Integration</button>
               </div>
             </div>
           )}
