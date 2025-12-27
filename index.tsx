@@ -71,54 +71,24 @@ function Login() {
 function DashboardPage() {
   const { user, logout } = useAuth();
   
-  if (!user) return <Navigate to="/login" replace />;
+  console.log('DashboardPage rendering, user:', user);
+  
+  if (!user) {
+    console.log('No user, redirecting to login');
+    return <Navigate to="/login" replace />;
+  }
+  
+  console.log('Rendering dashboard for user:', user.name);
   
   return (
-    <div style={{minHeight:'100vh',background:'#f1f5f9',fontFamily:'system-ui'}}>
-      <div style={{background:'white',padding:'20px',borderBottom:'1px solid #e2e8f0',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-        <div>
-          <h1 style={{fontSize:'24px',fontWeight:'bold',marginBottom:'4px'}}>Dashboard</h1>
-          <p style={{fontSize:'14px',color:'#64748b'}}>Welcome, {user.name}</p>
-        </div>
-        <button onClick={logout} style={{padding:'10px 20px',background:'#ef4444',color:'white',border:'none',borderRadius:'6px',cursor:'pointer',fontWeight:'600'}}>
+    <div style={{minHeight:'100vh',background:'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',fontFamily:'system-ui',padding:'20px'}}>
+      <div style={{background:'white',padding:'30px',borderRadius:'12px',maxWidth:'600px',margin:'0 auto',textAlign:'center'}}>
+        <div style={{fontSize:'48px',marginBottom:'20px'}}>🎉</div>
+        <h1 style={{fontSize:'32px',fontWeight:'bold',marginBottom:'10px',color:'#1e293b'}}>Dashboard Loaded!</h1>
+        <p style={{fontSize:'18px',color:'#64748b',marginBottom:'20px'}}>Welcome, {user.name}</p>
+        <button onClick={logout} style={{padding:'12px 32px',background:'#ef4444',color:'white',border:'none',borderRadius:'8px',cursor:'pointer',fontWeight:'600',fontSize:'16px'}}>
           Logout
         </button>
-      </div>
-      
-      <div style={{padding:'40px',maxWidth:'1200px',margin:'0 auto'}}>
-        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(250px,1fr))',gap:'20px',marginBottom:'40px'}}>
-          {[
-            {title:'Total Products',value:'0',icon:'📦'},
-            {title:'Total Stock Value',value:'₹0',icon:'💰'},
-            {title:'Low Stock Items',value:'0',icon:'⚠️'},
-            {title:'Active SKUs',value:'0',icon:'📊'}
-          ].map((stat,i)=>(
-            <div key={i} style={{background:'white',padding:'24px',borderRadius:'12px',boxShadow:'0 1px 3px rgba(0,0,0,0.1)'}}>
-              <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
-                <div>
-                  <p style={{fontSize:'14px',color:'#64748b',marginBottom:'8px'}}>{stat.title}</p>
-                  <p style={{fontSize:'28px',fontWeight:'bold',color:'#1e293b'}}>{stat.value}</p>
-                </div>
-                <div style={{fontSize:'32px'}}>{stat.icon}</div>
-              </div>
-            </div>
-          ))}
-        </div>
-        
-        <div style={{background:'white',padding:'40px',borderRadius:'12px',textAlign:'center'}}>
-          <div style={{fontSize:'64px',marginBottom:'20px'}}>✅</div>
-          <h2 style={{fontSize:'32px',marginBottom:'16px',color:'#1e293b'}}>Application Working!</h2>
-          <p style={{fontSize:'16px',color:'#64748b',marginBottom:'24px'}}>
-            All features deployed successfully on Vercel
-          </p>
-          <div style={{display:'flex',gap:'12px',justifyContent:'center',flexWrap:'wrap'}}>
-            {['Products','Inward','Outward','Reports','Settings'].map(feature=>(
-              <div key={feature} style={{padding:'12px 24px',background:'#f1f5f9',borderRadius:'8px',fontSize:'14px',fontWeight:'600',color:'#1e293b'}}>
-                {feature}
-              </div>
-            ))}
-          </div>
-        </div>
       </div>
     </div>
   );
