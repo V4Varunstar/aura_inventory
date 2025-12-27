@@ -1,27 +1,17 @@
-﻿import React from 'react';
+import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { HashRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ToastProvider, useToast } from './context/ToastContext';
 import './index.css';
 
-// Inline Landing Page
 function Landing() {
   const navigate = useNavigate();
-  
   return (
     <div style={{minHeight:'100vh',background:'linear-gradient(135deg,#667eea 0%,#764ba2 100%)',fontFamily:'system-ui',display:'flex',alignItems:'center',justifyContent:'center',padding:'20px'}}>
       <div style={{maxWidth:'800px',textAlign:'center',color:'white'}}>
         <h1 style={{fontSize:'48px',fontWeight:'bold',marginBottom:'20px'}}>Aura Inventory</h1>
         <p style={{fontSize:'20px',marginBottom:'40px',opacity:0.9}}>Complete Inventory Management System</p>
-        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))',gap:'20px',marginBottom:'40px'}}>
-          {['📦 Products','📊 Analytics','🏢 Warehouses','📈 Reports'].map(f=>(
-            <div key={f} style={{background:'rgba(255,255,255,0.2)',padding:'20px',borderRadius:'12px',backdropFilter:'blur(10px)'}}>
-              <div style={{fontSize:'32px',marginBottom:'8px'}}>{f.split(' ')[0]}</div>
-              <div style={{fontSize:'16px',fontWeight:'600'}}>{f.split(' ')[1]}</div>
-            </div>
-          ))}
-        </div>
         <button onClick={()=>navigate('/login')} style={{padding:'16px 48px',background:'white',color:'#667eea',border:'none',borderRadius:'12px',fontSize:'18px',fontWeight:'bold',cursor:'pointer',boxShadow:'0 4px 12px rgba(0,0,0,0.2)'}}>
           Get Started
         </button>
@@ -30,7 +20,6 @@ function Landing() {
   );
 }
 
-// Inline Login Page
 function Login() {
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
@@ -79,8 +68,7 @@ function Login() {
   );
 }
 
-// Simple Dashboard - NO sidebar, just stats (THIS WORKED BEFORE)
-function Dashboard() {
+function DashboardPage() {
   const { user, logout } = useAuth();
   
   if (!user) return <Navigate to="/login" replace />;
@@ -100,10 +88,10 @@ function Dashboard() {
       <div style={{padding:'40px',maxWidth:'1200px',margin:'0 auto'}}>
         <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(250px,1fr))',gap:'20px',marginBottom:'40px'}}>
           {[
-            {title:'Total Products',value:'0',icon:'📦',color:'#3b82f6'},
-            {title:'Total Stock Value',value:'₹0',icon:'💰',color:'#10b981'},
-            {title:'Low Stock Items',value:'0',icon:'⚠️',color:'#f59e0b'},
-            {title:'Active SKUs',value:'0',icon:'📊',color:'#8b5cf6'}
+            {title:'Total Products',value:'0',icon:'📦'},
+            {title:'Total Stock Value',value:'₹0',icon:'💰'},
+            {title:'Low Stock Items',value:'0',icon:'⚠️'},
+            {title:'Active SKUs',value:'0',icon:'📊'}
           ].map((stat,i)=>(
             <div key={i} style={{background:'white',padding:'24px',borderRadius:'12px',boxShadow:'0 1px 3px rgba(0,0,0,0.1)'}}>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
@@ -136,14 +124,12 @@ function Dashboard() {
   );
 }
 
-// Protected Route Component
 const ProtectedRoute: React.FC<{children: React.ReactElement}> = ({children}) => {
   const {user} = useAuth();
   if (!user) return <Navigate to="/login" replace />;
   return children;
 };
 
-// Main App Component
 function App() {
   return (
     <ToastProvider>
@@ -152,12 +138,7 @@ function App() {
           <Routes>
             <Route path="/" element={<Landing />} />
             <Route path="/login" element={<Login />} />
-            <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-            <Route path="/products" element={<ProtectedRoute><Products /></ProtectedRoute>} />
-            <Route path="/inward" element={<ProtectedRoute><Inward /></ProtectedRoute>} />
-            <Route path="/outward" element={<ProtectedRoute><Outward /></ProtectedRoute>} />
-            <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
-            <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+            <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </HashRouter>
@@ -166,11 +147,5 @@ function App() {
   );
 }
 
-// Render App
 const root = ReactDOM.createRoot(document.getElementById('root')!);
 root.render(<App />);
-
-// Add spin animation
-const style = document.createElement('style');
-style.textContent = '@keyframes spin { to { transform: rotate(360deg); } }';
-document.head.appendChild(style);
