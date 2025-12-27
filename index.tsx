@@ -164,28 +164,32 @@ function DashboardPage() {
         
         {/* Main Content */}
         <div style={{padding:'40px'}}>
-          {/* Stats Cards */}
-          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(280px,1fr))',gap:'24px',marginBottom:'40px'}}>
-            {[
-              {title:'Total Products',value:'0',change:'+12%',icon:'📦',color:'#3b82f6'},
-              {title:'Total Stock Value',value:'₹0',change:'+8%',icon:'💰',color:'#10b981'},
-              {title:'Low Stock Items',value:'0',change:'-3%',icon:'⚠️',color:'#f59e0b'},
-              {title:'Active SKUs',value:'0',change:'+5%',icon:'📊',color:'#8b5cf6'}
-            ].map((stat,i)=>(
-              <div key={i} style={{background:theme.cardBg,padding:'24px',borderRadius:'12px',border:`1px solid ${theme.border}`}}>
-                <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:'16px'}}>
-                  <div style={{width:'48px',height:'48px',borderRadius:'12px',background:stat.color+'20',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'24px'}}>
-                    {stat.icon}
+          
+          {/* Dashboard View */}
+          {currentPage === 'dashboard' && (
+            <>
+              {/* Stats Cards */}
+              <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(280px,1fr))',gap:'24px',marginBottom:'40px'}}>
+                {[
+                  {title:'Total Products',value:'0',change:'+12%',icon:'📦',color:'#3b82f6'},
+                  {title:'Total Stock Value',value:'₹0',change:'+8%',icon:'💰',color:'#10b981'},
+                  {title:'Low Stock Items',value:'0',change:'-3%',icon:'⚠️',color:'#f59e0b'},
+                  {title:'Active SKUs',value:'0',change:'+5%',icon:'📊',color:'#8b5cf6'}
+                ].map((stat,i)=>(
+                  <div key={i} style={{background:theme.cardBg,padding:'24px',borderRadius:'12px',border:`1px solid ${theme.border}`}}>
+                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:'16px'}}>
+                      <div style={{width:'48px',height:'48px',borderRadius:'12px',background:stat.color+'20',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'24px'}}>
+                        {stat.icon}
+                      </div>
+                      <span style={{fontSize:'12px',fontWeight:'600',color:'#10b981',background:'#10b98120',padding:'4px 8px',borderRadius:'6px'}}>
+                        {stat.change}
+                      </span>
+                    </div>
+                    <p style={{fontSize:'14px',color:theme.textSecondary,marginBottom:'8px'}}>{stat.title}</p>
+                    <p style={{fontSize:'32px',fontWeight:'bold',color:theme.text}}>{stat.value}</p>
                   </div>
-                  <span style={{fontSize:'12px',fontWeight:'600',color:'#10b981',background:'#10b98120',padding:'4px 8px',borderRadius:'6px'}}>
-                    {stat.change}
-                  </span>
-                </div>
-                <p style={{fontSize:'14px',color:theme.textSecondary,marginBottom:'8px'}}>{stat.title}</p>
-                <p style={{fontSize:'32px',fontWeight:'bold',color:theme.text}}>{stat.value}</p>
+                ))}
               </div>
-            ))}
-          </div>
           
           {/* Charts Section */}
           <div style={{display:'grid',gridTemplateColumns:'2fr 1fr',gap:'24px',marginBottom:'40px'}}>
@@ -251,6 +255,73 @@ function DashboardPage() {
               ))}
             </div>
           </div>
+            </>
+          )}
+          
+          {/* Products Page */}
+          {currentPage === 'products' && (
+            <div style={{background:theme.cardBg,padding:'40px',borderRadius:'12px',border:`1px solid ${theme.border}`,textAlign:'center'}}>
+              <div style={{fontSize:'64px',marginBottom:'20px'}}>📦</div>
+              <h2 style={{fontSize:'28px',fontWeight:'bold',color:theme.text,marginBottom:'12px'}}>Products Management</h2>
+              <p style={{fontSize:'16px',color:theme.textSecondary,marginBottom:'24px'}}>Manage your product inventory here</p>
+              <button style={{padding:'12px 32px',background:'#3b82f6',color:'white',border:'none',borderRadius:'8px',fontSize:'14px',fontWeight:'600',cursor:'pointer'}}>Add New Product</button>
+            </div>
+          )}
+          
+          {/* Inward Page */}
+          {currentPage === 'inward' && (
+            <div style={{background:theme.cardBg,padding:'40px',borderRadius:'12px',border:`1px solid ${theme.border}`,textAlign:'center'}}>
+              <div style={{fontSize:'64px',marginBottom:'20px'}}>📥</div>
+              <h2 style={{fontSize:'28px',fontWeight:'bold',color:theme.text,marginBottom:'12px'}}>Stock Inward</h2>
+              <p style={{fontSize:'16px',color:theme.textSecondary,marginBottom:'24px'}}>Record incoming stock entries</p>
+              <button style={{padding:'12px 32px',background:'#10b981',color:'white',border:'none',borderRadius:'8px',fontSize:'14px',fontWeight:'600',cursor:'pointer'}}>Add Inward Entry</button>
+            </div>
+          )}
+          
+          {/* Outward Page */}
+          {currentPage === 'outward' && (
+            <div style={{background:theme.cardBg,padding:'40px',borderRadius:'12px',border:`1px solid ${theme.border}`,textAlign:'center'}}>
+              <div style={{fontSize:'64px',marginBottom:'20px'}}>📤</div>
+              <h2 style={{fontSize:'28px',fontWeight:'bold',color:theme.text,marginBottom:'12px'}}>Stock Outward</h2>
+              <p style={{fontSize:'16px',color:theme.textSecondary,marginBottom:'24px'}}>Record outgoing stock shipments</p>
+              <button style={{padding:'12px 32px',background:'#f59e0b',color:'white',border:'none',borderRadius:'8px',fontSize:'14px',fontWeight:'600',cursor:'pointer'}}>Create Shipment</button>
+            </div>
+          )}
+          
+          {/* Parties Page */}
+          {currentPage === 'parties' && (
+            <div style={{background:theme.cardBg,padding:'40px',borderRadius:'12px',border:`1px solid ${theme.border}`,textAlign:'center'}}>
+              <div style={{fontSize:'64px',marginBottom:'20px'}}>👥</div>
+              <h2 style={{fontSize:'28px',fontWeight:'bold',color:theme.text,marginBottom:'12px'}}>Parties Management</h2>
+              <p style={{fontSize:'16px',color:theme.textSecondary,marginBottom:'24px'}}>Manage suppliers and customers</p>
+              <button style={{padding:'12px 32px',background:'#8b5cf6',color:'white',border:'none',borderRadius:'8px',fontSize:'14px',fontWeight:'600',cursor:'pointer'}}>Add Party</button>
+            </div>
+          )}
+          
+          {/* Reports Page */}
+          {currentPage === 'reports' && (
+            <div style={{background:theme.cardBg,padding:'40px',borderRadius:'12px',border:`1px solid ${theme.border}`,textAlign:'center'}}>
+              <div style={{fontSize:'64px',marginBottom:'20px'}}>📈</div>
+              <h2 style={{fontSize:'28px',fontWeight:'bold',color:theme.text,marginBottom:'12px'}}>Reports & Analytics</h2>
+              <p style={{fontSize:'16px',color:theme.textSecondary,marginBottom:'24px'}}>Generate detailed business reports</p>
+              <button style={{padding:'12px 32px',background:'#06b6d4',color:'white',border:'none',borderRadius:'8px',fontSize:'14px',fontWeight:'600',cursor:'pointer'}}>Generate Report</button>
+            </div>
+          )}
+          
+          {/* Settings Page */}
+          {currentPage === 'settings' && (
+            <div style={{background:theme.cardBg,padding:'40px',borderRadius:'12px',border:`1px solid ${theme.border}`,textAlign:'center'}}>
+              <div style={{fontSize:'64px',marginBottom:'20px'}}>⚙️</div>
+              <h2 style={{fontSize:'28px',fontWeight:'bold',color:theme.text,marginBottom:'12px'}}>Settings</h2>
+              <p style={{fontSize:'16px',color:theme.textSecondary,marginBottom:'24px'}}>Configure your application preferences</p>
+              <div style={{display:'flex',gap:'12px',justifyContent:'center',flexWrap:'wrap'}}>
+                <button style={{padding:'12px 24px',background:theme.sidebarHover,color:theme.text,border:`1px solid ${theme.border}`,borderRadius:'8px',fontSize:'14px',fontWeight:'600',cursor:'pointer'}}>Profile Settings</button>
+                <button style={{padding:'12px 24px',background:theme.sidebarHover,color:theme.text,border:`1px solid ${theme.border}`,borderRadius:'8px',fontSize:'14px',fontWeight:'600',cursor:'pointer'}}>Warehouse Config</button>
+                <button style={{padding:'12px 24px',background:theme.sidebarHover,color:theme.text,border:`1px solid ${theme.border}`,borderRadius:'8px',fontSize:'14px',fontWeight:'600',cursor:'pointer'}}>Integration</button>
+              </div>
+            </div>
+          )}
+          
         </div>
       </div>
     </div>
