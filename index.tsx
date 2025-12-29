@@ -313,11 +313,11 @@ function DashboardPage() {
               {/* Stats Cards */}
               <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(260px,1fr))',gap:'24px',marginBottom:'40px'}}>
                 {[
-                  {title:'Total SKU',value:'0',change:'+0%',icon:'📦',color:'#3b82f6',gradient:'linear-gradient(135deg, #3b82f6, #2563eb)',trend:'up',page:'products'},
-                  {title:"Today's Inward",value:inwardEntries.filter(e=>e.entryDate===new Date().toLocaleDateString('en-IN')).length.toString(),change:'+12%',icon:'📥',color:'#10b981',gradient:'linear-gradient(135deg, #10b981, #059669)',trend:'up',page:'inward'},
-                  {title:"Today's Outward",value:outwardEntries.filter(e=>e.entryDate===new Date().toLocaleDateString('en-IN')).length.toString(),change:'+15%',icon:'📤',color:'#f59e0b',gradient:'linear-gradient(135deg, #f59e0b, #d97706)',trend:'up',page:'outward'},
-                  {title:'Inventory Value',value:'₹0',change:'+0%',icon:'💰',color:'#8b5cf6',gradient:'linear-gradient(135deg, #8b5cf6, #7c3aed)',trend:'up',page:'reports'},
-                  {title:'Low Stock Items',value:'0',change:'-0%',icon:'⚠️',color:'#ef4444',gradient:'linear-gradient(135deg, #ef4444, #dc2626)',trend:'down',page:'reports'}
+                  {title:'Total SKU',value:products.length.toString(),change:'+0%',icon:'📦',color:'#3b82f6',gradient:'linear-gradient(135deg, #3b82f6, #2563eb)',trend:'up',page:'products'},
+                  {title:"Today's Inward",value:inwardEntries.filter(e=>e.entryDate===new Date().toLocaleDateString('en-IN')).reduce((sum,e)=>sum+(parseInt(e.quantity)||0),0).toString(),change:'+12%',icon:'📥',color:'#10b981',gradient:'linear-gradient(135deg, #10b981, #059669)',trend:'up',page:'inward'},
+                  {title:"Today's Outward",value:outwardEntries.filter(e=>e.entryDate===new Date().toLocaleDateString('en-IN')).reduce((sum,e)=>sum+(parseInt(e.quantity)||0),0).toString(),change:'+15%',icon:'📤',color:'#f59e0b',gradient:'linear-gradient(135deg, #f59e0b, #d97706)',trend:'up',page:'outward'},
+                  {title:'Inventory Value',value:'₹'+(products.reduce((sum,p)=>sum+((parseFloat(p.price)||0)*(parseFloat(p.quantity)||0)),0)/100000).toFixed(2)+'L',change:'+0%',icon:'💰',color:'#8b5cf6',gradient:'linear-gradient(135deg, #8b5cf6, #7c3aed)',trend:'up',page:'reports'},
+                  {title:'Low Stock Items',value:products.filter(p=>(p.quantity||0)<(p.minThreshold||10)).length.toString(),change:'-0%',icon:'⚠️',color:'#ef4444',gradient:'linear-gradient(135deg, #ef4444, #dc2626)',trend:'down',page:'reports'}
                 ].map((stat,i)=>(
                   <div key={i} onClick={()=>{setCurrentPage(stat.page);resetView();addToast(`Opening ${stat.title}...`,'info');}} style={{background:theme.cardBg,padding:'26px',borderRadius:'16px',border:`2px solid ${theme.border}`,transition:'all 0.4s',cursor:'pointer',position:'relative',overflow:'hidden',boxShadow:darkMode?'0 4px 16px rgba(0,0,0,0.3)':'0 4px 16px rgba(0,0,0,0.08)'}} onMouseEnter={(e)=>{e.currentTarget.style.transform='translateY(-8px)';e.currentTarget.style.borderColor=stat.color;e.currentTarget.style.boxShadow=`0 12px 32px ${stat.color}40`;}} onMouseLeave={(e)=>{e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.borderColor=theme.border;e.currentTarget.style.boxShadow=darkMode?'0 4px 16px rgba(0,0,0,0.3)':'0 4px 16px rgba(0,0,0,0.08)';}}>
                     <div style={{position:'absolute',top:0,right:0,width:'120px',height:'120px',background:stat.gradient,opacity:0.08,borderRadius:'50%',transform:'translate(30%, -30%)'}}></div>
@@ -444,13 +444,34 @@ function DashboardPage() {
             {/* Platform-wise Sales */}
             <div style={{background:theme.cardBg,padding:'32px',borderRadius:'20px',border:`2px solid ${theme.border}`,boxShadow:darkMode?'0 8px 32px rgba(0,0,0,0.3)':'0 8px 32px rgba(0,0,0,0.1)'}}>
               <h3 style={{fontSize:'22px',fontWeight:'900',color:theme.text,marginBottom:'24px'}}>📊 Platform-wise Sales</h3>
-              <div style={{display:'flex',flexDirection:'column',gap:'20px'}}>
-                {[
-                  {platform:'Meesho',orders:45,revenue:'2.8L',percentage:32,color:'#FF006E'},
-                  {platform:'Amazon',orders:38,revenue:'3.5L',percentage:40,color:'#FF9500'},
-                  {platform:'Flipkart',orders:32,revenue:'2.1L',percentage:24,color:'#007AFF'},
-                  {platform:'Direct',orders:15,revenue:'0.4L',percentage:4,color:'#34C759'}
-                ].map(p=>(
+              {outwardEntries.length === 0 ? (
+                <div style={{textAlign:'center',padding:'40px',color:theme.textSecondary}}>
+                  <div style={{fontSize:'48px',marginBottom:'12px'}}>📊</div>
+                  <p style={{fontSize:'16px'}}>No sales data yet</p>
+                </div>
+              ) : (
+                <div style={{display:'flex',flexDirection:'column',gap:'20px'}}>
+                  {(() => {
+                    const platformData = outwardEntries.reduce((acc, entry) => {
+                      const platform = entry.platform || 'Unknown';
+                      if (!acc[platform]) acc[platform] = { orders: 0, totalQty: 0 };
+                      acc[platform].orders += 1;
+                      acc[platform].totalQty += parseInt(entry.quantity) || 0;
+                      return acc;
+                    }, {});
+                    const totalOrders = Object.values(platformData).reduce((sum, p) => sum + p.orders, 0) || 1;
+                    const platforms = [
+                      { platform: 'Meesho', color: '#FF006E' },
+                      { platform: 'Amazon', color: '#FF9500' },
+                      { platform: 'Flipkart', color: '#007AFF' },
+                      { platform: 'Direct Order', color: '#34C759' }
+                    ];
+                    return platforms.filter(p => platformData[p.platform]).map(p => {
+                      const data = platformData[p.platform];
+                      const percentage = Math.round((data.orders / totalOrders) * 100);
+                      return { ...p, orders: data.orders, revenue: (data.totalQty * 50 / 100000).toFixed(2) + 'L', percentage };
+                    });
+                  })().map(p=>(
                   <div key={p.platform}>
                     <div style={{display:'flex',justifyContent:'space-between',marginBottom:'8px'}}>
                       <span style={{color:theme.text,fontWeight:'700',fontSize:'15px'}}>{p.platform}</span>
@@ -462,19 +483,35 @@ function DashboardPage() {
                     <div style={{textAlign:'right',marginTop:'4px',color:theme.textSecondary,fontSize:'13px',fontWeight:'700'}}>{p.percentage}%</div>
                   </div>
                 ))}
-              </div>
+                </div>
+              )}
             </div>
 
             {/* Top Performing SKUs */}
             <div style={{background:theme.cardBg,padding:'32px',borderRadius:'20px',border:`2px solid ${theme.border}`,boxShadow:darkMode?'0 8px 32px rgba(0,0,0,0.3)':'0 8px 32px rgba(0,0,0,0.1)'}}>
               <h3 style={{fontSize:'22px',fontWeight:'900',color:theme.text,marginBottom:'24px'}}>🏆 Top Performing SKUs</h3>
-              <div style={{display:'flex',flexDirection:'column',gap:'16px'}}>
-                {[
-                  {rank:1,name:'Premium Cotton T-Shirt',sku:'SKU-001',units:245,revenue:'3.2L',trend:'+12%',color:'#FFD700'},
-                  {rank:2,name:'Designer Kurta Set',sku:'SKU-023',units:198,revenue:'2.8L',trend:'+8%',color:'#C0C0C0'},
-                  {rank:3,name:'Denim Jeans Regular',sku:'SKU-045',units:176,revenue:'2.4L',trend:'+5%',color:'#CD7F32'},
-                  {rank:4,name:'Floral Print Dress',sku:'SKU-067',units:142,revenue:'1.9L',trend:'+3%',color:'#6366f1'}
-                ].map(s=>(
+              {outwardEntries.length === 0 ? (
+                <div style={{textAlign:'center',padding:'40px',color:theme.textSecondary}}>
+                  <div style={{fontSize:'48px',marginBottom:'12px'}}>🏆</div>
+                  <p style={{fontSize:'16px'}}>No sales data yet</p>
+                </div>
+              ) : (
+                <div style={{display:'flex',flexDirection:'column',gap:'16px'}}>
+                  {(() => {
+                    const skuData = outwardEntries.reduce((acc, entry) => {
+                      const sku = entry.sku || 'Unknown';
+                      if (!acc[sku]) acc[sku] = { name: entry.productName, sku, units: 0, revenue: 0 };
+                      acc[sku].units += parseInt(entry.quantity) || 0;
+                      const product = products.find(p => p.sku === sku);
+                      acc[sku].revenue += (parseInt(entry.quantity) || 0) * (parseFloat(product?.price) || 50);
+                      return acc;
+                    }, {});
+                    const colors = ['#FFD700', '#C0C0C0', '#CD7F32', '#6366f1'];
+                    return Object.values(skuData)
+                      .sort((a, b) => b.units - a.units)
+                      .slice(0, 4)
+                      .map((s, i) => ({ ...s, rank: i + 1, revenue: (s.revenue / 100000).toFixed(2) + 'L', trend: '+0%', color: colors[i] }));
+                  })().map(s=>(
                   <div key={s.sku} style={{display:'flex',alignItems:'center',gap:'16px',padding:'12px',background:theme.sidebarHover,borderRadius:'12px',border:`2px solid ${theme.border}`,transition:'all 0.3s ease',cursor:'pointer'}} onMouseEnter={(e)=>e.currentTarget.style.transform='translateX(8px)'} onMouseLeave={(e)=>e.currentTarget.style.transform='translateX(0)'}>
                     <div style={{width:'36px',height:'36px',borderRadius:'8px',background:`linear-gradient(135deg, ${s.color}, ${s.color}dd)`,display:'flex',alignItems:'center',justifyContent:'center',color:'white',fontWeight:'900',fontSize:'16px'}}>#{s.rank}</div>
                     <div style={{flex:1}}>
@@ -487,7 +524,8 @@ function DashboardPage() {
                     </div>
                   </div>
                 ))}
-              </div>
+                </div>
+              )}
             </div>
           </div>
             </>
@@ -837,12 +875,13 @@ function DashboardPage() {
                     </div>
                     <button onClick={addLineItem} style={{padding:'12px 28px',background:'linear-gradient(135deg, #06b6d4, #0891b2)',color:'white',border:'none',borderRadius:'10px',fontSize:'14px',fontWeight:'700',cursor:'pointer'}}>➕ Add Another Product</button>
                   </div>
-                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'20px',marginBottom:'32px'}}>
-                    <div><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>Order/Invoice Number</label><input type="text" placeholder="Enter order number" value={formData.orderNo||''} style={{width:'100%',padding:'14px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px'}} onChange={(e)=>setFormData({...formData,orderNo:e.target.value})} /></div>
+                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:'20px',marginBottom:'32px'}}>
+                    <div><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>Date</label><input type="date" value={formData.shipmentDate||new Date().toISOString().split('T')[0]} style={{width:'100%',padding:'14px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px'}} onChange={(e)=>setFormData({...formData,shipmentDate:e.target.value})} /></div>
+                    <div><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>Order/Invoice Number <span style={{color:theme.textSecondary,fontSize:'13px'}}>(Optional)</span></label><input type="text" placeholder="Enter order number" value={formData.orderNo||''} style={{width:'100%',padding:'14px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px'}} onChange={(e)=>setFormData({...formData,orderNo:e.target.value})} /></div>
                     <div><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>Platform</label><select style={{width:'100%',padding:'14px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px'}} value={formData.platform||''} onChange={(e)=>setFormData({...formData,platform:e.target.value})}><option value="">Select Platform</option><option>Meesho</option><option>Amazon</option><option>Flipkart</option><option>Myntra</option><option>Ajio</option><option>Direct Order</option></select></div>
                   </div>
                   <div style={{display:'flex',gap:'16px'}}>
-                    <button onClick={()=>{const validItems=lineItems.filter(item=>item.productName && item.quantity);if(validItems.length>0 && formData.orderNo && formData.platform){const newEntries=validItems.map(item=>({...item,orderNo:formData.orderNo,platform:formData.platform,entryDate:new Date().toLocaleDateString('en-IN')}));setOutwardEntries([...outwardEntries,...newEntries]);addToast(`✅ Shipment created: ${validItems.length} product(s) dispatched to ${formData.platform}!`,'success');setLineItems([{id:1,ean:'',productName:'',sku:'',quantity:'',batch:''}]);setFormData({});resetView();}else{addToast('❌ Please fill all required fields (products, order no, platform)','error');}}} style={{padding:'14px 40px',background:'linear-gradient(135deg, #f59e0b, #d97706)',color:'white',border:'none',borderRadius:'12px',fontSize:'16px',fontWeight:'800',cursor:'pointer'}}>🚚 Create Shipment</button>
+                    <button onClick={()=>{const validItems=lineItems.filter(item=>item.productName && item.quantity);if(validItems.length>0 && formData.platform){const shipDate=formData.shipmentDate||new Date().toISOString().split('T')[0];const newEntries=validItems.map(item=>({...item,orderNo:formData.orderNo||'',platform:formData.platform,entryDate:new Date(shipDate).toLocaleDateString('en-IN'),shipmentDate:shipDate}));setOutwardEntries([...outwardEntries,...newEntries]);addToast(`✅ Shipment created: ${validItems.length} product(s) dispatched to ${formData.platform}!`,'success');setLineItems([{id:1,ean:'',productName:'',sku:'',quantity:'',batch:''}]);setFormData({});resetView();}else{addToast('❌ Please fill all required fields (products, platform)','error');}}} style={{padding:'14px 40px',background:'linear-gradient(135deg, #f59e0b, #d97706)',color:'white',border:'none',borderRadius:'12px',fontSize:'16px',fontWeight:'800',cursor:'pointer'}}>🚚 Create Shipment</button>
                     <button onClick={resetView} style={{padding:'14px 40px',background:theme.sidebarHover,color:theme.text,border:`2px solid ${theme.border}`,borderRadius:'12px',fontSize:'16px',fontWeight:'700',cursor:'pointer'}}>Cancel</button>
                   </div>
                 </div>
