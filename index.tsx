@@ -95,8 +95,9 @@ function DashboardPage() {
   const [formData, setFormData] = React.useState<any>({});
   const [categories, setCategories] = React.useState<string[]>(['Electronics', 'Clothing', 'Footwear', 'Accessories', 'Stationery', 'Bags', 'Food & Beverages']);
   const [lineItems, setLineItems] = React.useState<any[]>([{id: 1, ean: '', productName: '', sku: '', quantity: '', batch: ''}]);
+  const [userProducts, setUserProducts] = React.useState<any>({});
   
-  // EAN to Product mapping database
+  // EAN to Product mapping database (pre-configured products)
   const eanProducts: any = {
     '8901234567890': {name: 'Wireless Mouse', sku: 'SKU001', category: 'Electronics', price: 899},
     '8901234567891': {name: 'USB Cable', sku: 'SKU002', category: 'Electronics', price: 199},
@@ -109,21 +110,22 @@ function DashboardPage() {
   };
   
   const lookupEAN = (ean: string, lineIndex?: number) => {
-    const product = eanProducts[ean];
+    // Check both hardcoded and user-added products
+    const product = eanProducts[ean] || userProducts[ean];
     if (product) {
       if (lineIndex !== undefined) {
         // For multiple line items
         const updatedItems = [...lineItems];
         updatedItems[lineIndex] = {...updatedItems[lineIndex], ean, productName: product.name, sku: product.sku, price: product.price};
         setLineItems(updatedItems);
-        addToast(`Product found: ${product.name}`, 'success');
+        addToast(`✅ Product found: ${product.name}`, 'success');
       } else {
         // For single entry
         setFormData({...formData, ean, productName: product.name, sku: product.sku, price: product.price});
-        addToast(`Product found: ${product.name} (${product.sku})`, 'success');
+        addToast(`✅ Product found: ${product.name} (${product.sku})`, 'success');
       }
     } else {
-      addToast('EAN not found in database', 'error');
+      addToast('❌ EAN not found in database', 'error');
       if (lineIndex !== undefined) {
         const updatedItems = [...lineItems];
         updatedItems[lineIndex] = {...updatedItems[lineIndex], ean, productName: '', sku: ''};
@@ -422,7 +424,19 @@ function DashboardPage() {
                     <div><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>Warehouse</label><select style={{width:'100%',padding:'14px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px'}} value={formData.warehouse||''} onChange={(e)=>setFormData({...formData,warehouse:e.target.value})}><option value="">Select Warehouse</option><option>Main Warehouse</option><option>Secondary Warehouse</option></select></div>
                   </div>
                   <div style={{marginTop:'32px',display:'flex',gap:'16px'}}>
-                    <button onClick={()=>{addToast(`Product "${formData.name || 'New Product'}" added successfully!`,'success');resetView();}} style={{padding:'14px 40px',background:'linear-gradient(135deg, #3b82f6, #2563eb)',color:'white',border:'none',borderRadius:'12px',fontSize:'16px',fontWeight:'800',cursor:'pointer'}}>💾 Save Product</button>
+                    <button onClick={()=>{
+                      if(formData.ean && formData.name && formData.sku) {
+                        // Store product with EAN for future lookups
+                        setUserProducts({...userProducts, [formData.ean]: {name: formData.name, sku: formData.sku, category: formData.category, price: formData.price}});
+                        addToast(`✅ Product "${formData.name}" added with EAN ${formData.ean}!`, 'success');
+                      } else if(formData.name) {
+                        addToast(`✅ Product "${formData.name}" added successfully!`, 'success');
+                      } else {
+                        addToast('❌ Please enter product name', 'error');
+                        return;
+                      }
+                      resetView();
+                    }} style={{padding:'14px 40px',background:'linear-gradient(135deg, #3b82f6, #2563eb)',color:'white',border:'none',borderRadius:'12px',fontSize:'16px',fontWeight:'800',cursor:'pointer'}}>💾 Save Product</button>
                     <button onClick={resetView} style={{padding:'14px 40px',background:theme.sidebarHover,color:theme.text,border:`2px solid ${theme.border}`,borderRadius:'12px',fontSize:'16px',fontWeight:'700',cursor:'pointer'}}>Cancel</button>
                   </div>
                 </div>
