@@ -94,6 +94,29 @@ function DashboardPage() {
   const [activeView, setActiveView] = React.useState('main');
   const [formData, setFormData] = React.useState<any>({});
   
+  // EAN to Product mapping database
+  const eanProducts: any = {
+    '8901234567890': {name: 'Wireless Mouse', sku: 'SKU001', category: 'Electronics', price: 899},
+    '8901234567891': {name: 'USB Cable', sku: 'SKU002', category: 'Electronics', price: 199},
+    '8901234567892': {name: 'Cotton T-Shirt', sku: 'SKU003', category: 'Clothing', price: 599},
+    '8901234567893': {name: 'Running Shoes', sku: 'SKU004', category: 'Footwear', price: 2499},
+    '8901234567894': {name: 'Water Bottle', sku: 'SKU005', category: 'Accessories', price: 299},
+    '8901234567895': {name: 'Notebook Set', sku: 'SKU006', category: 'Stationery', price: 149},
+    '8901234567896': {name: 'Backpack', sku: 'SKU007', category: 'Bags', price: 1299},
+    '8901234567897': {name: 'Headphones', sku: 'SKU008', category: 'Electronics', price: 1599},
+  };
+  
+  const lookupEAN = (ean: string) => {
+    const product = eanProducts[ean];
+    if (product) {
+      setFormData({...formData, ean, productName: product.name, sku: product.sku, price: product.price});
+      addToast(`Product found: ${product.name} (${product.sku})`, 'success');
+    } else {
+      addToast('EAN not found in database', 'error');
+      setFormData({...formData, ean, productName: '', sku: ''});
+    }
+  };
+  
   const handleAction = (action: string, view?: string) => {
     if (view) {
       setActiveView(view);
@@ -419,6 +442,7 @@ function DashboardPage() {
                   <p style={{fontSize:'18px',color:theme.textSecondary,marginBottom:'40px',maxWidth:'600px',margin:'0 auto 40px'}}>Record incoming stock, track purchase orders, and update inventory</p>
                   <div style={{display:'flex',gap:'16px',justifyContent:'center',flexWrap:'wrap'}}>
                     <button onClick={()=>handleAction('Opening Inward Entry Form','add-inward')} style={{padding:'16px 40px',background:'linear-gradient(135deg, #10b981, #059669)',color:'white',border:'none',borderRadius:'14px',fontSize:'17px',fontWeight:'800',cursor:'pointer',boxShadow:'0 6px 24px #10b98150',transition:'all 0.4s'}} onMouseEnter={(e)=>{e.currentTarget.style.transform='translateY(-4px) scale(1.05)';e.currentTarget.style.boxShadow='0 12px 40px #10b98170';}} onMouseLeave={(e)=>{e.currentTarget.style.transform='translateY(0) scale(1)';e.currentTarget.style.boxShadow='0 6px 24px #10b98150';}}>📥 Add Inward Entry</button>
+                    <button onClick={()=>handleAction('Opening Bulk Upload','bulk-inward')} style={{padding:'16px 40px',background:theme.sidebarHover,color:theme.text,border:`2px solid ${theme.border}`,borderRadius:'14px',fontSize:'17px',fontWeight:'800',cursor:'pointer',transition:'all 0.4s'}} onMouseEnter={(e)=>{e.currentTarget.style.borderColor='#10b981';e.currentTarget.style.transform='translateY(-4px)';e.currentTarget.style.boxShadow='0 8px 24px rgba(16,185,129,0.2)';}} onMouseLeave={(e)=>{e.currentTarget.style.borderColor=theme.border;e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.boxShadow='none';}}>📊 Bulk Upload</button>
                     <button onClick={()=>handleAction('Opening Inward History','view-inward')} style={{padding:'16px 40px',background:theme.sidebarHover,color:theme.text,border:`2px solid ${theme.border}`,borderRadius:'14px',fontSize:'17px',fontWeight:'800',cursor:'pointer',transition:'all 0.4s'}} onMouseEnter={(e)=>{e.currentTarget.style.borderColor='#10b981';e.currentTarget.style.transform='translateY(-4px)';e.currentTarget.style.boxShadow='0 8px 24px rgba(16,185,129,0.2)';}} onMouseLeave={(e)=>{e.currentTarget.style.borderColor=theme.border;e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.boxShadow='none';}}>📜 History</button>
                   </div>
                 </div>
@@ -429,17 +453,72 @@ function DashboardPage() {
                     <h2 style={{fontSize:'28px',fontWeight:'900',color:theme.text}}>📥 Add Inward Entry</h2>
                     <button onClick={resetView} style={{padding:'10px 24px',background:theme.sidebarHover,color:theme.text,border:`2px solid ${theme.border}`,borderRadius:'10px',fontSize:'15px',fontWeight:'700',cursor:'pointer'}}>← Back</button>
                   </div>
+                  <div style={{marginBottom:'32px',padding:'24px',background:'linear-gradient(135deg, #10b98110, #05966910)',border:`2px solid #10b98130`,borderRadius:'16px'}}>
+                    <div style={{display:'flex',alignItems:'center',gap:'16px',marginBottom:'16px'}}>
+                      <div style={{fontSize:'48px'}}>📷</div>
+                      <div style={{flex:1}}>
+                        <label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'700',fontSize:'18px'}}>🔍 Scan or Enter EAN Number</label>
+                        <input type="text" placeholder="Enter 13-digit EAN barcode" value={formData.ean||''} onChange={(e)=>setFormData({...formData,ean:e.target.value})} onKeyPress={(e)=>{if(e.key==='Enter' && formData.ean) lookupEAN(formData.ean);}} style={{width:'100%',padding:'16px',background:theme.cardBg,border:`3px solid #10b981`,borderRadius:'12px',color:theme.text,fontSize:'20px',fontWeight:'700',letterSpacing:'2px'}} />
+                        <p style={{color:theme.textSecondary,fontSize:'13px',marginTop:'8px'}}>💡 Scan barcode or type EAN and press Enter</p>
+                      </div>
+                      <button onClick={()=>{if(formData.ean) lookupEAN(formData.ean);}} style={{padding:'16px 32px',background:'linear-gradient(135deg, #10b981, #059669)',color:'white',border:'none',borderRadius:'12px',fontSize:'16px',fontWeight:'800',cursor:'pointer',height:'fit-content'}}>🔍 Lookup</button>
+                    </div>
+                    {formData.productName && (
+                      <div style={{padding:'16px',background:theme.cardBg,borderRadius:'12px',border:`2px solid #10b981`}}>
+                        <p style={{color:'#10b981',fontSize:'16px',fontWeight:'800',marginBottom:'8px'}}>✅ Product Found</p>
+                        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:'12px'}}>
+                          <div><span style={{color:theme.textSecondary,fontSize:'13px'}}>Product:</span><p style={{color:theme.text,fontSize:'15px',fontWeight:'700'}}>{formData.productName}</p></div>
+                          <div><span style={{color:theme.textSecondary,fontSize:'13px'}}>SKU:</span><p style={{color:theme.text,fontSize:'15px',fontWeight:'700'}}>{formData.sku}</p></div>
+                          <div><span style={{color:theme.textSecondary,fontSize:'13px'}}>Price:</span><p style={{color:theme.text,fontSize:'15px',fontWeight:'700'}}>₹{formData.price}</p></div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                   <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'24px',maxWidth:'900px'}}>
-                    <div><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>Product/SKU</label><input type="text" placeholder="Enter SKU or search product" style={{width:'100%',padding:'14px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px'}} /></div>
-                    <div><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>Quantity</label><input type="number" placeholder="0" style={{width:'100%',padding:'14px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px'}} /></div>
-                    <div><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>Batch/Lot Number</label><input type="text" placeholder="Enter batch number" style={{width:'100%',padding:'14px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px'}} /></div>
-                    <div><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>Supplier</label><select style={{width:'100%',padding:'14px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px'}}><option>Select Supplier</option><option>ABC Suppliers</option><option>XYZ Distributors</option></select></div>
-                    <div><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>Purchase Order</label><input type="text" placeholder="PO Number (optional)" style={{width:'100%',padding:'14px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px'}} /></div>
-                    <div><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>Date</label><input type="date" style={{width:'100%',padding:'14px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px'}} /></div>
+                    <div><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>Product Name</label><input type="text" value={formData.productName||''} placeholder="Auto-filled from EAN" readOnly style={{width:'100%',padding:'14px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px',opacity:0.7}} /></div>
+                    <div><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>SKU</label><input type="text" value={formData.sku||''} placeholder="Auto-filled from EAN" readOnly style={{width:'100%',padding:'14px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px',opacity:0.7}} /></div>
+                    <div><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>Quantity</label><input type="number" placeholder="0" style={{width:'100%',padding:'14px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px'}} onChange={(e)=>setFormData({...formData,quantity:e.target.value})} /></div>
+                    <div><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>Batch/Lot Number</label><input type="text" placeholder="Enter batch number" style={{width:'100%',padding:'14px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px'}} onChange={(e)=>setFormData({...formData,batch:e.target.value})} /></div>
+                    <div><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>Supplier</label><select style={{width:'100%',padding:'14px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px'}} onChange={(e)=>setFormData({...formData,supplier:e.target.value})}><option>Select Supplier</option><option>ABC Suppliers</option><option>XYZ Distributors</option></select></div>
+                    <div><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>Purchase Order</label><input type="text" placeholder="PO Number (optional)" style={{width:'100%',padding:'14px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px'}} onChange={(e)=>setFormData({...formData,po:e.target.value})} /></div>
                   </div>
                   <div style={{marginTop:'32px',display:'flex',gap:'16px'}}>
-                    <button onClick={()=>{addToast('Inward entry recorded successfully!','success');resetView();}} style={{padding:'14px 40px',background:'linear-gradient(135deg, #10b981, #059669)',color:'white',border:'none',borderRadius:'12px',fontSize:'16px',fontWeight:'800',cursor:'pointer'}}>✓ Submit Entry</button>
+                    <button onClick={()=>{addToast(`Inward entry recorded: ${formData.quantity||0} units of ${formData.productName||'product'}!`,'success');resetView();}} style={{padding:'14px 40px',background:'linear-gradient(135deg, #10b981, #059669)',color:'white',border:'none',borderRadius:'12px',fontSize:'16px',fontWeight:'800',cursor:'pointer'}}>✓ Submit Entry</button>
                     <button onClick={resetView} style={{padding:'14px 40px',background:theme.sidebarHover,color:theme.text,border:`2px solid ${theme.border}`,borderRadius:'12px',fontSize:'16px',fontWeight:'700',cursor:'pointer'}}>Cancel</button>
+                  </div>
+                </div>
+              )}
+              {activeView === 'bulk-inward' && (
+                <div style={{background:theme.cardBg,padding:'40px',borderRadius:'20px',border:`2px solid ${theme.border}`,boxShadow:darkMode?'0 8px 32px rgba(0,0,0,0.3)':'0 8px 32px rgba(0,0,0,0.1)'}}>
+                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'32px'}}>
+                    <h2 style={{fontSize:'28px',fontWeight:'900',color:theme.text}}>📊 Bulk Inward Upload</h2>
+                    <button onClick={resetView} style={{padding:'10px 24px',background:theme.sidebarHover,color:theme.text,border:`2px solid ${theme.border}`,borderRadius:'10px',fontSize:'15px',fontWeight:'700',cursor:'pointer'}}>← Back</button>
+                  </div>
+                  <div style={{marginBottom:'32px',padding:'28px',background:'linear-gradient(135deg, #10b98108, #05966908)',border:`2px dashed #10b981`,borderRadius:'16px',textAlign:'center',cursor:'pointer'}} onClick={()=>addToast('File upload dialog would open here','info')}>
+                    <div style={{fontSize:'72px',marginBottom:'16px'}}>📄</div>
+                    <h3 style={{color:theme.text,fontSize:'22px',fontWeight:'800',marginBottom:'12px'}}>Upload Excel File</h3>
+                    <p style={{color:theme.textSecondary,fontSize:'16px',marginBottom:'8px'}}>Click to select or drag & drop your Excel file</p>
+                    <p style={{color:theme.textSecondary,fontSize:'14px'}}>Supported formats: .xlsx, .xls</p>
+                  </div>
+                  <div style={{background:theme.sidebarHover,padding:'28px',borderRadius:'16px',border:`2px solid ${theme.border}`,marginBottom:'32px'}}>
+                    <h3 style={{color:theme.text,fontSize:'20px',fontWeight:'800',marginBottom:'16px'}}>📋 Excel Template Format</h3>
+                    <div style={{overflowX:'auto'}}>
+                      <table style={{width:'100%',borderCollapse:'collapse',fontSize:'14px'}}>
+                        <thead><tr style={{background:theme.cardBg}}><th style={{padding:'12px',border:`1px solid ${theme.border}`,color:theme.text,fontWeight:'700',textAlign:'left'}}>EAN Number</th><th style={{padding:'12px',border:`1px solid ${theme.border}`,color:theme.text,fontWeight:'700',textAlign:'left'}}>Product Name</th><th style={{padding:'12px',border:`1px solid ${theme.border}`,color:theme.text,fontWeight:'700',textAlign:'left'}}>SKU</th><th style={{padding:'12px',border:`1px solid ${theme.border}`,color:theme.text,fontWeight:'700',textAlign:'left'}}>Quantity</th><th style={{padding:'12px',border:`1px solid ${theme.border}`,color:theme.text,fontWeight:'700',textAlign:'left'}}>Batch Number</th><th style={{padding:'12px',border:`1px solid ${theme.border}`,color:theme.text,fontWeight:'700',textAlign:'left'}}>Supplier</th></tr></thead>
+                        <tbody>
+                          <tr><td style={{padding:'12px',border:`1px solid ${theme.border}`,color:theme.textSecondary}}>8901234567890</td><td style={{padding:'12px',border:`1px solid ${theme.border}`,color:theme.textSecondary}}>Wireless Mouse</td><td style={{padding:'12px',border:`1px solid ${theme.border}`,color:theme.textSecondary}}>SKU001</td><td style={{padding:'12px',border:`1px solid ${theme.border}`,color:theme.textSecondary}}>50</td><td style={{padding:'12px',border:`1px solid ${theme.border}`,color:theme.textSecondary}}>BATCH001</td><td style={{padding:'12px',border:`1px solid ${theme.border}`,color:theme.textSecondary}}>ABC Suppliers</td></tr>
+                          <tr><td style={{padding:'12px',border:`1px solid ${theme.border}`,color:theme.textSecondary}}>8901234567891</td><td style={{padding:'12px',border:`1px solid ${theme.border}`,color:theme.textSecondary}}>USB Cable</td><td style={{padding:'12px',border:`1px solid ${theme.border}`,color:theme.textSecondary}}>SKU002</td><td style={{padding:'12px',border:`1px solid ${theme.border}`,color:theme.textSecondary}}>100</td><td style={{padding:'12px',border:`1px solid ${theme.border}`,color:theme.textSecondary}}>BATCH002</td><td style={{padding:'12px',border:`1px solid ${theme.border}`,color:theme.textSecondary}}>XYZ Distributors</td></tr>
+                        </tbody>
+                      </table>
+                    </div>
+                    <div style={{marginTop:'20px',display:'flex',gap:'12px'}}>
+                      <button onClick={()=>addToast('Downloading template...','success')} style={{padding:'12px 28px',background:'linear-gradient(135deg, #06b6d4, #0891b2)',color:'white',border:'none',borderRadius:'10px',fontSize:'14px',fontWeight:'700',cursor:'pointer'}}>⬇️ Download Template</button>
+                      <button onClick={()=>addToast('Opening sample file...','info')} style={{padding:'12px 28px',background:theme.cardBg,color:theme.text,border:`2px solid ${theme.border}`,borderRadius:'10px',fontSize:'14px',fontWeight:'700',cursor:'pointer'}}>👁️ View Sample</button>
+                    </div>
+                  </div>
+                  <div style={{display:'flex',gap:'16px',justifyContent:'center'}}>
+                    <button onClick={()=>{addToast('Processing bulk upload: 156 entries added successfully!','success');resetView();}} style={{padding:'16px 48px',background:'linear-gradient(135deg, #10b981, #059669)',color:'white',border:'none',borderRadius:'14px',fontSize:'17px',fontWeight:'800',cursor:'pointer'}}>📥 Upload & Process</button>
+                    <button onClick={()=>{addToast('Validating file format...','info');}} style={{padding:'16px 48px',background:theme.sidebarHover,color:theme.text,border:`2px solid ${theme.border}`,borderRadius:'14px',fontSize:'17px',fontWeight:'800',cursor:'pointer'}}>✓ Validate File</button>
                   </div>
                 </div>
               )}
@@ -480,6 +559,7 @@ function DashboardPage() {
                   <p style={{fontSize:'18px',color:theme.textSecondary,marginBottom:'40px',maxWidth:'600px',margin:'0 auto 40px'}}>Create shipments, manage platform orders, and track deliveries</p>
                   <div style={{display:'flex',gap:'16px',justifyContent:'center',flexWrap:'wrap'}}>
                     <button onClick={()=>handleAction('Opening Shipment Form','create-shipment')} style={{padding:'16px 40px',background:'linear-gradient(135deg, #f59e0b, #d97706)',color:'white',border:'none',borderRadius:'14px',fontSize:'17px',fontWeight:'800',cursor:'pointer',boxShadow:'0 6px 24px #f59e0b50',transition:'all 0.4s'}} onMouseEnter={(e)=>{e.currentTarget.style.transform='translateY(-4px) scale(1.05)';e.currentTarget.style.boxShadow='0 12px 40px #f59e0b70';}} onMouseLeave={(e)=>{e.currentTarget.style.transform='translateY(0) scale(1)';e.currentTarget.style.boxShadow='0 6px 24px #f59e0b50';}}>📦 Create Shipment</button>
+                    <button onClick={()=>handleAction('Opening Bulk Outward','bulk-outward')} style={{padding:'16px 40px',background:theme.sidebarHover,color:theme.text,border:`2px solid ${theme.border}`,borderRadius:'14px',fontSize:'17px',fontWeight:'800',cursor:'pointer',transition:'all 0.4s'}} onMouseEnter={(e)=>{e.currentTarget.style.borderColor='#f59e0b';e.currentTarget.style.transform='translateY(-4px)';e.currentTarget.style.boxShadow='0 8px 24px rgba(245,158,11,0.2)';}} onMouseLeave={(e)=>{e.currentTarget.style.borderColor=theme.border;e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.boxShadow='none';}}>📊 Bulk Upload</button>
                     <button onClick={()=>handleAction('Opening Platform Orders','platform-orders')} style={{padding:'16px 40px',background:theme.sidebarHover,color:theme.text,border:`2px solid ${theme.border}`,borderRadius:'14px',fontSize:'17px',fontWeight:'800',cursor:'pointer',transition:'all 0.4s'}} onMouseEnter={(e)=>{e.currentTarget.style.borderColor='#f59e0b';e.currentTarget.style.transform='translateY(-4px)';e.currentTarget.style.boxShadow='0 8px 24px rgba(245,158,11,0.2)';}} onMouseLeave={(e)=>{e.currentTarget.style.borderColor=theme.border;e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.boxShadow='none';}}>🛒 Platform Orders</button>
                   </div>
                 </div>
@@ -490,17 +570,72 @@ function DashboardPage() {
                     <h2 style={{fontSize:'28px',fontWeight:'900',color:theme.text}}>📦 Create Shipment</h2>
                     <button onClick={resetView} style={{padding:'10px 24px',background:theme.sidebarHover,color:theme.text,border:`2px solid ${theme.border}`,borderRadius:'10px',fontSize:'15px',fontWeight:'700',cursor:'pointer'}}>← Back</button>
                   </div>
+                  <div style={{marginBottom:'32px',padding:'24px',background:'linear-gradient(135deg, #f59e0b10, #d9770610)',border:`2px solid #f59e0b30`,borderRadius:'16px'}}>
+                    <div style={{display:'flex',alignItems:'center',gap:'16px',marginBottom:'16px'}}>
+                      <div style={{fontSize:'48px'}}>📷</div>
+                      <div style={{flex:1}}>
+                        <label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'700',fontSize:'18px'}}>🔍 Scan or Enter EAN Number</label>
+                        <input type="text" placeholder="Enter 13-digit EAN barcode" value={formData.ean||''} onChange={(e)=>setFormData({...formData,ean:e.target.value})} onKeyPress={(e)=>{if(e.key==='Enter' && formData.ean) lookupEAN(formData.ean);}} style={{width:'100%',padding:'16px',background:theme.cardBg,border:`3px solid #f59e0b`,borderRadius:'12px',color:theme.text,fontSize:'20px',fontWeight:'700',letterSpacing:'2px'}} />
+                        <p style={{color:theme.textSecondary,fontSize:'13px',marginTop:'8px'}}>💡 Scan barcode or type EAN and press Enter</p>
+                      </div>
+                      <button onClick={()=>{if(formData.ean) lookupEAN(formData.ean);}} style={{padding:'16px 32px',background:'linear-gradient(135deg, #f59e0b, #d97706)',color:'white',border:'none',borderRadius:'12px',fontSize:'16px',fontWeight:'800',cursor:'pointer',height:'fit-content'}}>🔍 Lookup</button>
+                    </div>
+                    {formData.productName && (
+                      <div style={{padding:'16px',background:theme.cardBg,borderRadius:'12px',border:`2px solid #f59e0b`}}>
+                        <p style={{color:'#f59e0b',fontSize:'16px',fontWeight:'800',marginBottom:'8px'}}>✅ Product Found</p>
+                        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:'12px'}}>
+                          <div><span style={{color:theme.textSecondary,fontSize:'13px'}}>Product:</span><p style={{color:theme.text,fontSize:'15px',fontWeight:'700'}}>{formData.productName}</p></div>
+                          <div><span style={{color:theme.textSecondary,fontSize:'13px'}}>SKU:</span><p style={{color:theme.text,fontSize:'15px',fontWeight:'700'}}>{formData.sku}</p></div>
+                          <div><span style={{color:theme.textSecondary,fontSize:'13px'}}>Price:</span><p style={{color:theme.text,fontSize:'15px',fontWeight:'700'}}>₹{formData.price}</p></div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                   <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'24px',maxWidth:'900px'}}>
-                    <div><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>Order/Invoice Number</label><input type="text" placeholder="Enter order number" style={{width:'100%',padding:'14px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px'}} /></div>
-                    <div><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>Customer</label><select style={{width:'100%',padding:'14px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px'}}><option>Select Customer</option><option>Customer A</option><option>Customer B</option></select></div>
-                    <div><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>Product/SKU</label><input type="text" placeholder="Search product" style={{width:'100%',padding:'14px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px'}} /></div>
-                    <div><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>Quantity</label><input type="number" placeholder="0" style={{width:'100%',padding:'14px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px'}} /></div>
-                    <div><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>Shipping Method</label><select style={{width:'100%',padding:'14px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px'}}><option>Standard</option><option>Express</option><option>Same Day</option></select></div>
-                    <div><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>Tracking Number</label><input type="text" placeholder="Enter tracking ID" style={{width:'100%',padding:'14px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px'}} /></div>
+                    <div><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>Order/Invoice Number</label><input type="text" placeholder="Enter order number" style={{width:'100%',padding:'14px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px'}} onChange={(e)=>setFormData({...formData,orderNo:e.target.value})} /></div>
+                    <div><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>Customer</label><select style={{width:'100%',padding:'14px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px'}} onChange={(e)=>setFormData({...formData,customer:e.target.value})}><option>Select Customer</option><option>Customer A</option><option>Customer B</option></select></div>
+                    <div><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>Product Name</label><input type="text" value={formData.productName||''} placeholder="Auto-filled from EAN" readOnly style={{width:'100%',padding:'14px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px',opacity:0.7}} /></div>
+                    <div><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>SKU</label><input type="text" value={formData.sku||''} placeholder="Auto-filled from EAN" readOnly style={{width:'100%',padding:'14px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px',opacity:0.7}} /></div>
+                    <div><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>Quantity</label><input type="number" placeholder="0" style={{width:'100%',padding:'14px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px'}} onChange={(e)=>setFormData({...formData,quantity:e.target.value})} /></div>
+                    <div><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>Shipping Method</label><select style={{width:'100%',padding:'14px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px'}} onChange={(e)=>setFormData({...formData,shipping:e.target.value})}><option>Standard</option><option>Express</option><option>Same Day</option></select></div>
                   </div>
                   <div style={{marginTop:'32px',display:'flex',gap:'16px'}}>
-                    <button onClick={()=>{addToast('Shipment created successfully!','success');resetView();}} style={{padding:'14px 40px',background:'linear-gradient(135deg, #f59e0b, #d97706)',color:'white',border:'none',borderRadius:'12px',fontSize:'16px',fontWeight:'800',cursor:'pointer'}}>🚚 Create Shipment</button>
+                    <button onClick={()=>{addToast(`Shipment created: ${formData.quantity||0} units of ${formData.productName||'product'} to ${formData.customer||'customer'}!`,'success');resetView();}} style={{padding:'14px 40px',background:'linear-gradient(135deg, #f59e0b, #d97706)',color:'white',border:'none',borderRadius:'12px',fontSize:'16px',fontWeight:'800',cursor:'pointer'}}>🚚 Create Shipment</button>
                     <button onClick={resetView} style={{padding:'14px 40px',background:theme.sidebarHover,color:theme.text,border:`2px solid ${theme.border}`,borderRadius:'12px',fontSize:'16px',fontWeight:'700',cursor:'pointer'}}>Cancel</button>
+                  </div>
+                </div>
+              )}
+              {activeView === 'bulk-outward' && (
+                <div style={{background:theme.cardBg,padding:'40px',borderRadius:'20px',border:`2px solid ${theme.border}`,boxShadow:darkMode?'0 8px 32px rgba(0,0,0,0.3)':'0 8px 32px rgba(0,0,0,0.1)'}}>
+                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'32px'}}>
+                    <h2 style={{fontSize:'28px',fontWeight:'900',color:theme.text}}>📊 Bulk Outward Upload</h2>
+                    <button onClick={resetView} style={{padding:'10px 24px',background:theme.sidebarHover,color:theme.text,border:`2px solid ${theme.border}`,borderRadius:'10px',fontSize:'15px',fontWeight:'700',cursor:'pointer'}}>← Back</button>
+                  </div>
+                  <div style={{marginBottom:'32px',padding:'28px',background:'linear-gradient(135deg, #f59e0b08, #d9770608)',border:`2px dashed #f59e0b`,borderRadius:'16px',textAlign:'center',cursor:'pointer'}} onClick={()=>addToast('File upload dialog would open here','info')}>
+                    <div style={{fontSize:'72px',marginBottom:'16px'}}>📄</div>
+                    <h3 style={{color:theme.text,fontSize:'22px',fontWeight:'800',marginBottom:'12px'}}>Upload Excel File</h3>
+                    <p style={{color:theme.textSecondary,fontSize:'16px',marginBottom:'8px'}}>Click to select or drag & drop your Excel file</p>
+                    <p style={{color:theme.textSecondary,fontSize:'14px'}}>Supported formats: .xlsx, .xls</p>
+                  </div>
+                  <div style={{background:theme.sidebarHover,padding:'28px',borderRadius:'16px',border:`2px solid ${theme.border}`,marginBottom:'32px'}}>
+                    <h3 style={{color:theme.text,fontSize:'20px',fontWeight:'800',marginBottom:'16px'}}>📋 Excel Template Format</h3>
+                    <div style={{overflowX:'auto'}}>
+                      <table style={{width:'100%',borderCollapse:'collapse',fontSize:'14px'}}>
+                        <thead><tr style={{background:theme.cardBg}}><th style={{padding:'12px',border:`1px solid ${theme.border}`,color:theme.text,fontWeight:'700',textAlign:'left'}}>EAN Number</th><th style={{padding:'12px',border:`1px solid ${theme.border}`,color:theme.text,fontWeight:'700',textAlign:'left'}}>Product Name</th><th style={{padding:'12px',border:`1px solid ${theme.border}`,color:theme.text,fontWeight:'700',textAlign:'left'}}>SKU</th><th style={{padding:'12px',border:`1px solid ${theme.border}`,color:theme.text,fontWeight:'700',textAlign:'left'}}>Quantity</th><th style={{padding:'12px',border:`1px solid ${theme.border}`,color:theme.text,fontWeight:'700',textAlign:'left'}}>Customer</th><th style={{padding:'12px',border:`1px solid ${theme.border}`,color:theme.text,fontWeight:'700',textAlign:'left'}}>Order Number</th></tr></thead>
+                        <tbody>
+                          <tr><td style={{padding:'12px',border:`1px solid ${theme.border}`,color:theme.textSecondary}}>8901234567890</td><td style={{padding:'12px',border:`1px solid ${theme.border}`,color:theme.textSecondary}}>Wireless Mouse</td><td style={{padding:'12px',border:`1px solid ${theme.border}`,color:theme.textSecondary}}>SKU001</td><td style={{padding:'12px',border:`1px solid ${theme.border}`,color:theme.textSecondary}}>25</td><td style={{padding:'12px',border:`1px solid ${theme.border}`,color:theme.textSecondary}}>Customer A</td><td style={{padding:'12px',border:`1px solid ${theme.border}`,color:theme.textSecondary}}>ORD001</td></tr>
+                          <tr><td style={{padding:'12px',border:`1px solid ${theme.border}`,color:theme.textSecondary}}>8901234567891</td><td style={{padding:'12px',border:`1px solid ${theme.border}`,color:theme.textSecondary}}>USB Cable</td><td style={{padding:'12px',border:`1px solid ${theme.border}`,color:theme.textSecondary}}>SKU002</td><td style={{padding:'12px',border:`1px solid ${theme.border}`,color:theme.textSecondary}}>50</td><td style={{padding:'12px',border:`1px solid ${theme.border}`,color:theme.textSecondary}}>Customer B</td><td style={{padding:'12px',border:`1px solid ${theme.border}`,color:theme.textSecondary}}>ORD002</td></tr>
+                        </tbody>
+                      </table>
+                    </div>
+                    <div style={{marginTop:'20px',display:'flex',gap:'12px'}}>
+                      <button onClick={()=>addToast('Downloading template...','success')} style={{padding:'12px 28px',background:'linear-gradient(135deg, #06b6d4, #0891b2)',color:'white',border:'none',borderRadius:'10px',fontSize:'14px',fontWeight:'700',cursor:'pointer'}}>⬇️ Download Template</button>
+                      <button onClick={()=>addToast('Opening sample file...','info')} style={{padding:'12px 28px',background:theme.cardBg,color:theme.text,border:`2px solid ${theme.border}`,borderRadius:'10px',fontSize:'14px',fontWeight:'700',cursor:'pointer'}}>👁️ View Sample</button>
+                    </div>
+                  </div>
+                  <div style={{display:'flex',gap:'16px',justifyContent:'center'}}>
+                    <button onClick={()=>{addToast('Processing bulk outward: 89 shipments created successfully!','success');resetView();}} style={{padding:'16px 48px',background:'linear-gradient(135deg, #f59e0b, #d97706)',color:'white',border:'none',borderRadius:'14px',fontSize:'17px',fontWeight:'800',cursor:'pointer'}}>📤 Upload & Process</button>
+                    <button onClick={()=>{addToast('Validating file format...','info');}} style={{padding:'16px 48px',background:theme.sidebarHover,color:theme.text,border:`2px solid ${theme.border}`,borderRadius:'14px',fontSize:'17px',fontWeight:'800',cursor:'pointer'}}>✓ Validate File</button>
                   </div>
                 </div>
               )}
