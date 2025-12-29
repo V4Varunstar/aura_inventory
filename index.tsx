@@ -774,7 +774,12 @@ function DashboardPage() {
                     <table style={{width:'100%',borderCollapse:'collapse'}}>
                       <thead><tr style={{background:theme.sidebarHover,borderBottom:`2px solid ${theme.border}`}}><th style={{padding:'16px',textAlign:'left',color:theme.text,fontWeight:'700'}}>Date</th><th style={{padding:'16px',textAlign:'left',color:theme.text,fontWeight:'700'}}>Product</th><th style={{padding:'16px',textAlign:'left',color:theme.text,fontWeight:'700'}}>Batch</th><th style={{padding:'16px',textAlign:'left',color:theme.text,fontWeight:'700'}}>Qty</th><th style={{padding:'16px',textAlign:'left',color:theme.text,fontWeight:'700'}}>Supplier</th></tr></thead>
                       <tbody>
-                        {(inwardEntries.length>0?inwardEntries:[{date:'27 Dec 2024',productName:'Logitech Wireless Mouse M185',batch:'TWD-2024-1201',quantity:50,supplier:'TechWorld Distributors'},{date:'26 Dec 2024',productName:'Samsung USB Type-C Cable',batch:'EMI-2024-1156',quantity:120,supplier:'ElectroMart India'},{date:'25 Dec 2024',productName:'Cotton Round Neck T-Shirt',batch:'FG-2024-0889',quantity:200,supplier:'Fashion Galaxy Pvt Ltd'},{date:'24 Dec 2024',productName:'Nike Revolution 6 Running Shoes',batch:'SPW-2024-0456',quantity:50,supplier:'SportWear Wholesale'}]).map((item,i)=>(
+                        {inwardEntries.length === 0 ? (
+                          <tr><td colSpan={5} style={{padding:'40px',textAlign:'center',color:theme.textSecondary}}>
+                            <div style={{fontSize:'48px',marginBottom:'12px'}}>📦</div>
+                            <p style={{fontSize:'16px'}}>No inward entries yet</p>
+                          </td></tr>
+                        ) : inwardEntries.map((item,i)=>(
                           <tr key={i} style={{borderBottom:`1px solid ${theme.border}`,cursor:'pointer'}} onMouseEnter={(e)=>e.currentTarget.style.background=theme.sidebarHover} onMouseLeave={(e)=>e.currentTarget.style.background='transparent'}>
                             <td style={{padding:'16px',color:theme.textSecondary}}>{item.date||item.entryDate}</td>
                             <td style={{padding:'16px',color:theme.text,fontWeight:'600'}}>{item.productName||item.product}</td>
@@ -1012,24 +1017,16 @@ function DashboardPage() {
                     </div>
                   </div>
                   <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:'20px',marginBottom:'32px'}}>
-                    {[{label:'Total Sales',value:'₹ 3,35,300',color:'#06b6d4'},{label:'Orders',value:'105',color:'#10b981'},{label:'Avg Order',value:'₹ 3,193',color:'#f59e0b'},{label:'Growth',value:'+12%',color:'#8b5cf6'}].map((stat,i)=>(
+                    {[{label:'Total Sales',value:'₹ 0',color:'#06b6d4'},{label:'Orders',value:'0',color:'#10b981'},{label:'Avg Order',value:'₹ 0',color:'#f59e0b'},{label:'Growth',value:'0%',color:'#8b5cf6'}].map((stat,i)=>(
                       <div key={i} style={{background:theme.sidebarHover,padding:'24px',borderRadius:'16px',border:`2px solid ${theme.border}`,textAlign:'center'}}>
                         <p style={{color:theme.textSecondary,fontSize:'14px',marginBottom:'8px',fontWeight:'600'}}>{stat.label}</p>
                         <p style={{color:stat.color,fontSize:'28px',fontWeight:'900'}}>{stat.value}</p>
                       </div>
                     ))}
                   </div>
-                  <div style={{background:theme.sidebarHover,padding:'32px',borderRadius:'16px',border:`2px solid ${theme.border}`}}>
-                    <h3 style={{color:theme.text,fontSize:'20px',fontWeight:'800',marginBottom:'20px'}}>Top Products</h3>
-                    {[{name:'Wireless Mouse',sales:'₹ 67,000',units:89},{name:'USB Cable',sales:'₹ 45,000',units:234},{name:'T-Shirt',sales:'₹ 38,000',units:67}].map((p,i)=>(
-                      <div key={i} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'16px',background:theme.cardBg,borderRadius:'12px',marginBottom:'12px'}}>
-                        <div>
-                          <p style={{color:theme.text,fontSize:'16px',fontWeight:'700',marginBottom:'4px'}}>{p.name}</p>
-                          <p style={{color:theme.textSecondary,fontSize:'13px'}}>{p.units} units sold</p>
-                        </div>
-                        <p style={{color:'#06b6d4',fontSize:'20px',fontWeight:'900'}}>{p.sales}</p>
-                      </div>
-                    ))}
+                  <div style={{background:theme.sidebarHover,padding:'32px',borderRadius:'16px',border:`2px solid ${theme.border}`,textAlign:'center'}}>
+                    <div style={{fontSize:'48px',marginBottom:'12px'}}>📊</div>
+                    <p style={{color:theme.textSecondary,fontSize:'16px'}}>No sales data available</p>
                   </div>
                 </div>
               )}
@@ -1043,24 +1040,16 @@ function DashboardPage() {
                     </div>
                   </div>
                   <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:'20px',marginBottom:'32px'}}>
-                    {[{label:'Total Items',value:'247',color:'#3b82f6'},{label:'Low Stock',value:'23',color:'#ef4444'},{label:'Out of Stock',value:'5',color:'#f59e0b'}].map((stat,i)=>(
+                    {[{label:'Total Items',value:products.length.toString(),color:'#3b82f6'},{label:'Low Stock',value:'0',color:'#ef4444'},{label:'Out of Stock',value:'0',color:'#f59e0b'}].map((stat,i)=>(
                       <div key={i} style={{background:theme.sidebarHover,padding:'24px',borderRadius:'16px',border:`2px solid ${theme.border}`,textAlign:'center'}}>
                         <p style={{color:theme.textSecondary,fontSize:'14px',marginBottom:'8px',fontWeight:'600'}}>{stat.label}</p>
                         <p style={{color:stat.color,fontSize:'32px',fontWeight:'900'}}>{stat.value}</p>
                       </div>
                     ))}
                   </div>
-                  <div style={{background:theme.sidebarHover,padding:'32px',borderRadius:'16px',border:`2px solid ${theme.border}`}}>
-                    <h3 style={{color:theme.text,fontSize:'20px',fontWeight:'800',marginBottom:'20px'}}>Low Stock Alert</h3>
-                    {[{name:'Running Shoes',stock:23,min:50},{name:'Notebook',stock:18,min:30},{name:'Water Bottle',stock:12,min:25}].map((p,i)=>(
-                      <div key={i} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'16px',background:theme.cardBg,borderRadius:'12px',marginBottom:'12px',border:`2px solid #ef444420`}}>
-                        <p style={{color:theme.text,fontSize:'16px',fontWeight:'700'}}>{p.name}</p>
-                        <div style={{textAlign:'right'}}>
-                          <p style={{color:'#ef4444',fontSize:'20px',fontWeight:'900'}}>{p.stock}</p>
-                          <p style={{color:theme.textSecondary,fontSize:'12px'}}>Min: {p.min}</p>
-                        </div>
-                      </div>
-                    ))}
+                  <div style={{background:theme.sidebarHover,padding:'32px',borderRadius:'16px',border:`2px solid ${theme.border}`,textAlign:'center'}}>
+                    <div style={{fontSize:'48px',marginBottom:'12px'}}>📦</div>
+                    <p style={{color:theme.textSecondary,fontSize:'16px'}}>No stock alerts</p>
                   </div>
                 </div>
               )}
@@ -1083,16 +1072,10 @@ function DashboardPage() {
                     <table style={{width:'100%',borderCollapse:'collapse'}}>
                       <thead><tr style={{borderBottom:`2px solid ${theme.border}`}}><th style={{padding:'12px',textAlign:'left',color:theme.text,fontWeight:'700'}}>EAN</th><th style={{padding:'12px',textAlign:'left',color:theme.text,fontWeight:'700'}}>Product</th><th style={{padding:'12px',textAlign:'left',color:theme.text,fontWeight:'700'}}>SKU</th><th style={{padding:'12px',textAlign:'right',color:theme.text,fontWeight:'700'}}>Current Stock</th><th style={{padding:'12px',textAlign:'right',color:theme.text,fontWeight:'700'}}>Min Stock</th><th style={{padding:'12px',textAlign:'center',color:theme.text,fontWeight:'700'}}>Status</th></tr></thead>
                       <tbody>
-                        {[{ean:'8901234567893',name:'Nike Revolution 6 Running Shoes',sku:'FOOT-RS-004',stock:18,min:50,status:'Critical'},{ean:'8901234567895',name:'Classmate Spiral Notebook A4',sku:'STAT-NB-006',stock:12,min:30,status:'Critical'},{ean:'8901234567894',name:'Milton Thermosteel Water Bottle',sku:'ACCS-WB-005',stock:22,min:50,status:'Low'}].map((p,i)=>(
-                          <tr key={i} style={{borderBottom:`1px solid ${theme.border}`}}>
-                            <td style={{padding:'12px',color:theme.textSecondary,fontSize:'12px',fontFamily:'monospace'}}>{p.ean}</td>
-                            <td style={{padding:'12px',color:theme.text}}>{p.name}</td>
-                            <td style={{padding:'12px',color:theme.textSecondary}}>{p.sku}</td>
-                            <td style={{padding:'12px',textAlign:'right',color:'#ef4444',fontWeight:'700'}}>{p.stock}</td>
-                            <td style={{padding:'12px',textAlign:'right',color:theme.textSecondary}}>{p.min}</td>
-                            <td style={{padding:'12px',textAlign:'center'}}><span style={{padding:'6px 16px',background:p.status==='Critical'?'#ef444420':'#f59e0b20',color:p.status==='Critical'?'#ef4444':'#f59e0b',borderRadius:'20px',fontSize:'12px',fontWeight:'700'}}>{p.status}</span></td>
-                          </tr>
-                        ))}
+                        <tr><td colSpan={6} style={{padding:'40px',textAlign:'center',color:theme.textSecondary}}>
+                          <div style={{fontSize:'48px',marginBottom:'12px'}}>✅</div>
+                          <p style={{fontSize:'16px'}}>No low stock items</p>
+                        </td></tr>
                       </tbody>
                     </table>
                   </div>
@@ -1117,7 +1100,12 @@ function DashboardPage() {
                     <table style={{width:'100%',borderCollapse:'collapse'}}>
                       <thead><tr style={{borderBottom:`2px solid ${theme.border}`}}><th style={{padding:'12px',textAlign:'left',color:theme.text,fontWeight:'700'}}>Date</th><th style={{padding:'12px',textAlign:'left',color:theme.text,fontWeight:'700'}}>EAN</th><th style={{padding:'12px',textAlign:'left',color:theme.text,fontWeight:'700'}}>Product</th><th style={{padding:'12px',textAlign:'left',color:theme.text,fontWeight:'700'}}>SKU</th><th style={{padding:'12px',textAlign:'right',color:theme.text,fontWeight:'700'}}>Quantity</th><th style={{padding:'12px',textAlign:'left',color:theme.text,fontWeight:'700'}}>Supplier</th><th style={{padding:'12px',textAlign:'left',color:theme.text,fontWeight:'700'}}>Batch</th></tr></thead>
                       <tbody>
-                        {(inwardEntries.length>0?inwardEntries:[{date:'27 Dec 2024',ean:'8901234567890',productName:'Logitech Wireless Mouse M185',sku:'TECH-WM-001',quantity:50,supplier:'TechWorld Distributors',batch:'TWD-2024-1201'},{date:'26 Dec 2024',ean:'8901234567891',productName:'Samsung USB Type-C Cable',sku:'TECH-UC-002',quantity:120,supplier:'ElectroMart India',batch:'EMI-2024-1156'},{date:'25 Dec 2024',ean:'8901234567892',productName:'Cotton Round Neck T-Shirt Black',sku:'CLTH-TS-003',quantity:200,supplier:'Fashion Galaxy Pvt Ltd',batch:'FG-2024-0889'}]).map((item,i)=>(
+                        {inwardEntries.length === 0 ? (
+                          <tr><td colSpan={7} style={{padding:'40px',textAlign:'center',color:theme.textSecondary}}>
+                            <div style={{fontSize:'48px',marginBottom:'12px'}}>📥</div>
+                            <p style={{fontSize:'16px'}}>No inward entries yet</p>
+                          </td></tr>
+                        ) : inwardEntries.map((item,i)=>(
                           <tr key={i} style={{borderBottom:`1px solid ${theme.border}`}}>
                             <td style={{padding:'12px',color:theme.textSecondary}}>{item.date||item.entryDate}</td>
                             <td style={{padding:'12px',color:theme.textSecondary,fontSize:'11px',fontFamily:'monospace'}}>{item.ean}</td>
@@ -1126,10 +1114,6 @@ function DashboardPage() {
                             <td style={{padding:'12px',textAlign:'right',color:'#10b981',fontWeight:'700'}}>+{item.quantity||item.qty}</td>
                             <td style={{padding:'12px',color:theme.textSecondary}}>{item.supplier}</td>
                             <td style={{padding:'12px',color:theme.text,fontFamily:'monospace',fontSize:'12px'}}>{item.batch}</td>
-                            <td style={{padding:'12px',color:theme.textSecondary}}>{item.sku}</td>
-                            <td style={{padding:'12px',textAlign:'right',color:'#10b981',fontWeight:'700'}}>+{item.qty}</td>
-                            <td style={{padding:'12px',color:theme.textSecondary}}>{item.supplier}</td>
-                            <td style={{padding:'12px',color:theme.text}}>{item.batch}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -1156,7 +1140,12 @@ function DashboardPage() {
                     <table style={{width:'100%',borderCollapse:'collapse'}}>
                       <thead><tr style={{borderBottom:`2px solid ${theme.border}`}}><th style={{padding:'12px',textAlign:'left',color:theme.text,fontWeight:'700'}}>Date</th><th style={{padding:'12px',textAlign:'left',color:theme.text,fontWeight:'700'}}>EAN</th><th style={{padding:'12px',textAlign:'left',color:theme.text,fontWeight:'700'}}>Product</th><th style={{padding:'12px',textAlign:'left',color:theme.text,fontWeight:'700'}}>SKU</th><th style={{padding:'12px',textAlign:'right',color:theme.text,fontWeight:'700'}}>Quantity</th><th style={{padding:'12px',textAlign:'left',color:theme.text,fontWeight:'700'}}>Platform</th><th style={{padding:'12px',textAlign:'left',color:theme.text,fontWeight:'700'}}>Order No</th></tr></thead>
                       <tbody>
-                        {(outwardEntries.length>0?outwardEntries:[{entryDate:'28 Dec 2024',ean:'8901234567897',productName:'boAt Bassheads 100 Wired',sku:'TECH-HP-008',quantity:35,platform:'Meesho',orderNo:'MESH-24-4782'},{entryDate:'27 Dec 2024',ean:'8901234567893',productName:'Nike Revolution 6 Running Shoes',sku:'FOOT-RS-004',quantity:18,platform:'Amazon',orderNo:'AMZ-407-9156234'},{entryDate:'26 Dec 2024',ean:'8901234567892',productName:'Cotton Round Neck T-Shirt',sku:'CLTH-TS-003',quantity:67,platform:'Flipkart',orderNo:'FLP-ORD-182945'}]).map((item,i)=>(
+                        {outwardEntries.length === 0 ? (
+                          <tr><td colSpan={7} style={{padding:'40px',textAlign:'center',color:theme.textSecondary}}>
+                            <div style={{fontSize:'48px',marginBottom:'12px'}}>📤</div>
+                            <p style={{fontSize:'16px'}}>No outward entries yet</p>
+                          </td></tr>
+                        ) : outwardEntries.map((item,i)=>(
                           <tr key={i} style={{borderBottom:`1px solid ${theme.border}`}}>
                             <td style={{padding:'12px',color:theme.textSecondary}}>{item.entryDate||item.date}</td>
                             <td style={{padding:'12px',color:theme.textSecondary,fontSize:'11px',fontFamily:'monospace'}}>{item.ean}</td>
@@ -1191,17 +1180,10 @@ function DashboardPage() {
                     <table style={{width:'100%',borderCollapse:'collapse'}}>
                       <thead><tr style={{borderBottom:`2px solid ${theme.border}`}}><th style={{padding:'12px',textAlign:'left',color:theme.text,fontWeight:'700'}}>Batch No</th><th style={{padding:'12px',textAlign:'left',color:theme.text,fontWeight:'700'}}>EAN</th><th style={{padding:'12px',textAlign:'left',color:theme.text,fontWeight:'700'}}>Product</th><th style={{padding:'12px',textAlign:'right',color:theme.text,fontWeight:'700'}}>Inward</th><th style={{padding:'12px',textAlign:'right',color:theme.text,fontWeight:'700'}}>Outward</th><th style={{padding:'12px',textAlign:'right',color:theme.text,fontWeight:'700'}}>Balance</th><th style={{padding:'12px',textAlign:'left',color:theme.text,fontWeight:'700'}}>Supplier</th></tr></thead>
                       <tbody>
-                        {[{batch:'TWD-2024-1201',ean:'8901234567890',product:'Logitech Wireless Mouse M185',inward:50,outward:38,balance:12,supplier:'TechWorld Distributors'},{batch:'EMI-2024-1156',ean:'8901234567891',product:'Samsung USB Type-C Cable',inward:120,outward:85,balance:35,supplier:'ElectroMart India'},{batch:'FG-2024-0889',ean:'8901234567892',product:'Cotton Round Neck T-Shirt',inward:200,outward:133,balance:67,supplier:'Fashion Galaxy Pvt Ltd'}].map((item,i)=>(
-                          <tr key={i} style={{borderBottom:`1px solid ${theme.border}`}}>
-                            <td style={{padding:'12px',color:theme.text,fontWeight:'700'}}>{item.batch}</td>
-                            <td style={{padding:'12px',color:theme.textSecondary,fontSize:'11px',fontFamily:'monospace'}}>{item.ean}</td>
-                            <td style={{padding:'12px',color:theme.text}}>{item.product}</td>
-                            <td style={{padding:'12px',textAlign:'right',color:'#10b981',fontWeight:'700'}}>+{item.inward}</td>
-                            <td style={{padding:'12px',textAlign:'right',color:'#f59e0b',fontWeight:'700'}}>-{item.outward}</td>
-                            <td style={{padding:'12px',textAlign:'right',color:'#3b82f6',fontWeight:'700'}}>{item.balance}</td>
-                            <td style={{padding:'12px',color:theme.textSecondary}}>{item.supplier}</td>
-                          </tr>
-                        ))}
+                        <tr><td colSpan={7} style={{padding:'40px',textAlign:'center',color:theme.textSecondary}}>
+                          <div style={{fontSize:'48px',marginBottom:'12px'}}>🏷️</div>
+                          <p style={{fontSize:'16px'}}>No batch data available</p>
+                        </td></tr>
                       </tbody>
                     </table>
                   </div>
