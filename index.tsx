@@ -448,6 +448,58 @@ function DashboardPage() {
               ))}
             </div>
           </div>
+
+          {/* Platform Analytics & Top SKUs */}
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'32px',marginTop:'32px'}}>
+            {/* Platform-wise Sales */}
+            <div style={{background:theme.cardBg,padding:'32px',borderRadius:'20px',border:`2px solid ${theme.border}`,boxShadow:darkMode?'0 8px 32px rgba(0,0,0,0.3)':'0 8px 32px rgba(0,0,0,0.1)'}}>
+              <h3 style={{fontSize:'22px',fontWeight:'900',color:theme.text,marginBottom:'24px'}}>📊 Platform-wise Sales</h3>
+              <div style={{display:'flex',flexDirection:'column',gap:'20px'}}>
+                {[
+                  {platform:'Meesho',orders:45,revenue:'2.8L',percentage:32,color:'#FF006E'},
+                  {platform:'Amazon',orders:38,revenue:'3.5L',percentage:40,color:'#FF9500'},
+                  {platform:'Flipkart',orders:32,revenue:'2.1L',percentage:24,color:'#007AFF'},
+                  {platform:'Direct',orders:15,revenue:'0.4L',percentage:4,color:'#34C759'}
+                ].map(p=>(
+                  <div key={p.platform}>
+                    <div style={{display:'flex',justifyContent:'space-between',marginBottom:'8px'}}>
+                      <span style={{color:theme.text,fontWeight:'700',fontSize:'15px'}}>{p.platform}</span>
+                      <span style={{color:theme.textSecondary,fontWeight:'600',fontSize:'14px'}}>{p.orders} orders · ₹{p.revenue}</span>
+                    </div>
+                    <div style={{background:theme.sidebarHover,height:'10px',borderRadius:'10px',overflow:'hidden',position:'relative'}}>
+                      <div style={{background:`linear-gradient(90deg, ${p.color}, ${p.color}dd)`,width:`${p.percentage}%`,height:'100%',borderRadius:'10px',transition:'width 0.5s ease'}}></div>
+                    </div>
+                    <div style={{textAlign:'right',marginTop:'4px',color:theme.textSecondary,fontSize:'13px',fontWeight:'700'}}>{p.percentage}%</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Top Performing SKUs */}
+            <div style={{background:theme.cardBg,padding:'32px',borderRadius:'20px',border:`2px solid ${theme.border}`,boxShadow:darkMode?'0 8px 32px rgba(0,0,0,0.3)':'0 8px 32px rgba(0,0,0,0.1)'}}>
+              <h3 style={{fontSize:'22px',fontWeight:'900',color:theme.text,marginBottom:'24px'}}>🏆 Top Performing SKUs</h3>
+              <div style={{display:'flex',flexDirection:'column',gap:'16px'}}>
+                {[
+                  {rank:1,name:'Premium Cotton T-Shirt',sku:'SKU-001',units:245,revenue:'3.2L',trend:'+12%',color:'#FFD700'},
+                  {rank:2,name:'Designer Kurta Set',sku:'SKU-023',units:198,revenue:'2.8L',trend:'+8%',color:'#C0C0C0'},
+                  {rank:3,name:'Denim Jeans Regular',sku:'SKU-045',units:176,revenue:'2.4L',trend:'+5%',color:'#CD7F32'},
+                  {rank:4,name:'Floral Print Dress',sku:'SKU-067',units:142,revenue:'1.9L',trend:'+3%',color:'#6366f1'}
+                ].map(s=>(
+                  <div key={s.sku} style={{display:'flex',alignItems:'center',gap:'16px',padding:'12px',background:theme.sidebarHover,borderRadius:'12px',border:`2px solid ${theme.border}`,transition:'all 0.3s ease',cursor:'pointer'}} onMouseEnter={(e)=>e.currentTarget.style.transform='translateX(8px)'} onMouseLeave={(e)=>e.currentTarget.style.transform='translateX(0)'}>
+                    <div style={{width:'36px',height:'36px',borderRadius:'8px',background:`linear-gradient(135deg, ${s.color}, ${s.color}dd)`,display:'flex',alignItems:'center',justifyContent:'center',color:'white',fontWeight:'900',fontSize:'16px'}}>#{s.rank}</div>
+                    <div style={{flex:1}}>
+                      <div style={{color:theme.text,fontWeight:'700',fontSize:'15px',marginBottom:'2px'}}>{s.name}</div>
+                      <div style={{color:theme.textSecondary,fontSize:'13px',fontWeight:'600'}}>{s.sku} · {s.units} units</div>
+                    </div>
+                    <div style={{textAlign:'right'}}>
+                      <div style={{color:theme.text,fontWeight:'800',fontSize:'16px'}}>₹{s.revenue}</div>
+                      <div style={{color:'#34C759',fontSize:'13px',fontWeight:'700'}}>{s.trend}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
             </>
           )}
           
@@ -1170,7 +1222,7 @@ function DashboardPage() {
                       <div key={i} style={{background:theme.sidebarHover,padding:'24px',borderRadius:'16px',border:`2px solid ${theme.border}`}}>
                         <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:'12px'}}>
                           <h3 style={{color:theme.text,fontSize:'20px',fontWeight:'800'}}>{w.name}</h3>
-                          <button onClick={()=>addToast(`Editing ${w.name}...`,'info')} style={{padding:'6px 16px',background:'linear-gradient(135deg, #3b82f6, #2563eb)',color:'white',border:'none',borderRadius:'8px',fontSize:'13px',fontWeight:'700',cursor:'pointer'}}>✏️ Edit</button>
+                          <button onClick={()=>{setActiveView('edit-warehouse');setFormData({...formData,warehouseName:w.name,warehouseLocation:w.location});addToast(`✏️ Editing ${w.name}...`,'info');}} style={{padding:'6px 16px',background:'linear-gradient(135deg, #3b82f6, #2563eb)',color:'white',border:'none',borderRadius:'8px',fontSize:'13px',fontWeight:'700',cursor:'pointer'}}>✏️ Edit</button>
                         </div>
                         <p style={{color:theme.textSecondary,fontSize:'14px',marginBottom:'8px'}}>📍 {w.location}</p>
                         <p style={{color:'#10b981',fontSize:'14px',marginBottom:'8px',fontWeight:'700'}}>✓ {w.status}</p>
@@ -1178,7 +1230,45 @@ function DashboardPage() {
                       </div>
                     ))}
                   </div>
-                  <button onClick={()=>addToast('✅ Opening Add Warehouse form...','success')} style={{padding:'14px 40px',background:'linear-gradient(135deg, #6366f1, #4f46e5)',color:'white',border:'none',borderRadius:'12px',fontSize:'16px',fontWeight:'800',cursor:'pointer'}}>➕ Add New Warehouse</button>
+                  <button onClick={()=>{setActiveView('add-warehouse');setFormData({});addToast('➕ Opening Add Warehouse form...','success');}} style={{padding:'14px 40px',background:'linear-gradient(135deg, #6366f1, #4f46e5)',color:'white',border:'none',borderRadius:'12px',fontSize:'16px',fontWeight:'800',cursor:'pointer'}}>➕ Add New Warehouse</button>
+                </div>
+              )}
+              {activeView === 'add-warehouse' && (
+                <div style={{background:theme.cardBg,padding:'40px',borderRadius:'20px',border:`2px solid ${theme.border}`,boxShadow:darkMode?'0 8px 32px rgba(0,0,0,0.3)':'0 8px 32px rgba(0,0,0,0.1)'}}>
+                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'32px'}}>
+                    <h2 style={{fontSize:'28px',fontWeight:'900',color:theme.text}}>➕ Add New Warehouse</h2>
+                    <button onClick={resetView} style={{padding:'10px 24px',background:theme.sidebarHover,color:theme.text,border:`2px solid ${theme.border}`,borderRadius:'10px',fontSize:'15px',fontWeight:'700',cursor:'pointer'}}>← Back</button>
+                  </div>
+                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'24px',maxWidth:'900px'}}>
+                    <div><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>Warehouse Name</label><input type="text" placeholder="Enter warehouse name" value={formData.warehouseName||''} onChange={(e)=>setFormData({...formData,warehouseName:e.target.value})} style={{width:'100%',padding:'14px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px'}} /></div>
+                    <div><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>Location</label><input type="text" placeholder="City, Country" value={formData.warehouseLocation||''} onChange={(e)=>setFormData({...formData,warehouseLocation:e.target.value})} style={{width:'100%',padding:'14px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px'}} /></div>
+                    <div><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>Contact Person</label><input type="text" placeholder="Manager name" value={formData.contactPerson||''} onChange={(e)=>setFormData({...formData,contactPerson:e.target.value})} style={{width:'100%',padding:'14px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px'}} /></div>
+                    <div><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>Phone Number</label><input type="tel" placeholder="+91 XXXXXXXXXX" value={formData.phone||''} onChange={(e)=>setFormData({...formData,phone:e.target.value})} style={{width:'100%',padding:'14px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px'}} /></div>
+                    <div style={{gridColumn:'1 / -1'}}><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>Address</label><textarea placeholder="Full address" value={formData.address||''} onChange={(e)=>setFormData({...formData,address:e.target.value})} style={{width:'100%',padding:'14px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px',minHeight:'100px'}} /></div>
+                  </div>
+                  <div style={{marginTop:'32px',display:'flex',gap:'16px'}}>
+                    <button onClick={()=>{if(formData.warehouseName && formData.warehouseLocation){addToast(`✅ Warehouse "${formData.warehouseName}" added successfully!`,'success');resetView();}else{addToast('❌ Please fill warehouse name and location','error');}}} style={{padding:'14px 40px',background:'linear-gradient(135deg, #6366f1, #4f46e5)',color:'white',border:'none',borderRadius:'12px',fontSize:'16px',fontWeight:'800',cursor:'pointer'}}>💾 Save Warehouse</button>
+                    <button onClick={resetView} style={{padding:'14px 40px',background:theme.sidebarHover,color:theme.text,border:`2px solid ${theme.border}`,borderRadius:'12px',fontSize:'16px',fontWeight:'700',cursor:'pointer'}}>Cancel</button>
+                  </div>
+                </div>
+              )}
+              {activeView === 'edit-warehouse' && (
+                <div style={{background:theme.cardBg,padding:'40px',borderRadius:'20px',border:`2px solid ${theme.border}`,boxShadow:darkMode?'0 8px 32px rgba(0,0,0,0.3)':'0 8px 32px rgba(0,0,0,0.1)'}}>
+                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'32px'}}>
+                    <h2 style={{fontSize:'28px',fontWeight:'900',color:theme.text}}>✏️ Edit Warehouse</h2>
+                    <button onClick={resetView} style={{padding:'10px 24px',background:theme.sidebarHover,color:theme.text,border:`2px solid ${theme.border}`,borderRadius:'10px',fontSize:'15px',fontWeight:'700',cursor:'pointer'}}>← Back</button>
+                  </div>
+                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'24px',maxWidth:'900px'}}>
+                    <div><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>Warehouse Name</label><input type="text" placeholder="Enter warehouse name" value={formData.warehouseName||''} onChange={(e)=>setFormData({...formData,warehouseName:e.target.value})} style={{width:'100%',padding:'14px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px'}} /></div>
+                    <div><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>Location</label><input type="text" placeholder="City, Country" value={formData.warehouseLocation||''} onChange={(e)=>setFormData({...formData,warehouseLocation:e.target.value})} style={{width:'100%',padding:'14px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px'}} /></div>
+                    <div><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>Contact Person</label><input type="text" placeholder="Manager name" value={formData.contactPerson||''} onChange={(e)=>setFormData({...formData,contactPerson:e.target.value})} style={{width:'100%',padding:'14px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px'}} /></div>
+                    <div><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>Phone Number</label><input type="tel" placeholder="+91 XXXXXXXXXX" value={formData.phone||''} onChange={(e)=>setFormData({...formData,phone:e.target.value})} style={{width:'100%',padding:'14px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px'}} /></div>
+                    <div style={{gridColumn:'1 / -1'}}><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>Address</label><textarea placeholder="Full address" value={formData.address||''} onChange={(e)=>setFormData({...formData,address:e.target.value})} style={{width:'100%',padding:'14px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px',minHeight:'100px'}} /></div>
+                  </div>
+                  <div style={{marginTop:'32px',display:'flex',gap:'16px'}}>
+                    <button onClick={()=>{if(formData.warehouseName && formData.warehouseLocation){addToast(`✅ Warehouse "${formData.warehouseName}" updated successfully!`,'success');resetView();}else{addToast('❌ Please fill warehouse name and location','error');}}} style={{padding:'14px 40px',background:'linear-gradient(135deg, #6366f1, #4f46e5)',color:'white',border:'none',borderRadius:'12px',fontSize:'16px',fontWeight:'800',cursor:'pointer'}}>💾 Save Changes</button>
+                    <button onClick={resetView} style={{padding:'14px 40px',background:theme.sidebarHover,color:theme.text,border:`2px solid ${theme.border}`,borderRadius:'12px',fontSize:'16px',fontWeight:'700',cursor:'pointer'}}>Cancel</button>
+                  </div>
                 </div>
               )}
               {activeView === 'integration-setup' && (
