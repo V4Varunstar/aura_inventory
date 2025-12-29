@@ -321,11 +321,12 @@ function DashboardPage() {
           {currentPage === 'dashboard' && (
             <>
               {/* Stats Cards */}
-              <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(280px,1fr))',gap:'24px',marginBottom:'40px'}}>
+              <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(260px,1fr))',gap:'24px',marginBottom:'40px'}}>
                 {[
-                  {title:'Total Products',value:'156',change:'+8%',icon:'📦',color:'#3b82f6',gradient:'linear-gradient(135deg, #3b82f6, #2563eb)',trend:'up',page:'products'},
-                  {title:'Total Inward',value:inwardEntries.length.toString(),change:'+12%',icon:'📥',color:'#10b981',gradient:'linear-gradient(135deg, #10b981, #059669)',trend:'up',page:'inward'},
-                  {title:'Total Outward',value:outwardEntries.length.toString(),change:'+15%',icon:'📤',color:'#f59e0b',gradient:'linear-gradient(135deg, #f59e0b, #d97706)',trend:'up',page:'outward'},
+                  {title:'Total SKU',value:'156',change:'+8%',icon:'📦',color:'#3b82f6',gradient:'linear-gradient(135deg, #3b82f6, #2563eb)',trend:'up',page:'products'},
+                  {title:"Today's Inward",value:inwardEntries.filter(e=>e.entryDate===new Date().toLocaleDateString('en-IN')).length.toString(),change:'+12%',icon:'📥',color:'#10b981',gradient:'linear-gradient(135deg, #10b981, #059669)',trend:'up',page:'inward'},
+                  {title:"Today's Outward",value:outwardEntries.filter(e=>e.entryDate===new Date().toLocaleDateString('en-IN')).length.toString(),change:'+15%',icon:'📤',color:'#f59e0b',gradient:'linear-gradient(135deg, #f59e0b, #d97706)',trend:'up',page:'outward'},
+                  {title:'Inventory Value',value:'₹12.45L',change:'+6%',icon:'💰',color:'#8b5cf6',gradient:'linear-gradient(135deg, #8b5cf6, #7c3aed)',trend:'up',page:'reports'},
                   {title:'Low Stock Items',value:'18',change:'-5%',icon:'⚠️',color:'#ef4444',gradient:'linear-gradient(135deg, #ef4444, #dc2626)',trend:'down',page:'reports'}
                 ].map((stat,i)=>(
                   <div key={i} onClick={()=>{setCurrentPage(stat.page);resetView();addToast(`Opening ${stat.title}...`,'info');}} style={{background:theme.cardBg,padding:'26px',borderRadius:'16px',border:`2px solid ${theme.border}`,transition:'all 0.4s',cursor:'pointer',position:'relative',overflow:'hidden',boxShadow:darkMode?'0 4px 16px rgba(0,0,0,0.3)':'0 4px 16px rgba(0,0,0,0.08)'}} onMouseEnter={(e)=>{e.currentTarget.style.transform='translateY(-8px)';e.currentTarget.style.borderColor=stat.color;e.currentTarget.style.boxShadow=`0 12px 32px ${stat.color}40`;}} onMouseLeave={(e)=>{e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.borderColor=theme.border;e.currentTarget.style.boxShadow=darkMode?'0 4px 16px rgba(0,0,0,0.3)':'0 4px 16px rgba(0,0,0,0.08)';}}>
