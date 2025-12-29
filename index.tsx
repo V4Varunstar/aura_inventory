@@ -93,6 +93,8 @@ function DashboardPage() {
   const [currentPage, setCurrentPage] = React.useState('dashboard');
   const [activeView, setActiveView] = React.useState('main');
   const [formData, setFormData] = React.useState<any>({});
+  const [categories, setCategories] = React.useState<string[]>(['Electronics', 'Clothing', 'Footwear', 'Accessories', 'Stationery', 'Bags', 'Food & Beverages']);
+  const [lineItems, setLineItems] = React.useState<any[]>([{id: 1, ean: '', productName: '', sku: '', quantity: '', batch: ''}]);
   
   // EAN to Product mapping database
   const eanProducts: any = {
@@ -106,15 +108,46 @@ function DashboardPage() {
     '8901234567897': {name: 'Headphones', sku: 'SKU008', category: 'Electronics', price: 1599},
   };
   
-  const lookupEAN = (ean: string) => {
+  const lookupEAN = (ean: string, lineIndex?: number) => {
     const product = eanProducts[ean];
     if (product) {
-      setFormData({...formData, ean, productName: product.name, sku: product.sku, price: product.price});
-      addToast(`Product found: ${product.name} (${product.sku})`, 'success');
+      if (lineIndex !== undefined) {
+        // For multiple line items
+        const updatedItems = [...lineItems];
+        updatedItems[lineIndex] = {...updatedItems[lineIndex], ean, productName: product.name, sku: product.sku, price: product.price};
+        setLineItems(updatedItems);
+        addToast(`Product found: ${product.name}`, 'success');
+      } else {
+        // For single entry
+        setFormData({...formData, ean, productName: product.name, sku: product.sku, price: product.price});
+        addToast(`Product found: ${product.name} (${product.sku})`, 'success');
+      }
     } else {
       addToast('EAN not found in database', 'error');
-      setFormData({...formData, ean, productName: '', sku: ''});
+      if (lineIndex !== undefined) {
+        const updatedItems = [...lineItems];
+        updatedItems[lineIndex] = {...updatedItems[lineIndex], ean, productName: '', sku: ''};
+        setLineItems(updatedItems);
+      } else {
+        setFormData({...formData, ean, productName: '', sku: ''});
+      }
     }
+  };
+  
+  const addLineItem = () => {
+    setLineItems([...lineItems, {id: lineItems.length + 1, ean: '', productName: '', sku: '', quantity: '', batch: ''}]);
+  };
+  
+  const removeLineItem = (index: number) => {
+    if (lineItems.length > 1) {
+      setLineItems(lineItems.filter((_, i) => i !== index));
+    }
+  };
+  
+  const updateLineItem = (index: number, field: string, value: any) => {
+    const updatedItems = [...lineItems];
+    updatedItems[index] = {...updatedItems[index], [field]: value};
+    setLineItems(updatedItems);
   };
   
   const handleAction = (action: string, view?: string) => {
@@ -129,6 +162,7 @@ function DashboardPage() {
   const resetView = () => {
     setActiveView('main');
     setFormData({});
+    setLineItems([{id: 1, ean: '', productName: '', sku: '', quantity: '', batch: ''}]);
   };
   
   if (!user) return <Navigate to="/login" replace />;
@@ -367,7 +401,8 @@ function DashboardPage() {
                   <div style={{display:'flex',gap:'16px',justifyContent:'center',flexWrap:'wrap'}}>
                     <button onClick={()=>handleAction('Opening Add Product Form','add-product')} style={{padding:'16px 40px',background:'linear-gradient(135deg, #3b82f6, #2563eb)',color:'white',border:'none',borderRadius:'14px',fontSize:'17px',fontWeight:'800',cursor:'pointer',boxShadow:'0 6px 24px #3b82f650',transition:'all 0.4s'}} onMouseEnter={(e)=>{e.currentTarget.style.transform='translateY(-4px) scale(1.05)';e.currentTarget.style.boxShadow='0 12px 40px #3b82f670';}} onMouseLeave={(e)=>{e.currentTarget.style.transform='translateY(0) scale(1)';e.currentTarget.style.boxShadow='0 6px 24px #3b82f650';}}>➕ Add New Product</button>
                     <button onClick={()=>handleAction('Opening Products List','view-products')} style={{padding:'16px 40px',background:theme.sidebarHover,color:theme.text,border:`2px solid ${theme.border}`,borderRadius:'14px',fontSize:'17px',fontWeight:'800',cursor:'pointer',transition:'all 0.4s'}} onMouseEnter={(e)=>{e.currentTarget.style.borderColor='#3b82f6';e.currentTarget.style.transform='translateY(-4px)';e.currentTarget.style.boxShadow='0 8px 24px rgba(59,130,246,0.2)';}} onMouseLeave={(e)=>{e.currentTarget.style.borderColor=theme.border;e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.boxShadow='none';}}>📋 View All</button>
-                    <button onClick={()=>handleAction('Opening Import Tool','import-products')} style={{padding:'16px 40px',background:theme.sidebarHover,color:theme.text,border:`2px solid ${theme.border}`,borderRadius:'14px',fontSize:'17px',fontWeight:'800',cursor:'pointer',transition:'all 0.4s'}} onMouseEnter={(e)=>{e.currentTarget.style.borderColor='#8b5cf6';e.currentTarget.style.transform='translateY(-4px)';e.currentTarget.style.boxShadow='0 8px 24px rgba(139,92,246,0.2)';}} onMouseLeave={(e)=>{e.currentTarget.style.borderColor=theme.border;e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.boxShadow='none';}}>📥 Import</button>
+                    <button onClick={()=>handleAction('Opening Categories','manage-categories')} style={{padding:'16px 40px',background:theme.sidebarHover,color:theme.text,border:`2px solid ${theme.border}`,borderRadius:'14px',fontSize:'17px',fontWeight:'800',cursor:'pointer',transition:'all 0.4s'}} onMouseEnter={(e)=>{e.currentTarget.style.borderColor='#8b5cf6';e.currentTarget.style.transform='translateY(-4px)';e.currentTarget.style.boxShadow='0 8px 24px rgba(139,92,246,0.2)';}} onMouseLeave={(e)=>{e.currentTarget.style.borderColor=theme.border;e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.boxShadow='none';}}>🏷️ Categories</button>
+                    <button onClick={()=>handleAction('Opening Import Tool','import-products')} style={{padding:'16px 40px',background:theme.sidebarHover,color:theme.text,border:`2px solid ${theme.border}`,borderRadius:'14px',fontSize:'17px',fontWeight:'800',cursor:'pointer',transition:'all 0.4s'}} onMouseEnter={(e)=>{e.currentTarget.style.borderColor='#06b6d4';e.currentTarget.style.transform='translateY(-4px)';e.currentTarget.style.boxShadow='0 8px 24px rgba(6,182,212,0.2)';}} onMouseLeave={(e)=>{e.currentTarget.style.borderColor=theme.border;e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.boxShadow='none';}}>📥 Import</button>
                   </div>
                 </div>
               )}
@@ -429,6 +464,36 @@ function DashboardPage() {
                   <button onClick={()=>{addToast('Import completed: 156 products added','success');resetView();}} style={{padding:'14px 40px',background:'linear-gradient(135deg, #8b5cf6, #7c3aed)',color:'white',border:'none',borderRadius:'12px',fontSize:'16px',fontWeight:'800',cursor:'pointer'}}>Start Import</button>
                 </div>
               )}
+              {activeView === 'manage-categories' && (
+                <div style={{background:theme.cardBg,padding:'40px',borderRadius:'20px',border:`2px solid ${theme.border}`,boxShadow:darkMode?'0 8px 32px rgba(0,0,0,0.3)':'0 8px 32px rgba(0,0,0,0.1)'}}>
+                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'32px'}}>
+                    <h2 style={{fontSize:'28px',fontWeight:'900',color:theme.text}}>🏷️ Manage Categories</h2>
+                    <button onClick={resetView} style={{padding:'10px 24px',background:theme.sidebarHover,color:theme.text,border:`2px solid ${theme.border}`,borderRadius:'10px',fontSize:'15px',fontWeight:'700',cursor:'pointer'}}>← Back</button>
+                  </div>
+                  <div style={{marginBottom:'32px',padding:'24px',background:'linear-gradient(135deg, #8b5cf610, #7c3aed10)',border:`2px solid #8b5cf630`,borderRadius:'16px'}}>
+                    <label style={{display:'block',color:theme.text,marginBottom:'12px',fontWeight:'700',fontSize:'17px'}}>➕ Add New Category</label>
+                    <div style={{display:'flex',gap:'12px'}}>
+                      <input type="text" placeholder="Enter category name" value={formData.newCategory||''} onChange={(e)=>setFormData({...formData,newCategory:e.target.value})} onKeyPress={(e)=>{if(e.key==='Enter' && formData.newCategory && !categories.includes(formData.newCategory)){setCategories([...categories,formData.newCategory]);addToast(`Category "${formData.newCategory}" added!`,'success');setFormData({...formData,newCategory:''});}}} style={{flex:1,padding:'14px',background:theme.cardBg,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px'}} />
+                      <button onClick={()=>{if(formData.newCategory){if(categories.includes(formData.newCategory)){addToast('Category already exists!','error');}else{setCategories([...categories,formData.newCategory]);addToast(`Category "${formData.newCategory}" added!`,'success');setFormData({...formData,newCategory:''});}}else{addToast('Please enter category name','error');}}} style={{padding:'14px 32px',background:'linear-gradient(135deg, #8b5cf6, #7c3aed)',color:'white',border:'none',borderRadius:'10px',fontSize:'15px',fontWeight:'700',cursor:'pointer'}}>Add Category</button>
+                    </div>
+                  </div>
+                  <h3 style={{fontSize:'20px',fontWeight:'800',color:theme.text,marginBottom:'20px'}}>📋 All Categories ({categories.length})</h3>
+                  <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill, minmax(280px, 1fr))',gap:'16px'}}>
+                    {categories.map((cat,i)=>(
+                      <div key={i} style={{padding:'20px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'12px',display:'flex',justifyContent:'space-between',alignItems:'center',transition:'all 0.3s'}} onMouseEnter={(e)=>{e.currentTarget.style.borderColor='#8b5cf6';e.currentTarget.style.transform='translateY(-2px)';}} onMouseLeave={(e)=>{e.currentTarget.style.borderColor=theme.border;e.currentTarget.style.transform='translateY(0)'}}>
+                        <div style={{display:'flex',alignItems:'center',gap:'12px',flex:1}}>
+                          <div style={{fontSize:'28px'}}>🏷️</div>
+                          <div>
+                            <p style={{color:theme.text,fontSize:'16px',fontWeight:'700',marginBottom:'4px'}}>{cat}</p>
+                            <p style={{color:theme.textSecondary,fontSize:'13px'}}>Category {i+1}</p>
+                          </div>
+                        </div>
+                        <button onClick={()=>{if(window.confirm(`Delete category "${cat}"?`)){setCategories(categories.filter((_,idx)=>idx!==i));addToast(`Category "${cat}" deleted!`,'success');}}} style={{padding:'8px 16px',background:'linear-gradient(135deg, #ef4444, #dc2626)',color:'white',border:'none',borderRadius:'8px',fontSize:'13px',fontWeight:'700',cursor:'pointer'}} onMouseEnter={(e)=>e.currentTarget.style.transform='scale(1.05)'} onMouseLeave={(e)=>e.currentTarget.style.transform='scale(1)'}>🗑️ Delete</button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
           
@@ -450,40 +515,37 @@ function DashboardPage() {
               {activeView === 'add-inward' && (
                 <div style={{background:theme.cardBg,padding:'40px',borderRadius:'20px',border:`2px solid ${theme.border}`,boxShadow:darkMode?'0 8px 32px rgba(0,0,0,0.3)':'0 8px 32px rgba(0,0,0,0.1)'}}>
                   <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'32px'}}>
-                    <h2 style={{fontSize:'28px',fontWeight:'900',color:theme.text}}>📥 Add Inward Entry</h2>
+                    <h2 style={{fontSize:'28px',fontWeight:'900',color:theme.text}}>📥 Add Inward Entry (Multiple Products)</h2>
                     <button onClick={resetView} style={{padding:'10px 24px',background:theme.sidebarHover,color:theme.text,border:`2px solid ${theme.border}`,borderRadius:'10px',fontSize:'15px',fontWeight:'700',cursor:'pointer'}}>← Back</button>
                   </div>
-                  <div style={{marginBottom:'32px',padding:'24px',background:'linear-gradient(135deg, #10b98110, #05966910)',border:`2px solid #10b98130`,borderRadius:'16px'}}>
-                    <div style={{display:'flex',alignItems:'center',gap:'16px',marginBottom:'16px'}}>
-                      <div style={{fontSize:'48px'}}>📷</div>
-                      <div style={{flex:1}}>
-                        <label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'700',fontSize:'18px'}}>🔍 Scan or Enter EAN Number</label>
-                        <input type="text" placeholder="Enter 13-digit EAN barcode" value={formData.ean||''} onChange={(e)=>setFormData({...formData,ean:e.target.value})} onKeyPress={(e)=>{if(e.key==='Enter' && formData.ean) lookupEAN(formData.ean);}} style={{width:'100%',padding:'16px',background:theme.cardBg,border:`3px solid #10b981`,borderRadius:'12px',color:theme.text,fontSize:'20px',fontWeight:'700',letterSpacing:'2px'}} />
-                        <p style={{color:theme.textSecondary,fontSize:'13px',marginTop:'8px'}}>💡 Scan barcode or type EAN and press Enter</p>
-                      </div>
-                      <button onClick={()=>{if(formData.ean) lookupEAN(formData.ean);}} style={{padding:'16px 32px',background:'linear-gradient(135deg, #10b981, #059669)',color:'white',border:'none',borderRadius:'12px',fontSize:'16px',fontWeight:'800',cursor:'pointer',height:'fit-content'}}>🔍 Lookup</button>
+                  <div style={{marginBottom:'28px',padding:'20px',background:'linear-gradient(135deg, #10b98110, #05966910)',border:`2px solid #10b98130`,borderRadius:'16px'}}>
+                    <h3 style={{color:theme.text,fontSize:'18px',fontWeight:'800',marginBottom:'12px'}}>📦 Products to Inward</h3>
+                    <div style={{overflowX:'auto'}}>
+                      <table style={{width:'100%',borderCollapse:'collapse',marginBottom:'16px'}}>
+                        <thead><tr style={{background:theme.sidebarHover,borderBottom:`2px solid ${theme.border}`}}><th style={{padding:'12px',textAlign:'left',color:theme.text,fontWeight:'700',fontSize:'13px'}}>EAN Scanner</th><th style={{padding:'12px',textAlign:'left',color:theme.text,fontWeight:'700',fontSize:'13px'}}>Product Name</th><th style={{padding:'12px',textAlign:'left',color:theme.text,fontWeight:'700',fontSize:'13px'}}>SKU</th><th style={{padding:'12px',textAlign:'left',color:theme.text,fontWeight:'700',fontSize:'13px'}}>Quantity</th><th style={{padding:'12px',textAlign:'left',color:theme.text,fontWeight:'700',fontSize:'13px'}}>Batch</th><th style={{padding:'12px',textAlign:'center',color:theme.text,fontWeight:'700',fontSize:'13px'}}>Actions</th></tr></thead>
+                        <tbody>
+                          {lineItems.map((item,index)=>(
+                            <tr key={item.id} style={{borderBottom:`1px solid ${theme.border}`}}>
+                              <td style={{padding:'12px'}}><div style={{display:'flex',gap:'8px'}}><input type="text" placeholder="Scan EAN" value={item.ean||''} onChange={(e)=>updateLineItem(index,'ean',e.target.value)} onKeyPress={(e)=>{if(e.key==='Enter' && item.ean) lookupEAN(item.ean,index);}} style={{width:'140px',padding:'10px',background:theme.cardBg,border:`2px solid #10b981`,borderRadius:'8px',color:theme.text,fontSize:'13px',fontWeight:'700'}} /><button onClick={()=>{if(item.ean) lookupEAN(item.ean,index);}} style={{padding:'10px 14px',background:'linear-gradient(135deg, #10b981, #059669)',color:'white',border:'none',borderRadius:'8px',fontSize:'12px',fontWeight:'700',cursor:'pointer'}}>🔍</button></div></td>
+                              <td style={{padding:'12px'}}><input type="text" placeholder="Auto-filled" value={item.productName||''} readOnly style={{width:'100%',minWidth:'150px',padding:'10px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'8px',color:theme.text,fontSize:'13px',opacity:0.7}} /></td>
+                              <td style={{padding:'12px'}}><input type="text" placeholder="Auto-filled" value={item.sku||''} readOnly style={{width:'100px',padding:'10px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'8px',color:theme.text,fontSize:'13px',opacity:0.7}} /></td>
+                              <td style={{padding:'12px'}}><input type="number" placeholder="0" value={item.quantity||''} onChange={(e)=>updateLineItem(index,'quantity',e.target.value)} style={{width:'90px',padding:'10px',background:theme.cardBg,border:`2px solid ${theme.border}`,borderRadius:'8px',color:theme.text,fontSize:'13px'}} /></td>
+                              <td style={{padding:'12px'}}><input type="text" placeholder="Batch #" value={item.batch||''} onChange={(e)=>updateLineItem(index,'batch',e.target.value)} style={{width:'100px',padding:'10px',background:theme.cardBg,border:`2px solid ${theme.border}`,borderRadius:'8px',color:theme.text,fontSize:'13px'}} /></td>
+                              <td style={{padding:'12px',textAlign:'center'}}><button onClick={()=>removeLineItem(index)} disabled={lineItems.length===1} style={{padding:'8px 14px',background:lineItems.length===1?theme.sidebarHover:'linear-gradient(135deg, #ef4444, #dc2626)',color:lineItems.length===1?theme.textSecondary:'white',border:'none',borderRadius:'8px',fontSize:'12px',fontWeight:'700',cursor:lineItems.length===1?'not-allowed':'pointer',opacity:lineItems.length===1?0.5:1}}>🗑️</button></td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     </div>
-                    {formData.productName && (
-                      <div style={{padding:'16px',background:theme.cardBg,borderRadius:'12px',border:`2px solid #10b981`}}>
-                        <p style={{color:'#10b981',fontSize:'16px',fontWeight:'800',marginBottom:'8px'}}>✅ Product Found</p>
-                        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:'12px'}}>
-                          <div><span style={{color:theme.textSecondary,fontSize:'13px'}}>Product:</span><p style={{color:theme.text,fontSize:'15px',fontWeight:'700'}}>{formData.productName}</p></div>
-                          <div><span style={{color:theme.textSecondary,fontSize:'13px'}}>SKU:</span><p style={{color:theme.text,fontSize:'15px',fontWeight:'700'}}>{formData.sku}</p></div>
-                          <div><span style={{color:theme.textSecondary,fontSize:'13px'}}>Price:</span><p style={{color:theme.text,fontSize:'15px',fontWeight:'700'}}>₹{formData.price}</p></div>
-                        </div>
-                      </div>
-                    )}
+                    <button onClick={addLineItem} style={{padding:'12px 28px',background:'linear-gradient(135deg, #06b6d4, #0891b2)',color:'white',border:'none',borderRadius:'10px',fontSize:'14px',fontWeight:'700',cursor:'pointer'}}>➕ Add Another Product</button>
                   </div>
-                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'24px',maxWidth:'900px'}}>
-                    <div><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>Product Name</label><input type="text" value={formData.productName||''} placeholder="Auto-filled from EAN" readOnly style={{width:'100%',padding:'14px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px',opacity:0.7}} /></div>
-                    <div><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>SKU</label><input type="text" value={formData.sku||''} placeholder="Auto-filled from EAN" readOnly style={{width:'100%',padding:'14px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px',opacity:0.7}} /></div>
-                    <div><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>Quantity</label><input type="number" placeholder="0" style={{width:'100%',padding:'14px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px'}} onChange={(e)=>setFormData({...formData,quantity:e.target.value})} /></div>
-                    <div><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>Batch/Lot Number</label><input type="text" placeholder="Enter batch number" style={{width:'100%',padding:'14px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px'}} onChange={(e)=>setFormData({...formData,batch:e.target.value})} /></div>
-                    <div><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>Supplier</label><select style={{width:'100%',padding:'14px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px'}} onChange={(e)=>setFormData({...formData,supplier:e.target.value})}><option>Select Supplier</option><option>ABC Suppliers</option><option>XYZ Distributors</option></select></div>
-                    <div><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>Purchase Order</label><input type="text" placeholder="PO Number (optional)" style={{width:'100%',padding:'14px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px'}} onChange={(e)=>setFormData({...formData,po:e.target.value})} /></div>
+                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:'20px',marginBottom:'32px'}}>
+                    <div><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>Supplier</label><select style={{width:'100%',padding:'14px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px'}} value={formData.supplier||''} onChange={(e)=>setFormData({...formData,supplier:e.target.value})}><option value="">Select Supplier</option><option>ABC Suppliers</option><option>XYZ Distributors</option><option>Global Imports</option></select></div>
+                    <div><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>Purchase Order</label><input type="text" placeholder="PO Number" value={formData.po||''} style={{width:'100%',padding:'14px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px'}} onChange={(e)=>setFormData({...formData,po:e.target.value})} /></div>
+                    <div><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>Date</label><input type="date" value={formData.date||''} style={{width:'100%',padding:'14px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px'}} onChange={(e)=>setFormData({...formData,date:e.target.value})} /></div>
                   </div>
-                  <div style={{marginTop:'32px',display:'flex',gap:'16px'}}>
-                    <button onClick={()=>{addToast(`Inward entry recorded: ${formData.quantity||0} units of ${formData.productName||'product'}!`,'success');resetView();}} style={{padding:'14px 40px',background:'linear-gradient(135deg, #10b981, #059669)',color:'white',border:'none',borderRadius:'12px',fontSize:'16px',fontWeight:'800',cursor:'pointer'}}>✓ Submit Entry</button>
+                  <div style={{display:'flex',gap:'16px'}}>
+                    <button onClick={()=>{const validItems=lineItems.filter(item=>item.productName && item.quantity);if(validItems.length>0){addToast(`Inward entry recorded: ${validItems.length} product(s) added!`,'success');resetView();}else{addToast('Please add at least one valid product','error');}}} style={{padding:'14px 40px',background:'linear-gradient(135deg, #10b981, #059669)',color:'white',border:'none',borderRadius:'12px',fontSize:'16px',fontWeight:'800',cursor:'pointer'}}>✓ Submit All Entries</button>
                     <button onClick={resetView} style={{padding:'14px 40px',background:theme.sidebarHover,color:theme.text,border:`2px solid ${theme.border}`,borderRadius:'12px',fontSize:'16px',fontWeight:'700',cursor:'pointer'}}>Cancel</button>
                   </div>
                 </div>
@@ -567,40 +629,36 @@ function DashboardPage() {
               {activeView === 'create-shipment' && (
                 <div style={{background:theme.cardBg,padding:'40px',borderRadius:'20px',border:`2px solid ${theme.border}`,boxShadow:darkMode?'0 8px 32px rgba(0,0,0,0.3)':'0 8px 32px rgba(0,0,0,0.1)'}}>
                   <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'32px'}}>
-                    <h2 style={{fontSize:'28px',fontWeight:'900',color:theme.text}}>📦 Create Shipment</h2>
+                    <h2 style={{fontSize:'28px',fontWeight:'900',color:theme.text}}>📦 Create Shipment (Multiple Products)</h2>
                     <button onClick={resetView} style={{padding:'10px 24px',background:theme.sidebarHover,color:theme.text,border:`2px solid ${theme.border}`,borderRadius:'10px',fontSize:'15px',fontWeight:'700',cursor:'pointer'}}>← Back</button>
                   </div>
-                  <div style={{marginBottom:'32px',padding:'24px',background:'linear-gradient(135deg, #f59e0b10, #d9770610)',border:`2px solid #f59e0b30`,borderRadius:'16px'}}>
-                    <div style={{display:'flex',alignItems:'center',gap:'16px',marginBottom:'16px'}}>
-                      <div style={{fontSize:'48px'}}>📷</div>
-                      <div style={{flex:1}}>
-                        <label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'700',fontSize:'18px'}}>🔍 Scan or Enter EAN Number</label>
-                        <input type="text" placeholder="Enter 13-digit EAN barcode" value={formData.ean||''} onChange={(e)=>setFormData({...formData,ean:e.target.value})} onKeyPress={(e)=>{if(e.key==='Enter' && formData.ean) lookupEAN(formData.ean);}} style={{width:'100%',padding:'16px',background:theme.cardBg,border:`3px solid #f59e0b`,borderRadius:'12px',color:theme.text,fontSize:'20px',fontWeight:'700',letterSpacing:'2px'}} />
-                        <p style={{color:theme.textSecondary,fontSize:'13px',marginTop:'8px'}}>💡 Scan barcode or type EAN and press Enter</p>
-                      </div>
-                      <button onClick={()=>{if(formData.ean) lookupEAN(formData.ean);}} style={{padding:'16px 32px',background:'linear-gradient(135deg, #f59e0b, #d97706)',color:'white',border:'none',borderRadius:'12px',fontSize:'16px',fontWeight:'800',cursor:'pointer',height:'fit-content'}}>🔍 Lookup</button>
+                  <div style={{marginBottom:'28px',padding:'20px',background:'linear-gradient(135deg, #f59e0b10, #d9770610)',border:`2px solid #f59e0b30`,borderRadius:'16px'}}>
+                    <h3 style={{color:theme.text,fontSize:'18px',fontWeight:'800',marginBottom:'12px'}}>📦 Products to Ship</h3>
+                    <div style={{overflowX:'auto'}}>
+                      <table style={{width:'100%',borderCollapse:'collapse',marginBottom:'16px'}}>
+                        <thead><tr style={{background:theme.sidebarHover,borderBottom:`2px solid ${theme.border}`}}><th style={{padding:'12px',textAlign:'left',color:theme.text,fontWeight:'700',fontSize:'13px'}}>EAN Scanner</th><th style={{padding:'12px',textAlign:'left',color:theme.text,fontWeight:'700',fontSize:'13px'}}>Product Name</th><th style={{padding:'12px',textAlign:'left',color:theme.text,fontWeight:'700',fontSize:'13px'}}>SKU</th><th style={{padding:'12px',textAlign:'left',color:theme.text,fontWeight:'700',fontSize:'13px'}}>Quantity</th><th style={{padding:'12px',textAlign:'center',color:theme.text,fontWeight:'700',fontSize:'13px'}}>Actions</th></tr></thead>
+                        <tbody>
+                          {lineItems.map((item,index)=>(
+                            <tr key={item.id} style={{borderBottom:`1px solid ${theme.border}`}}>
+                              <td style={{padding:'12px'}}><div style={{display:'flex',gap:'8px'}}><input type="text" placeholder="Scan EAN" value={item.ean||''} onChange={(e)=>updateLineItem(index,'ean',e.target.value)} onKeyPress={(e)=>{if(e.key==='Enter' && item.ean) lookupEAN(item.ean,index);}} style={{width:'140px',padding:'10px',background:theme.cardBg,border:`2px solid #f59e0b`,borderRadius:'8px',color:theme.text,fontSize:'13px',fontWeight:'700'}} /><button onClick={()=>{if(item.ean) lookupEAN(item.ean,index);}} style={{padding:'10px 14px',background:'linear-gradient(135deg, #f59e0b, #d97706)',color:'white',border:'none',borderRadius:'8px',fontSize:'12px',fontWeight:'700',cursor:'pointer'}}>🔍</button></div></td>
+                              <td style={{padding:'12px'}}><input type="text" placeholder="Auto-filled" value={item.productName||''} readOnly style={{width:'100%',minWidth:'150px',padding:'10px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'8px',color:theme.text,fontSize:'13px',opacity:0.7}} /></td>
+                              <td style={{padding:'12px'}}><input type="text" placeholder="Auto-filled" value={item.sku||''} readOnly style={{width:'100px',padding:'10px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'8px',color:theme.text,fontSize:'13px',opacity:0.7}} /></td>
+                              <td style={{padding:'12px'}}><input type="number" placeholder="0" value={item.quantity||''} onChange={(e)=>updateLineItem(index,'quantity',e.target.value)} style={{width:'90px',padding:'10px',background:theme.cardBg,border:`2px solid ${theme.border}`,borderRadius:'8px',color:theme.text,fontSize:'13px'}} /></td>
+                              <td style={{padding:'12px',textAlign:'center'}}><button onClick={()=>removeLineItem(index)} disabled={lineItems.length===1} style={{padding:'8px 14px',background:lineItems.length===1?theme.sidebarHover:'linear-gradient(135deg, #ef4444, #dc2626)',color:lineItems.length===1?theme.textSecondary:'white',border:'none',borderRadius:'8px',fontSize:'12px',fontWeight:'700',cursor:lineItems.length===1?'not-allowed':'pointer',opacity:lineItems.length===1?0.5:1}}>🗑️</button></td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     </div>
-                    {formData.productName && (
-                      <div style={{padding:'16px',background:theme.cardBg,borderRadius:'12px',border:`2px solid #f59e0b`}}>
-                        <p style={{color:'#f59e0b',fontSize:'16px',fontWeight:'800',marginBottom:'8px'}}>✅ Product Found</p>
-                        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:'12px'}}>
-                          <div><span style={{color:theme.textSecondary,fontSize:'13px'}}>Product:</span><p style={{color:theme.text,fontSize:'15px',fontWeight:'700'}}>{formData.productName}</p></div>
-                          <div><span style={{color:theme.textSecondary,fontSize:'13px'}}>SKU:</span><p style={{color:theme.text,fontSize:'15px',fontWeight:'700'}}>{formData.sku}</p></div>
-                          <div><span style={{color:theme.textSecondary,fontSize:'13px'}}>Price:</span><p style={{color:theme.text,fontSize:'15px',fontWeight:'700'}}>₹{formData.price}</p></div>
-                        </div>
-                      </div>
-                    )}
+                    <button onClick={addLineItem} style={{padding:'12px 28px',background:'linear-gradient(135deg, #06b6d4, #0891b2)',color:'white',border:'none',borderRadius:'10px',fontSize:'14px',fontWeight:'700',cursor:'pointer'}}>➕ Add Another Product</button>
                   </div>
-                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'24px',maxWidth:'900px'}}>
-                    <div><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>Order/Invoice Number</label><input type="text" placeholder="Enter order number" style={{width:'100%',padding:'14px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px'}} onChange={(e)=>setFormData({...formData,orderNo:e.target.value})} /></div>
-                    <div><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>Customer</label><select style={{width:'100%',padding:'14px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px'}} onChange={(e)=>setFormData({...formData,customer:e.target.value})}><option>Select Customer</option><option>Customer A</option><option>Customer B</option></select></div>
-                    <div><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>Product Name</label><input type="text" value={formData.productName||''} placeholder="Auto-filled from EAN" readOnly style={{width:'100%',padding:'14px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px',opacity:0.7}} /></div>
-                    <div><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>SKU</label><input type="text" value={formData.sku||''} placeholder="Auto-filled from EAN" readOnly style={{width:'100%',padding:'14px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px',opacity:0.7}} /></div>
-                    <div><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>Quantity</label><input type="number" placeholder="0" style={{width:'100%',padding:'14px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px'}} onChange={(e)=>setFormData({...formData,quantity:e.target.value})} /></div>
-                    <div><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>Shipping Method</label><select style={{width:'100%',padding:'14px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px'}} onChange={(e)=>setFormData({...formData,shipping:e.target.value})}><option>Standard</option><option>Express</option><option>Same Day</option></select></div>
+                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:'20px',marginBottom:'32px'}}>
+                    <div><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>Order/Invoice Number</label><input type="text" placeholder="Enter order number" value={formData.orderNo||''} style={{width:'100%',padding:'14px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px'}} onChange={(e)=>setFormData({...formData,orderNo:e.target.value})} /></div>
+                    <div><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>Customer</label><select style={{width:'100%',padding:'14px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px'}} value={formData.customer||''} onChange={(e)=>setFormData({...formData,customer:e.target.value})}><option value="">Select Customer</option><option>Customer A</option><option>Customer B</option><option>Retail Store</option></select></div>
+                    <div><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>Shipping Method</label><select style={{width:'100%',padding:'14px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px'}} value={formData.shipping||''} onChange={(e)=>setFormData({...formData,shipping:e.target.value})}><option value="">Select Method</option><option>Standard</option><option>Express</option><option>Same Day</option></select></div>
                   </div>
-                  <div style={{marginTop:'32px',display:'flex',gap:'16px'}}>
-                    <button onClick={()=>{addToast(`Shipment created: ${formData.quantity||0} units of ${formData.productName||'product'} to ${formData.customer||'customer'}!`,'success');resetView();}} style={{padding:'14px 40px',background:'linear-gradient(135deg, #f59e0b, #d97706)',color:'white',border:'none',borderRadius:'12px',fontSize:'16px',fontWeight:'800',cursor:'pointer'}}>🚚 Create Shipment</button>
+                  <div style={{display:'flex',gap:'16px'}}>
+                    <button onClick={()=>{const validItems=lineItems.filter(item=>item.productName && item.quantity);if(validItems.length>0){addToast(`Shipment created: ${validItems.length} product(s) to ${formData.customer||'customer'}!`,'success');resetView();}else{addToast('Please add at least one valid product','error');}}} style={{padding:'14px 40px',background:'linear-gradient(135deg, #f59e0b, #d97706)',color:'white',border:'none',borderRadius:'12px',fontSize:'16px',fontWeight:'800',cursor:'pointer'}}>🚚 Create Shipment</button>
                     <button onClick={resetView} style={{padding:'14px 40px',background:theme.sidebarHover,color:theme.text,border:`2px solid ${theme.border}`,borderRadius:'12px',fontSize:'16px',fontWeight:'700',cursor:'pointer'}}>Cancel</button>
                   </div>
                 </div>
