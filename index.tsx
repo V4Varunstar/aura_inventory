@@ -96,6 +96,8 @@ function DashboardPage() {
   const [categories, setCategories] = React.useState<string[]>(['Electronics', 'Clothing', 'Footwear', 'Accessories', 'Stationery', 'Bags', 'Food & Beverages']);
   const [lineItems, setLineItems] = React.useState<any[]>([{id: 1, ean: '', productName: '', sku: '', quantity: '', batch: ''}]);
   const [userProducts, setUserProducts] = React.useState<any>({});
+  const [inwardEntries, setInwardEntries] = React.useState<any[]>([]);
+  const [outwardEntries, setOutwardEntries] = React.useState<any[]>([]);
   
   // EAN to Product mapping database (pre-configured products)
   const eanProducts: any = {
@@ -321,12 +323,12 @@ function DashboardPage() {
               {/* Stats Cards */}
               <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(280px,1fr))',gap:'24px',marginBottom:'40px'}}>
                 {[
-                  {title:'Total Products',value:'247',change:'+12%',icon:'📦',color:'#3b82f6',gradient:'linear-gradient(135deg, #3b82f6, #2563eb)',trend:'up'},
-                  {title:'Total Stock Value',value:'₹15.2L',change:'+8%',icon:'💰',color:'#10b981',gradient:'linear-gradient(135deg, #10b981, #059669)',trend:'up'},
-                  {title:'Low Stock Items',value:'23',change:'-3%',icon:'⚠️',color:'#f59e0b',gradient:'linear-gradient(135deg, #f59e0b, #d97706)',trend:'down'},
-                  {title:'Active SKUs',value:'189',change:'+5%',icon:'📊',color:'#8b5cf6',gradient:'linear-gradient(135deg, #8b5cf6, #7c3aed)',trend:'up'}
+                  {title:'Total Products',value:'156',change:'+8%',icon:'📦',color:'#3b82f6',gradient:'linear-gradient(135deg, #3b82f6, #2563eb)',trend:'up',page:'products'},
+                  {title:'Total Inward',value:inwardEntries.length.toString(),change:'+12%',icon:'📥',color:'#10b981',gradient:'linear-gradient(135deg, #10b981, #059669)',trend:'up',page:'inward'},
+                  {title:'Total Outward',value:outwardEntries.length.toString(),change:'+15%',icon:'📤',color:'#f59e0b',gradient:'linear-gradient(135deg, #f59e0b, #d97706)',trend:'up',page:'outward'},
+                  {title:'Low Stock Items',value:'18',change:'-5%',icon:'⚠️',color:'#ef4444',gradient:'linear-gradient(135deg, #ef4444, #dc2626)',trend:'down',page:'reports'}
                 ].map((stat,i)=>(
-                  <div key={i} style={{background:theme.cardBg,padding:'26px',borderRadius:'16px',border:`2px solid ${theme.border}`,transition:'all 0.4s',cursor:'pointer',position:'relative',overflow:'hidden',boxShadow:darkMode?'0 4px 16px rgba(0,0,0,0.3)':'0 4px 16px rgba(0,0,0,0.08)'}} onMouseEnter={(e)=>{e.currentTarget.style.transform='translateY(-8px)';e.currentTarget.style.borderColor=stat.color;e.currentTarget.style.boxShadow=`0 12px 32px ${stat.color}40`;}} onMouseLeave={(e)=>{e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.borderColor=theme.border;e.currentTarget.style.boxShadow=darkMode?'0 4px 16px rgba(0,0,0,0.3)':'0 4px 16px rgba(0,0,0,0.08)';}}>
+                  <div key={i} onClick={()=>{setCurrentPage(stat.page);resetView();addToast(`Opening ${stat.title}...`,'info');}} style={{background:theme.cardBg,padding:'26px',borderRadius:'16px',border:`2px solid ${theme.border}`,transition:'all 0.4s',cursor:'pointer',position:'relative',overflow:'hidden',boxShadow:darkMode?'0 4px 16px rgba(0,0,0,0.3)':'0 4px 16px rgba(0,0,0,0.08)'}} onMouseEnter={(e)=>{e.currentTarget.style.transform='translateY(-8px)';e.currentTarget.style.borderColor=stat.color;e.currentTarget.style.boxShadow=`0 12px 32px ${stat.color}40`;}} onMouseLeave={(e)=>{e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.borderColor=theme.border;e.currentTarget.style.boxShadow=darkMode?'0 4px 16px rgba(0,0,0,0.3)':'0 4px 16px rgba(0,0,0,0.08)';}}>
                     <div style={{position:'absolute',top:0,right:0,width:'120px',height:'120px',background:stat.gradient,opacity:0.08,borderRadius:'50%',transform:'translate(30%, -30%)'}}></div>
                     <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:'18px'}}>
                       <div style={{width:'56px',height:'56px',borderRadius:'14px',background:stat.gradient,display:'flex',alignItems:'center',justifyContent:'center',fontSize:'28px',boxShadow:`0 6px 20px ${stat.color}35`,animation:'pulse 2s infinite'}}>
@@ -351,17 +353,17 @@ function DashboardPage() {
                   <h3 style={{fontSize:'20px',fontWeight:'800',color:theme.text,marginBottom:'6px'}}>Weekly Sales</h3>
                   <p style={{fontSize:'13px',color:theme.textSecondary}}>Last 7 days performance</p>
                 </div>
-                <span style={{fontSize:'13px',color:theme.textSecondary,background:theme.sidebarHover,padding:'8px 16px',borderRadius:'10px',fontWeight:'700',border:`1px solid ${theme.border}`}}>₹3.35L Total</span>
+                <span style={{fontSize:'13px',color:theme.textSecondary,background:theme.sidebarHover,padding:'8px 16px',borderRadius:'10px',fontWeight:'700',border:`1px solid ${theme.border}`}}>₹2.89L Total</span>
               </div>
               <div style={{display:'flex',alignItems:'flex-end',gap:'16px',height:'240px',paddingTop:'12px',position:'relative'}}>
                 {[
-                  {day:'Mon',value:65,sales:'₹45K',amount:45000},
-                  {day:'Tue',value:45,sales:'₹32K',amount:32000},
-                  {day:'Wed',value:85,sales:'₹58K',amount:58000},
-                  {day:'Thu',value:60,sales:'₹42K',amount:42000},
-                  {day:'Fri',value:95,sales:'₹68K',amount:68000},
-                  {day:'Sat',value:55,sales:'₹38K',amount:38000},
-                  {day:'Sun',value:75,sales:'₹52K',amount:52000}
+                  {day:'Mon',value:58,sales:'₹38K',amount:38000},
+                  {day:'Tue',value:42,sales:'₹28K',amount:28000},
+                  {day:'Wed',value:78,sales:'₹52K',amount:52000},
+                  {day:'Thu',value:65,sales:'₹43K',amount:43000},
+                  {day:'Fri',value:88,sales:'₹58K',amount:58000},
+                  {day:'Sat',value:52,sales:'₹35K',amount:35000},
+                  {day:'Sun',value:68,sales:'₹35K',amount:35000}
                 ].map((item,i)=>{
                   const colors=['#3b82f6','#10b981','#8b5cf6','#f59e0b','#ef4444','#06b6d4','#ec4899'];
                   const gradients=['linear-gradient(to top, #3b82f6, #60a5fa)','linear-gradient(to top, #10b981, #34d399)','linear-gradient(to top, #8b5cf6, #a78bfa)','linear-gradient(to top, #f59e0b, #fbbf24)','linear-gradient(to top, #ef4444, #f87171)','linear-gradient(to top, #06b6d4, #22d3ee)','linear-gradient(to top, #ec4899, #f472b6)'];
@@ -616,7 +618,7 @@ function DashboardPage() {
                     <div><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>Date</label><input type="date" value={formData.date||''} style={{width:'100%',padding:'14px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px'}} onChange={(e)=>setFormData({...formData,date:e.target.value})} /></div>
                   </div>
                   <div style={{display:'flex',gap:'16px'}}>
-                    <button onClick={()=>{const validItems=lineItems.filter(item=>item.productName && item.quantity);if(validItems.length>0){addToast(`Inward entry recorded: ${validItems.length} product(s) added!`,'success');resetView();}else{addToast('Please add at least one valid product','error');}}} style={{padding:'14px 40px',background:'linear-gradient(135deg, #10b981, #059669)',color:'white',border:'none',borderRadius:'12px',fontSize:'16px',fontWeight:'800',cursor:'pointer'}}>✓ Submit All Entries</button>
+                    <button onClick={()=>{const validItems=lineItems.filter(item=>item.productName && item.quantity);if(validItems.length>0 && formData.supplier && formData.date){const newEntries=validItems.map(item=>({...item,supplier:formData.supplier,date:formData.date,po:formData.po,entryDate:new Date().toLocaleDateString('en-IN')}));setInwardEntries([...inwardEntries,...newEntries]);addToast(`✅ Inward entry recorded: ${validItems.length} product(s) added!`,'success');setLineItems([{id:1,ean:'',productName:'',sku:'',quantity:'',batch:''}]);setFormData({});resetView();}else{addToast('❌ Please fill all required fields (products, supplier, date)','error');}}} style={{padding:'14px 40px',background:'linear-gradient(135deg, #10b981, #059669)',color:'white',border:'none',borderRadius:'12px',fontSize:'16px',fontWeight:'800',cursor:'pointer'}}>✓ Submit All Entries</button>
                     <button onClick={resetView} style={{padding:'14px 40px',background:theme.sidebarHover,color:theme.text,border:`2px solid ${theme.border}`,borderRadius:'12px',fontSize:'16px',fontWeight:'700',cursor:'pointer'}}>Cancel</button>
                   </div>
                 </div>
@@ -728,7 +730,7 @@ function DashboardPage() {
                     <div><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>Platform</label><select style={{width:'100%',padding:'14px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px'}} value={formData.platform||''} onChange={(e)=>setFormData({...formData,platform:e.target.value})}><option value="">Select Platform</option><option>Meesho</option><option>Amazon</option><option>Flipkart</option><option>Myntra</option><option>Ajio</option><option>Direct Order</option></select></div>
                   </div>
                   <div style={{display:'flex',gap:'16px'}}>
-                    <button onClick={()=>{const validItems=lineItems.filter(item=>item.productName && item.quantity);if(validItems.length>0){addToast(`✅ Shipment created: ${validItems.length} product(s) for ${formData.platform||'platform'}!`,'success');resetView();}else{addToast('❌ Please add at least one valid product','error');}}} style={{padding:'14px 40px',background:'linear-gradient(135deg, #f59e0b, #d97706)',color:'white',border:'none',borderRadius:'12px',fontSize:'16px',fontWeight:'800',cursor:'pointer'}}>🚚 Create Shipment</button>
+                    <button onClick={()=>{const validItems=lineItems.filter(item=>item.productName && item.quantity);if(validItems.length>0 && formData.orderNo && formData.platform){const newEntries=validItems.map(item=>({...item,orderNo:formData.orderNo,platform:formData.platform,entryDate:new Date().toLocaleDateString('en-IN')}));setOutwardEntries([...outwardEntries,...newEntries]);addToast(`✅ Shipment created: ${validItems.length} product(s) dispatched to ${formData.platform}!`,'success');setLineItems([{id:1,ean:'',productName:'',sku:'',quantity:'',batch:''}]);setFormData({});resetView();}else{addToast('❌ Please fill all required fields (products, order no, platform)','error');}}} style={{padding:'14px 40px',background:'linear-gradient(135deg, #f59e0b, #d97706)',color:'white',border:'none',borderRadius:'12px',fontSize:'16px',fontWeight:'800',cursor:'pointer'}}>🚚 Create Shipment</button>
                     <button onClick={resetView} style={{padding:'14px 40px',background:theme.sidebarHover,color:theme.text,border:`2px solid ${theme.border}`,borderRadius:'12px',fontSize:'16px',fontWeight:'700',cursor:'pointer'}}>Cancel</button>
                   </div>
                 </div>
@@ -1002,10 +1004,15 @@ function DashboardPage() {
                     <table style={{width:'100%',borderCollapse:'collapse'}}>
                       <thead><tr style={{borderBottom:`2px solid ${theme.border}`}}><th style={{padding:'12px',textAlign:'left',color:theme.text,fontWeight:'700'}}>Date</th><th style={{padding:'12px',textAlign:'left',color:theme.text,fontWeight:'700'}}>EAN</th><th style={{padding:'12px',textAlign:'left',color:theme.text,fontWeight:'700'}}>Product</th><th style={{padding:'12px',textAlign:'left',color:theme.text,fontWeight:'700'}}>SKU</th><th style={{padding:'12px',textAlign:'right',color:theme.text,fontWeight:'700'}}>Quantity</th><th style={{padding:'12px',textAlign:'left',color:theme.text,fontWeight:'700'}}>Supplier</th><th style={{padding:'12px',textAlign:'left',color:theme.text,fontWeight:'700'}}>Batch</th></tr></thead>
                       <tbody>
-                        {[{date:'27 Dec 2024',ean:'8901234567890',product:'Logitech Wireless Mouse M185',sku:'TECH-WM-001',qty:50,supplier:'TechWorld Distributors',batch:'TWD-2024-1201'},{date:'26 Dec 2024',ean:'8901234567891',product:'Samsung USB Type-C Cable',sku:'TECH-UC-002',qty:120,supplier:'ElectroMart India',batch:'EMI-2024-1156'},{date:'25 Dec 2024',ean:'8901234567892',product:'Cotton Round Neck T-Shirt Black',sku:'CLTH-TS-003',qty:200,supplier:'Fashion Galaxy Pvt Ltd',batch:'FG-2024-0889'}].map((item,i)=>(
+                        {(inwardEntries.length>0?inwardEntries:[{date:'27 Dec 2024',ean:'8901234567890',productName:'Logitech Wireless Mouse M185',sku:'TECH-WM-001',quantity:50,supplier:'TechWorld Distributors',batch:'TWD-2024-1201'},{date:'26 Dec 2024',ean:'8901234567891',productName:'Samsung USB Type-C Cable',sku:'TECH-UC-002',quantity:120,supplier:'ElectroMart India',batch:'EMI-2024-1156'},{date:'25 Dec 2024',ean:'8901234567892',productName:'Cotton Round Neck T-Shirt Black',sku:'CLTH-TS-003',quantity:200,supplier:'Fashion Galaxy Pvt Ltd',batch:'FG-2024-0889'}]).map((item,i)=>(
                           <tr key={i} style={{borderBottom:`1px solid ${theme.border}`}}>
-                            <td style={{padding:'12px',color:theme.textSecondary}}>{item.date}</td>
-                            <td style={{padding:'12px',color:theme.text,fontWeight:'600'}}>{item.product}</td>
+                            <td style={{padding:'12px',color:theme.textSecondary}}>{item.date||item.entryDate}</td>
+                            <td style={{padding:'12px',color:theme.textSecondary,fontSize:'11px',fontFamily:'monospace'}}>{item.ean}</td>
+                            <td style={{padding:'12px',color:theme.text,fontWeight:'600'}}>{item.productName||item.product}</td>
+                            <td style={{padding:'12px',color:theme.textSecondary}}>{item.sku}</td>
+                            <td style={{padding:'12px',textAlign:'right',color:'#10b981',fontWeight:'700'}}>+{item.quantity||item.qty}</td>
+                            <td style={{padding:'12px',color:theme.textSecondary}}>{item.supplier}</td>
+                            <td style={{padding:'12px',color:theme.text,fontFamily:'monospace',fontSize:'12px'}}>{item.batch}</td>
                             <td style={{padding:'12px',color:theme.textSecondary}}>{item.sku}</td>
                             <td style={{padding:'12px',textAlign:'right',color:'#10b981',fontWeight:'700'}}>+{item.qty}</td>
                             <td style={{padding:'12px',color:theme.textSecondary}}>{item.supplier}</td>
@@ -1036,14 +1043,15 @@ function DashboardPage() {
                     <table style={{width:'100%',borderCollapse:'collapse'}}>
                       <thead><tr style={{borderBottom:`2px solid ${theme.border}`}}><th style={{padding:'12px',textAlign:'left',color:theme.text,fontWeight:'700'}}>Date</th><th style={{padding:'12px',textAlign:'left',color:theme.text,fontWeight:'700'}}>EAN</th><th style={{padding:'12px',textAlign:'left',color:theme.text,fontWeight:'700'}}>Product</th><th style={{padding:'12px',textAlign:'left',color:theme.text,fontWeight:'700'}}>SKU</th><th style={{padding:'12px',textAlign:'right',color:theme.text,fontWeight:'700'}}>Quantity</th><th style={{padding:'12px',textAlign:'left',color:theme.text,fontWeight:'700'}}>Platform</th><th style={{padding:'12px',textAlign:'left',color:theme.text,fontWeight:'700'}}>Order No</th></tr></thead>
                       <tbody>
-                        {[{date:'28 Dec 2024',ean:'8901234567897',product:'boAt Bassheads 100 Wired',sku:'TECH-HP-008',qty:35,platform:'Meesho',order:'MESH-24-4782'},{date:'27 Dec 2024',ean:'8901234567893',product:'Nike Revolution 6 Running Shoes',sku:'FOOT-RS-004',qty:18,platform:'Amazon',order:'AMZ-407-9156234'},{date:'26 Dec 2024',ean:'8901234567892',product:'Cotton Round Neck T-Shirt',sku:'CLTH-TS-003',qty:67,platform:'Flipkart',order:'FLP-ORD-182945'}].map((item,i)=>(
+                        {(outwardEntries.length>0?outwardEntries:[{entryDate:'28 Dec 2024',ean:'8901234567897',productName:'boAt Bassheads 100 Wired',sku:'TECH-HP-008',quantity:35,platform:'Meesho',orderNo:'MESH-24-4782'},{entryDate:'27 Dec 2024',ean:'8901234567893',productName:'Nike Revolution 6 Running Shoes',sku:'FOOT-RS-004',quantity:18,platform:'Amazon',orderNo:'AMZ-407-9156234'},{entryDate:'26 Dec 2024',ean:'8901234567892',productName:'Cotton Round Neck T-Shirt',sku:'CLTH-TS-003',quantity:67,platform:'Flipkart',orderNo:'FLP-ORD-182945'}]).map((item,i)=>(
                           <tr key={i} style={{borderBottom:`1px solid ${theme.border}`}}>
-                            <td style={{padding:'12px',color:theme.textSecondary}}>{item.date}</td>
-                            <td style={{padding:'12px',color:theme.text,fontWeight:'600'}}>{item.product}</td>
+                            <td style={{padding:'12px',color:theme.textSecondary}}>{item.entryDate||item.date}</td>
+                            <td style={{padding:'12px',color:theme.textSecondary,fontSize:'11px',fontFamily:'monospace'}}>{item.ean}</td>
+                            <td style={{padding:'12px',color:theme.text,fontWeight:'600'}}>{item.productName||item.product}</td>
                             <td style={{padding:'12px',color:theme.textSecondary}}>{item.sku}</td>
-                            <td style={{padding:'12px',textAlign:'right',color:'#f59e0b',fontWeight:'700'}}>-{item.qty}</td>
-                            <td style={{padding:'12px',color:theme.text}}>{item.platform}</td>
-                            <td style={{padding:'12px',color:theme.textSecondary}}>{item.order}</td>
+                            <td style={{padding:'12px',textAlign:'right',color:'#f59e0b',fontWeight:'700'}}>-{item.quantity||item.qty}</td>
+                            <td style={{padding:'12px',color:'#3b82f6',fontWeight:'600'}}>{item.platform}</td>
+                            <td style={{padding:'12px',color:theme.textSecondary,fontFamily:'monospace',fontSize:'12px'}}>{item.orderNo||item.order}</td>
                           </tr>
                         ))}
                       </tbody>
