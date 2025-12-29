@@ -152,6 +152,60 @@ function DashboardPage() {
     setLineItems(updatedItems);
   };
   
+  const getAllProducts = () => {
+    const allProducts: any[] = [];
+    Object.entries(eanProducts).forEach(([ean, product]: [string, any]) => {
+      allProducts.push({ean, ...product});
+    });
+    Object.entries(userProducts).forEach(([ean, product]: [string, any]) => {
+      allProducts.push({ean, ...product});
+    });
+    return allProducts;
+  };
+  
+  const selectProductByName = (productName: string, lineIndex?: number) => {
+    const allProducts = getAllProducts();
+    const product = allProducts.find(p => p.name === productName);
+    if (product) {
+      lookupEAN(product.ean, lineIndex);
+    }
+  };
+  
+  const exportToCSV = (data: any[], filename: string) => {
+    const headers = Object.keys(data[0] || {});
+    const csvContent = [
+      headers.join(','),
+      ...data.map(row => headers.map(h => `"${row[h] || ''}"`).join(','))
+    ].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    window.URL.revokeObjectURL(url);
+  };
+  
+  const exportToExcel = (data: any[], filename: string) => {
+    const headers = Object.keys(data[0] || {});
+    let excelContent = '<table><thead><tr>';
+    headers.forEach(h => { excelContent += `<th>${h}</th>`; });
+    excelContent += '</tr></thead><tbody>';
+    data.forEach(row => {
+      excelContent += '<tr>';
+      headers.forEach(h => { excelContent += `<td>${row[h] || ''}</td>`; });
+      excelContent += '</tr>';
+    });
+    excelContent += '</tbody></table>';
+    const blob = new Blob([excelContent], { type: 'application/vnd.ms-excel' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    window.URL.revokeObjectURL(url);
+  };
+  
   const handleAction = (action: string, view?: string) => {
     if (view) {
       setActiveView(view);
@@ -537,11 +591,11 @@ function DashboardPage() {
                     <h3 style={{color:theme.text,fontSize:'18px',fontWeight:'800',marginBottom:'12px'}}>📦 Products to Inward</h3>
                     <div style={{overflowX:'auto'}}>
                       <table style={{width:'100%',borderCollapse:'collapse',marginBottom:'16px'}}>
-                        <thead><tr style={{background:theme.sidebarHover,borderBottom:`2px solid ${theme.border}`}}><th style={{padding:'12px',textAlign:'left',color:theme.text,fontWeight:'700',fontSize:'13px'}}>EAN Scanner</th><th style={{padding:'12px',textAlign:'left',color:theme.text,fontWeight:'700',fontSize:'13px'}}>Product Name</th><th style={{padding:'12px',textAlign:'left',color:theme.text,fontWeight:'700',fontSize:'13px'}}>SKU</th><th style={{padding:'12px',textAlign:'left',color:theme.text,fontWeight:'700',fontSize:'13px'}}>Quantity</th><th style={{padding:'12px',textAlign:'left',color:theme.text,fontWeight:'700',fontSize:'13px'}}>Batch</th><th style={{padding:'12px',textAlign:'center',color:theme.text,fontWeight:'700',fontSize:'13px'}}>Actions</th></tr></thead>
+                        <thead><tr style={{background:theme.sidebarHover,borderBottom:`2px solid ${theme.border}`}}><th style={{padding:'12px',textAlign:'left',color:theme.text,fontWeight:'700',fontSize:'13px'}}>EAN / Product</th><th style={{padding:'12px',textAlign:'left',color:theme.text,fontWeight:'700',fontSize:'13px'}}>Product Name</th><th style={{padding:'12px',textAlign:'left',color:theme.text,fontWeight:'700',fontSize:'13px'}}>SKU</th><th style={{padding:'12px',textAlign:'left',color:theme.text,fontWeight:'700',fontSize:'13px'}}>Quantity</th><th style={{padding:'12px',textAlign:'left',color:theme.text,fontWeight:'700',fontSize:'13px'}}>Batch</th><th style={{padding:'12px',textAlign:'center',color:theme.text,fontWeight:'700',fontSize:'13px'}}>Actions</th></tr></thead>
                         <tbody>
                           {lineItems.map((item,index)=>(
                             <tr key={item.id} style={{borderBottom:`1px solid ${theme.border}`}}>
-                              <td style={{padding:'12px'}}><div style={{display:'flex',gap:'8px'}}><input type="text" placeholder="Scan EAN" value={item.ean||''} onChange={(e)=>updateLineItem(index,'ean',e.target.value)} onKeyPress={(e)=>{if(e.key==='Enter' && item.ean) lookupEAN(item.ean,index);}} style={{width:'140px',padding:'10px',background:theme.cardBg,border:`2px solid #10b981`,borderRadius:'8px',color:theme.text,fontSize:'13px',fontWeight:'700'}} /><button onClick={()=>{if(item.ean) lookupEAN(item.ean,index);}} style={{padding:'10px 14px',background:'linear-gradient(135deg, #10b981, #059669)',color:'white',border:'none',borderRadius:'8px',fontSize:'12px',fontWeight:'700',cursor:'pointer'}}>🔍</button></div></td>
+                              <td style={{padding:'12px'}}><div style={{marginBottom:'8px',display:'flex',gap:'8px'}}><input type="text" placeholder="Scan EAN" value={item.ean||''} onChange={(e)=>updateLineItem(index,'ean',e.target.value)} onKeyPress={(e)=>{if(e.key==='Enter' && item.ean) lookupEAN(item.ean,index);}} style={{width:'140px',padding:'10px',background:theme.cardBg,border:`2px solid #10b981`,borderRadius:'8px',color:theme.text,fontSize:'13px',fontWeight:'700'}} /><button onClick={()=>{if(item.ean) lookupEAN(item.ean,index);}} style={{padding:'10px 14px',background:'linear-gradient(135deg, #10b981, #059669)',color:'white',border:'none',borderRadius:'8px',fontSize:'12px',fontWeight:'700',cursor:'pointer'}}>🔍</button></div><select onChange={(e)=>{if(e.target.value) selectProductByName(e.target.value,index);}} style={{width:'100%',padding:'8px',background:theme.cardBg,border:`2px solid ${theme.border}`,borderRadius:'8px',color:theme.text,fontSize:'12px'}}><option value="">Or Select Product</option>{getAllProducts().map((p,i)=><option key={i} value={p.name}>{p.name} ({p.sku})</option>)}</select></td>
                               <td style={{padding:'12px'}}><input type="text" placeholder="Auto-filled" value={item.productName||''} readOnly style={{width:'100%',minWidth:'150px',padding:'10px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'8px',color:theme.text,fontSize:'13px',opacity:0.7}} /></td>
                               <td style={{padding:'12px'}}><input type="text" placeholder="Auto-filled" value={item.sku||''} readOnly style={{width:'100px',padding:'10px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'8px',color:theme.text,fontSize:'13px',opacity:0.7}} /></td>
                               <td style={{padding:'12px'}}><input type="number" placeholder="0" value={item.quantity||''} onChange={(e)=>updateLineItem(index,'quantity',e.target.value)} style={{width:'90px',padding:'10px',background:theme.cardBg,border:`2px solid ${theme.border}`,borderRadius:'8px',color:theme.text,fontSize:'13px'}} /></td>
@@ -651,11 +705,11 @@ function DashboardPage() {
                     <h3 style={{color:theme.text,fontSize:'18px',fontWeight:'800',marginBottom:'12px'}}>📦 Products to Ship</h3>
                     <div style={{overflowX:'auto'}}>
                       <table style={{width:'100%',borderCollapse:'collapse',marginBottom:'16px'}}>
-                        <thead><tr style={{background:theme.sidebarHover,borderBottom:`2px solid ${theme.border}`}}><th style={{padding:'12px',textAlign:'left',color:theme.text,fontWeight:'700',fontSize:'13px'}}>EAN Scanner</th><th style={{padding:'12px',textAlign:'left',color:theme.text,fontWeight:'700',fontSize:'13px'}}>Product Name</th><th style={{padding:'12px',textAlign:'left',color:theme.text,fontWeight:'700',fontSize:'13px'}}>SKU</th><th style={{padding:'12px',textAlign:'left',color:theme.text,fontWeight:'700',fontSize:'13px'}}>Quantity</th><th style={{padding:'12px',textAlign:'center',color:theme.text,fontWeight:'700',fontSize:'13px'}}>Actions</th></tr></thead>
+                        <thead><tr style={{background:theme.sidebarHover,borderBottom:`2px solid ${theme.border}`}}><th style={{padding:'12px',textAlign:'left',color:theme.text,fontWeight:'700',fontSize:'13px'}}>EAN / Product</th><th style={{padding:'12px',textAlign:'left',color:theme.text,fontWeight:'700',fontSize:'13px'}}>Product Name</th><th style={{padding:'12px',textAlign:'left',color:theme.text,fontWeight:'700',fontSize:'13px'}}>SKU</th><th style={{padding:'12px',textAlign:'left',color:theme.text,fontWeight:'700',fontSize:'13px'}}>Quantity</th><th style={{padding:'12px',textAlign:'center',color:theme.text,fontWeight:'700',fontSize:'13px'}}>Actions</th></tr></thead>
                         <tbody>
                           {lineItems.map((item,index)=>(
                             <tr key={item.id} style={{borderBottom:`1px solid ${theme.border}`}}>
-                              <td style={{padding:'12px'}}><div style={{display:'flex',gap:'8px'}}><input type="text" placeholder="Scan EAN" value={item.ean||''} onChange={(e)=>updateLineItem(index,'ean',e.target.value)} onKeyPress={(e)=>{if(e.key==='Enter' && item.ean) lookupEAN(item.ean,index);}} style={{width:'140px',padding:'10px',background:theme.cardBg,border:`2px solid #f59e0b`,borderRadius:'8px',color:theme.text,fontSize:'13px',fontWeight:'700'}} /><button onClick={()=>{if(item.ean) lookupEAN(item.ean,index);}} style={{padding:'10px 14px',background:'linear-gradient(135deg, #f59e0b, #d97706)',color:'white',border:'none',borderRadius:'8px',fontSize:'12px',fontWeight:'700',cursor:'pointer'}}>🔍</button></div></td>
+                              <td style={{padding:'12px'}}><div style={{marginBottom:'8px',display:'flex',gap:'8px'}}><input type="text" placeholder="Scan EAN" value={item.ean||''} onChange={(e)=>updateLineItem(index,'ean',e.target.value)} onKeyPress={(e)=>{if(e.key==='Enter' && item.ean) lookupEAN(item.ean,index);}} style={{width:'140px',padding:'10px',background:theme.cardBg,border:`2px solid #f59e0b`,borderRadius:'8px',color:theme.text,fontSize:'13px',fontWeight:'700'}} /><button onClick={()=>{if(item.ean) lookupEAN(item.ean,index);}} style={{padding:'10px 14px',background:'linear-gradient(135deg, #f59e0b, #d97706)',color:'white',border:'none',borderRadius:'8px',fontSize:'12px',fontWeight:'700',cursor:'pointer'}}>🔍</button></div><select onChange={(e)=>{if(e.target.value) selectProductByName(e.target.value,index);}} style={{width:'100%',padding:'8px',background:theme.cardBg,border:`2px solid ${theme.border}`,borderRadius:'8px',color:theme.text,fontSize:'12px'}}><option value="">Or Select Product</option>{getAllProducts().map((p,i)=><option key={i} value={p.name}>{p.name} ({p.sku})</option>)}</select></td>
                               <td style={{padding:'12px'}}><input type="text" placeholder="Auto-filled" value={item.productName||''} readOnly style={{width:'100%',minWidth:'150px',padding:'10px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'8px',color:theme.text,fontSize:'13px',opacity:0.7}} /></td>
                               <td style={{padding:'12px'}}><input type="text" placeholder="Auto-filled" value={item.sku||''} readOnly style={{width:'100px',padding:'10px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'8px',color:theme.text,fontSize:'13px',opacity:0.7}} /></td>
                               <td style={{padding:'12px'}}><input type="number" placeholder="0" value={item.quantity||''} onChange={(e)=>updateLineItem(index,'quantity',e.target.value)} style={{width:'90px',padding:'10px',background:theme.cardBg,border:`2px solid ${theme.border}`,borderRadius:'8px',color:theme.text,fontSize:'13px'}} /></td>
@@ -667,13 +721,12 @@ function DashboardPage() {
                     </div>
                     <button onClick={addLineItem} style={{padding:'12px 28px',background:'linear-gradient(135deg, #06b6d4, #0891b2)',color:'white',border:'none',borderRadius:'10px',fontSize:'14px',fontWeight:'700',cursor:'pointer'}}>➕ Add Another Product</button>
                   </div>
-                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:'20px',marginBottom:'32px'}}>
+                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'20px',marginBottom:'32px'}}>
                     <div><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>Order/Invoice Number</label><input type="text" placeholder="Enter order number" value={formData.orderNo||''} style={{width:'100%',padding:'14px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px'}} onChange={(e)=>setFormData({...formData,orderNo:e.target.value})} /></div>
-                    <div><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>Customer</label><select style={{width:'100%',padding:'14px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px'}} value={formData.customer||''} onChange={(e)=>setFormData({...formData,customer:e.target.value})}><option value="">Select Customer</option><option>Customer A</option><option>Customer B</option><option>Retail Store</option></select></div>
-                    <div><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>Shipping Method</label><select style={{width:'100%',padding:'14px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px'}} value={formData.shipping||''} onChange={(e)=>setFormData({...formData,shipping:e.target.value})}><option value="">Select Method</option><option>Standard</option><option>Express</option><option>Same Day</option></select></div>
+                    <div><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>Platform</label><select style={{width:'100%',padding:'14px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px'}} value={formData.platform||''} onChange={(e)=>setFormData({...formData,platform:e.target.value})}><option value="">Select Platform</option><option>Meesho</option><option>Amazon</option><option>Flipkart</option><option>Myntra</option><option>Ajio</option><option>Direct Order</option></select></div>
                   </div>
                   <div style={{display:'flex',gap:'16px'}}>
-                    <button onClick={()=>{const validItems=lineItems.filter(item=>item.productName && item.quantity);if(validItems.length>0){addToast(`Shipment created: ${validItems.length} product(s) to ${formData.customer||'customer'}!`,'success');resetView();}else{addToast('Please add at least one valid product','error');}}} style={{padding:'14px 40px',background:'linear-gradient(135deg, #f59e0b, #d97706)',color:'white',border:'none',borderRadius:'12px',fontSize:'16px',fontWeight:'800',cursor:'pointer'}}>🚚 Create Shipment</button>
+                    <button onClick={()=>{const validItems=lineItems.filter(item=>item.productName && item.quantity);if(validItems.length>0){addToast(`✅ Shipment created: ${validItems.length} product(s) for ${formData.platform||'platform'}!`,'success');resetView();}else{addToast('❌ Please add at least one valid product','error');}}} style={{padding:'14px 40px',background:'linear-gradient(135deg, #f59e0b, #d97706)',color:'white',border:'none',borderRadius:'12px',fontSize:'16px',fontWeight:'800',cursor:'pointer'}}>🚚 Create Shipment</button>
                     <button onClick={resetView} style={{padding:'14px 40px',background:theme.sidebarHover,color:theme.text,border:`2px solid ${theme.border}`,borderRadius:'12px',fontSize:'16px',fontWeight:'700',cursor:'pointer'}}>Cancel</button>
                   </div>
                 </div>
@@ -828,10 +881,13 @@ function DashboardPage() {
                   <div style={{fontSize:'80px',marginBottom:'28px',animation:'pulse 2s infinite'}}>📈</div>
                   <h2 style={{fontSize:'36px',fontWeight:'900',color:theme.text,marginBottom:'18px',background:'linear-gradient(135deg, #06b6d4, #0891b2)',WebkitBackgroundClip:'text',WebkitTextFillColor:darkMode?'transparent':theme.text}}>Reports & Analytics</h2>
                   <p style={{fontSize:'18px',color:theme.textSecondary,marginBottom:'40px',maxWidth:'600px',margin:'0 auto 40px'}}>Generate reports, analyze trends, export data</p>
-                  <div style={{display:'flex',gap:'16px',justifyContent:'center',flexWrap:'wrap'}}>
-                    <button onClick={()=>handleAction('Generating Sales Report','sales-report')} style={{padding:'16px 40px',background:'linear-gradient(135deg, #06b6d4, #0891b2)',color:'white',border:'none',borderRadius:'14px',fontSize:'17px',fontWeight:'800',cursor:'pointer',boxShadow:'0 6px 24px #06b6d450',transition:'all 0.4s'}} onMouseEnter={(e)=>{e.currentTarget.style.transform='translateY(-4px) scale(1.05)';e.currentTarget.style.boxShadow='0 12px 40px #06b6d470';}} onMouseLeave={(e)=>{e.currentTarget.style.transform='translateY(0) scale(1)';e.currentTarget.style.boxShadow='0 6px 24px #06b6d450';}}>📊 Sales Report</button>
-                    <button onClick={()=>handleAction('Generating Stock Report','stock-report')} style={{padding:'16px 40px',background:theme.sidebarHover,color:theme.text,border:`2px solid ${theme.border}`,borderRadius:'14px',fontSize:'17px',fontWeight:'800',cursor:'pointer',transition:'all 0.4s'}} onMouseEnter={(e)=>{e.currentTarget.style.borderColor='#06b6d4';e.currentTarget.style.transform='translateY(-4px)';e.currentTarget.style.boxShadow='0 8px 24px rgba(6,182,212,0.2)';}} onMouseLeave={(e)=>{e.currentTarget.style.borderColor=theme.border;e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.boxShadow='none';}}>📦 Stock Report</button>
-                    <button onClick={()=>handleAction('Opening Export Tool','export-data')} style={{padding:'16px 40px',background:theme.sidebarHover,color:theme.text,border:`2px solid ${theme.border}`,borderRadius:'14px',fontSize:'17px',fontWeight:'800',cursor:'pointer',transition:'all 0.4s'}} onMouseEnter={(e)=>{e.currentTarget.style.borderColor='#22d3ee';e.currentTarget.style.transform='translateY(-4px)';e.currentTarget.style.boxShadow='0 8px 24px rgba(34,211,238,0.2)';}} onMouseLeave={(e)=>{e.currentTarget.style.borderColor=theme.border;e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.boxShadow='none';}}>📥 Export</button>
+                  <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))',gap:'16px',maxWidth:'1200px',margin:'0 auto'}}>
+                    <button onClick={()=>handleAction('Generating Sales Report','sales-report')} style={{padding:'20px',background:'linear-gradient(135deg, #06b6d4, #0891b2)',color:'white',border:'none',borderRadius:'14px',fontSize:'16px',fontWeight:'800',cursor:'pointer',boxShadow:'0 6px 24px #06b6d450',transition:'all 0.4s'}} onMouseEnter={(e)=>{e.currentTarget.style.transform='translateY(-4px)';e.currentTarget.style.boxShadow='0 12px 40px #06b6d470';}} onMouseLeave={(e)=>{e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.boxShadow='0 6px 24px #06b6d450';}}>📊 Sales Report</button>
+                    <button onClick={()=>handleAction('Generating Stock Report','stock-report')} style={{padding:'20px',background:theme.sidebarHover,color:theme.text,border:`2px solid ${theme.border}`,borderRadius:'14px',fontSize:'16px',fontWeight:'800',cursor:'pointer',transition:'all 0.4s'}} onMouseEnter={(e)=>{e.currentTarget.style.borderColor='#06b6d4';e.currentTarget.style.transform='translateY(-4px)';e.currentTarget.style.boxShadow='0 8px 24px rgba(6,182,212,0.2)';}} onMouseLeave={(e)=>{e.currentTarget.style.borderColor=theme.border;e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.boxShadow='none';}}>📦 Stock Report</button>
+                    <button onClick={()=>handleAction('Generating Low Stock Report','low-stock-report')} style={{padding:'20px',background:theme.sidebarHover,color:theme.text,border:`2px solid ${theme.border}`,borderRadius:'14px',fontSize:'16px',fontWeight:'800',cursor:'pointer',transition:'all 0.4s'}} onMouseEnter={(e)=>{e.currentTarget.style.borderColor='#ef4444';e.currentTarget.style.transform='translateY(-4px)';e.currentTarget.style.boxShadow='0 8px 24px rgba(239,68,68,0.2)';}} onMouseLeave={(e)=>{e.currentTarget.style.borderColor=theme.border;e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.boxShadow='none';}}>⚠️ Low Stock</button>
+                    <button onClick={()=>handleAction('Generating Inward Report','inward-report')} style={{padding:'20px',background:theme.sidebarHover,color:theme.text,border:`2px solid ${theme.border}`,borderRadius:'14px',fontSize:'16px',fontWeight:'800',cursor:'pointer',transition:'all 0.4s'}} onMouseEnter={(e)=>{e.currentTarget.style.borderColor='#10b981';e.currentTarget.style.transform='translateY(-4px)';e.currentTarget.style.boxShadow='0 8px 24px rgba(16,185,129,0.2)';}} onMouseLeave={(e)=>{e.currentTarget.style.borderColor=theme.border;e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.boxShadow='none';}}>📥 Inward Report</button>
+                    <button onClick={()=>handleAction('Generating Outward Report','outward-report')} style={{padding:'20px',background:theme.sidebarHover,color:theme.text,border:`2px solid ${theme.border}`,borderRadius:'14px',fontSize:'16px',fontWeight:'800',cursor:'pointer',transition:'all 0.4s'}} onMouseEnter={(e)=>{e.currentTarget.style.borderColor='#f59e0b';e.currentTarget.style.transform='translateY(-4px)';e.currentTarget.style.boxShadow='0 8px 24px rgba(245,158,11,0.2)';}} onMouseLeave={(e)=>{e.currentTarget.style.borderColor=theme.border;e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.boxShadow='none';}}>📤 Outward Report</button>
+                    <button onClick={()=>handleAction('Generating Batch Report','batch-report')} style={{padding:'20px',background:theme.sidebarHover,color:theme.text,border:`2px solid ${theme.border}`,borderRadius:'14px',fontSize:'16px',fontWeight:'800',cursor:'pointer',transition:'all 0.4s'}} onMouseEnter={(e)=>{e.currentTarget.style.borderColor='#8b5cf6';e.currentTarget.style.transform='translateY(-4px)';e.currentTarget.style.boxShadow='0 8px 24px rgba(139,92,246,0.2)';}} onMouseLeave={(e)=>{e.currentTarget.style.borderColor=theme.border;e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.boxShadow='none';}}>🏷️ Batch Wise</button>
                   </div>
                 </div>
               )}
@@ -891,6 +947,141 @@ function DashboardPage() {
                   </div>
                 </div>
               )}
+              {activeView === 'low-stock-report' && (
+                <div style={{background:theme.cardBg,padding:'40px',borderRadius:'20px',border:`2px solid ${theme.border}`,boxShadow:darkMode?'0 8px 32px rgba(0,0,0,0.3)':'0 8px 32px rgba(0,0,0,0.1)'}}>
+                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'32px'}}>
+                    <h2 style={{fontSize:'28px',fontWeight:'900',color:theme.text}}>⚠️ Low Stock Report</h2>
+                    <button onClick={resetView} style={{padding:'10px 24px',background:theme.sidebarHover,color:theme.text,border:`2px solid ${theme.border}`,borderRadius:'10px',fontSize:'15px',fontWeight:'700',cursor:'pointer'}}>← Back</button>
+                  </div>
+                  <div style={{display:'flex',gap:'16px',marginBottom:'24px'}}>
+                    <div><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>From Date</label><input type="date" value={formData.fromDate||''} onChange={(e)=>setFormData({...formData,fromDate:e.target.value})} style={{padding:'12px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'14px'}} /></div>
+                    <div><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>To Date</label><input type="date" value={formData.toDate||''} onChange={(e)=>setFormData({...formData,toDate:e.target.value})} style={{padding:'12px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'14px'}} /></div>
+                    <div style={{display:'flex',alignItems:'flex-end',gap:'12px'}}>
+                      <button onClick={()=>addToast('Applying filters...','success')} style={{padding:'12px 24px',background:'linear-gradient(135deg, #3b82f6, #2563eb)',color:'white',border:'none',borderRadius:'10px',fontSize:'14px',fontWeight:'700',cursor:'pointer'}}>🔍 Filter</button>
+                      <button onClick={()=>{const data=[{Product:'Running Shoes',SKU:'SKU004',Stock:23,MinStock:50,Status:'Low'},{Product:'Notebook',SKU:'SKU006',Stock:18,MinStock:30,Status:'Critical'}];exportToCSV(data,'low-stock-report.csv');addToast('✅ Exported to CSV','success');}} style={{padding:'12px 24px',background:'linear-gradient(135deg, #06b6d4, #0891b2)',color:'white',border:'none',borderRadius:'10px',fontSize:'14px',fontWeight:'700',cursor:'pointer'}}>📄 CSV</button>
+                      <button onClick={()=>{const data=[{Product:'Running Shoes',SKU:'SKU004',Stock:23,MinStock:50,Status:'Low'},{Product:'Notebook',SKU:'SKU006',Stock:18,MinStock:30,Status:'Critical'}];exportToExcel(data,'low-stock-report.xls');addToast('✅ Exported to Excel','success');}} style={{padding:'12px 24px',background:'linear-gradient(135deg, #10b981, #059669)',color:'white',border:'none',borderRadius:'10px',fontSize:'14px',fontWeight:'700',cursor:'pointer'}}>📊 Excel</button>
+                    </div>
+                  </div>
+                  <div style={{background:theme.sidebarHover,padding:'24px',borderRadius:'16px',border:`2px solid ${theme.border}`}}>
+                    <table style={{width:'100%',borderCollapse:'collapse'}}>
+                      <thead><tr style={{borderBottom:`2px solid ${theme.border}`}}><th style={{padding:'12px',textAlign:'left',color:theme.text,fontWeight:'700'}}>Product</th><th style={{padding:'12px',textAlign:'left',color:theme.text,fontWeight:'700'}}>SKU</th><th style={{padding:'12px',textAlign:'right',color:theme.text,fontWeight:'700'}}>Current Stock</th><th style={{padding:'12px',textAlign:'right',color:theme.text,fontWeight:'700'}}>Min Stock</th><th style={{padding:'12px',textAlign:'center',color:theme.text,fontWeight:'700'}}>Status</th></tr></thead>
+                      <tbody>
+                        {[{name:'Running Shoes',sku:'SKU004',stock:23,min:50,status:'Low'},{name:'Notebook Set',sku:'SKU006',stock:18,min:30,status:'Critical'},{name:'Water Bottle',sku:'SKU005',stock:12,min:25,status:'Critical'}].map((p,i)=>(
+                          <tr key={i} style={{borderBottom:`1px solid ${theme.border}`}}>
+                            <td style={{padding:'12px',color:theme.text}}>{p.name}</td>
+                            <td style={{padding:'12px',color:theme.textSecondary}}>{p.sku}</td>
+                            <td style={{padding:'12px',textAlign:'right',color:'#ef4444',fontWeight:'700'}}>{p.stock}</td>
+                            <td style={{padding:'12px',textAlign:'right',color:theme.textSecondary}}>{p.min}</td>
+                            <td style={{padding:'12px',textAlign:'center'}}><span style={{padding:'6px 16px',background:p.status==='Critical'?'#ef444420':'#f59e0b20',color:p.status==='Critical'?'#ef4444':'#f59e0b',borderRadius:'20px',fontSize:'12px',fontWeight:'700'}}>{p.status}</span></td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+              {activeView === 'inward-report' && (
+                <div style={{background:theme.cardBg,padding:'40px',borderRadius:'20px',border:`2px solid ${theme.border}`,boxShadow:darkMode?'0 8px 32px rgba(0,0,0,0.3)':'0 8px 32px rgba(0,0,0,0.1)'}}>
+                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'32px'}}>
+                    <h2 style={{fontSize:'28px',fontWeight:'900',color:theme.text}}>📥 Inward Report</h2>
+                    <button onClick={resetView} style={{padding:'10px 24px',background:theme.sidebarHover,color:theme.text,border:`2px solid ${theme.border}`,borderRadius:'10px',fontSize:'15px',fontWeight:'700',cursor:'pointer'}}>← Back</button>
+                  </div>
+                  <div style={{display:'flex',gap:'16px',marginBottom:'24px'}}>
+                    <div><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>From Date</label><input type="date" value={formData.fromDate||''} onChange={(e)=>setFormData({...formData,fromDate:e.target.value})} style={{padding:'12px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'14px'}} /></div>
+                    <div><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>To Date</label><input type="date" value={formData.toDate||''} onChange={(e)=>setFormData({...formData,toDate:e.target.value})} style={{padding:'12px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'14px'}} /></div>
+                    <div style={{display:'flex',alignItems:'flex-end',gap:'12px'}}>
+                      <button onClick={()=>addToast('Applying filters...','success')} style={{padding:'12px 24px',background:'linear-gradient(135deg, #3b82f6, #2563eb)',color:'white',border:'none',borderRadius:'10px',fontSize:'14px',fontWeight:'700',cursor:'pointer'}}>🔍 Filter</button>
+                      <button onClick={()=>{const data=[{Date:'28 Dec 2024',Product:'Wireless Mouse',SKU:'SKU001',Quantity:50,Supplier:'ABC Suppliers',Batch:'BATCH001'},{Date:'27 Dec 2024',Product:'USB Cable',SKU:'SKU002',Quantity:100,Supplier:'XYZ Distributors',Batch:'BATCH002'}];exportToCSV(data,'inward-report.csv');addToast('✅ Exported to CSV','success');}} style={{padding:'12px 24px',background:'linear-gradient(135deg, #06b6d4, #0891b2)',color:'white',border:'none',borderRadius:'10px',fontSize:'14px',fontWeight:'700',cursor:'pointer'}}>📄 CSV</button>
+                      <button onClick={()=>{const data=[{Date:'28 Dec 2024',Product:'Wireless Mouse',SKU:'SKU001',Quantity:50,Supplier:'ABC Suppliers',Batch:'BATCH001'},{Date:'27 Dec 2024',Product:'USB Cable',SKU:'SKU002',Quantity:100,Supplier:'XYZ Distributors',Batch:'BATCH002'}];exportToExcel(data,'inward-report.xls');addToast('✅ Exported to Excel','success');}} style={{padding:'12px 24px',background:'linear-gradient(135deg, #10b981, #059669)',color:'white',border:'none',borderRadius:'10px',fontSize:'14px',fontWeight:'700',cursor:'pointer'}}>📊 Excel</button>
+                    </div>
+                  </div>
+                  <div style={{background:theme.sidebarHover,padding:'24px',borderRadius:'16px',border:`2px solid ${theme.border}`}}>
+                    <table style={{width:'100%',borderCollapse:'collapse'}}>
+                      <thead><tr style={{borderBottom:`2px solid ${theme.border}`}}><th style={{padding:'12px',textAlign:'left',color:theme.text,fontWeight:'700'}}>Date</th><th style={{padding:'12px',textAlign:'left',color:theme.text,fontWeight:'700'}}>Product</th><th style={{padding:'12px',textAlign:'left',color:theme.text,fontWeight:'700'}}>SKU</th><th style={{padding:'12px',textAlign:'right',color:theme.text,fontWeight:'700'}}>Quantity</th><th style={{padding:'12px',textAlign:'left',color:theme.text,fontWeight:'700'}}>Supplier</th><th style={{padding:'12px',textAlign:'left',color:theme.text,fontWeight:'700'}}>Batch</th></tr></thead>
+                      <tbody>
+                        {[{date:'28 Dec 2024',product:'Wireless Mouse',sku:'SKU001',qty:50,supplier:'ABC Suppliers',batch:'BATCH001'},{date:'27 Dec 2024',product:'USB Cable',sku:'SKU002',qty:100,supplier:'XYZ Distributors',batch:'BATCH002'},{date:'26 Dec 2024',product:'T-Shirt',sku:'SKU003',qty:75,supplier:'Fashion Hub',batch:'BATCH003'}].map((item,i)=>(
+                          <tr key={i} style={{borderBottom:`1px solid ${theme.border}`}}>
+                            <td style={{padding:'12px',color:theme.textSecondary}}>{item.date}</td>
+                            <td style={{padding:'12px',color:theme.text,fontWeight:'600'}}>{item.product}</td>
+                            <td style={{padding:'12px',color:theme.textSecondary}}>{item.sku}</td>
+                            <td style={{padding:'12px',textAlign:'right',color:'#10b981',fontWeight:'700'}}>+{item.qty}</td>
+                            <td style={{padding:'12px',color:theme.textSecondary}}>{item.supplier}</td>
+                            <td style={{padding:'12px',color:theme.text}}>{item.batch}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+              {activeView === 'outward-report' && (
+                <div style={{background:theme.cardBg,padding:'40px',borderRadius:'20px',border:`2px solid ${theme.border}`,boxShadow:darkMode?'0 8px 32px rgba(0,0,0,0.3)':'0 8px 32px rgba(0,0,0,0.1)'}}>
+                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'32px'}}>
+                    <h2 style={{fontSize:'28px',fontWeight:'900',color:theme.text}}>📤 Outward Report</h2>
+                    <button onClick={resetView} style={{padding:'10px 24px',background:theme.sidebarHover,color:theme.text,border:`2px solid ${theme.border}`,borderRadius:'10px',fontSize:'15px',fontWeight:'700',cursor:'pointer'}}>← Back</button>
+                  </div>
+                  <div style={{display:'flex',gap:'16px',marginBottom:'24px'}}>
+                    <div><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>From Date</label><input type="date" value={formData.fromDate||''} onChange={(e)=>setFormData({...formData,fromDate:e.target.value})} style={{padding:'12px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'14px'}} /></div>
+                    <div><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>To Date</label><input type="date" value={formData.toDate||''} onChange={(e)=>setFormData({...formData,toDate:e.target.value})} style={{padding:'12px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'14px'}} /></div>
+                    <div style={{display:'flex',alignItems:'flex-end',gap:'12px'}}>
+                      <button onClick={()=>addToast('Applying filters...','success')} style={{padding:'12px 24px',background:'linear-gradient(135deg, #3b82f6, #2563eb)',color:'white',border:'none',borderRadius:'10px',fontSize:'14px',fontWeight:'700',cursor:'pointer'}}>🔍 Filter</button>
+                      <button onClick={()=>{const data=[{Date:'28 Dec 2024',Product:'Wireless Mouse',SKU:'SKU001',Quantity:25,Platform:'Meesho',OrderNo:'ORD-001'},{Date:'27 Dec 2024',Product:'USB Cable',SKU:'SKU002',Quantity:50,Platform:'Amazon',OrderNo:'ORD-002'}];exportToCSV(data,'outward-report.csv');addToast('✅ Exported to CSV','success');}} style={{padding:'12px 24px',background:'linear-gradient(135deg, #06b6d4, #0891b2)',color:'white',border:'none',borderRadius:'10px',fontSize:'14px',fontWeight:'700',cursor:'pointer'}}>📄 CSV</button>
+                      <button onClick={()=>{const data=[{Date:'28 Dec 2024',Product:'Wireless Mouse',SKU:'SKU001',Quantity:25,Platform:'Meesho',OrderNo:'ORD-001'},{Date:'27 Dec 2024',Product:'USB Cable',SKU:'SKU002',Quantity:50,Platform:'Amazon',OrderNo:'ORD-002'}];exportToExcel(data,'outward-report.xls');addToast('✅ Exported to Excel','success');}} style={{padding:'12px 24px',background:'linear-gradient(135deg, #10b981, #059669)',color:'white',border:'none',borderRadius:'10px',fontSize:'14px',fontWeight:'700',cursor:'pointer'}}>📊 Excel</button>
+                    </div>
+                  </div>
+                  <div style={{background:theme.sidebarHover,padding:'24px',borderRadius:'16px',border:`2px solid ${theme.border}`}}>
+                    <table style={{width:'100%',borderCollapse:'collapse'}}>
+                      <thead><tr style={{borderBottom:`2px solid ${theme.border}`}}><th style={{padding:'12px',textAlign:'left',color:theme.text,fontWeight:'700'}}>Date</th><th style={{padding:'12px',textAlign:'left',color:theme.text,fontWeight:'700'}}>Product</th><th style={{padding:'12px',textAlign:'left',color:theme.text,fontWeight:'700'}}>SKU</th><th style={{padding:'12px',textAlign:'right',color:theme.text,fontWeight:'700'}}>Quantity</th><th style={{padding:'12px',textAlign:'left',color:theme.text,fontWeight:'700'}}>Platform</th><th style={{padding:'12px',textAlign:'left',color:theme.text,fontWeight:'700'}}>Order No</th></tr></thead>
+                      <tbody>
+                        {[{date:'28 Dec 2024',product:'Wireless Mouse',sku:'SKU001',qty:25,platform:'Meesho',order:'ORD-001'},{date:'27 Dec 2024',product:'USB Cable',sku:'SKU002',qty:50,platform:'Amazon',order:'ORD-002'},{date:'26 Dec 2024',product:'T-Shirt',sku:'SKU003',qty:30,platform:'Flipkart',order:'ORD-003'}].map((item,i)=>(
+                          <tr key={i} style={{borderBottom:`1px solid ${theme.border}`}}>
+                            <td style={{padding:'12px',color:theme.textSecondary}}>{item.date}</td>
+                            <td style={{padding:'12px',color:theme.text,fontWeight:'600'}}>{item.product}</td>
+                            <td style={{padding:'12px',color:theme.textSecondary}}>{item.sku}</td>
+                            <td style={{padding:'12px',textAlign:'right',color:'#f59e0b',fontWeight:'700'}}>-{item.qty}</td>
+                            <td style={{padding:'12px',color:theme.text}}>{item.platform}</td>
+                            <td style={{padding:'12px',color:theme.textSecondary}}>{item.order}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+              {activeView === 'batch-report' && (
+                <div style={{background:theme.cardBg,padding:'40px',borderRadius:'20px',border:`2px solid ${theme.border}`,boxShadow:darkMode?'0 8px 32px rgba(0,0,0,0.3)':'0 8px 32px rgba(0,0,0,0.1)'}}>
+                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'32px'}}>
+                    <h2 style={{fontSize:'28px',fontWeight:'900',color:theme.text}}>🏷️ Batch Wise Report</h2>
+                    <button onClick={resetView} style={{padding:'10px 24px',background:theme.sidebarHover,color:theme.text,border:`2px solid ${theme.border}`,borderRadius:'10px',fontSize:'15px',fontWeight:'700',cursor:'pointer'}}>← Back</button>
+                  </div>
+                  <div style={{display:'flex',gap:'16px',marginBottom:'24px'}}>
+                    <div><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>From Date</label><input type="date" value={formData.fromDate||''} onChange={(e)=>setFormData({...formData,fromDate:e.target.value})} style={{padding:'12px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'14px'}} /></div>
+                    <div><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>To Date</label><input type="date" value={formData.toDate||''} onChange={(e)=>setFormData({...formData,toDate:e.target.value})} style={{padding:'12px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'14px'}} /></div>
+                    <div style={{display:'flex',alignItems:'flex-end',gap:'12px'}}>
+                      <button onClick={()=>addToast('Applying filters...','success')} style={{padding:'12px 24px',background:'linear-gradient(135deg, #3b82f6, #2563eb)',color:'white',border:'none',borderRadius:'10px',fontSize:'14px',fontWeight:'700',cursor:'pointer'}}>🔍 Filter</button>
+                      <button onClick={()=>{const data=[{Batch:'BATCH001',Product:'Wireless Mouse',Inward:50,Outward:25,Balance:25,Supplier:'ABC Suppliers'},{Batch:'BATCH002',Product:'USB Cable',Inward:100,Outward:50,Balance:50,Supplier:'XYZ Distributors'}];exportToCSV(data,'batch-report.csv');addToast('✅ Exported to CSV','success');}} style={{padding:'12px 24px',background:'linear-gradient(135deg, #06b6d4, #0891b2)',color:'white',border:'none',borderRadius:'10px',fontSize:'14px',fontWeight:'700',cursor:'pointer'}}>📄 CSV</button>
+                      <button onClick={()=>{const data=[{Batch:'BATCH001',Product:'Wireless Mouse',Inward:50,Outward:25,Balance:25,Supplier:'ABC Suppliers'},{Batch:'BATCH002',Product:'USB Cable',Inward:100,Outward:50,Balance:50,Supplier:'XYZ Distributors'}];exportToExcel(data,'batch-report.xls');addToast('✅ Exported to Excel','success');}} style={{padding:'12px 24px',background:'linear-gradient(135deg, #10b981, #059669)',color:'white',border:'none',borderRadius:'10px',fontSize:'14px',fontWeight:'700',cursor:'pointer'}}>📊 Excel</button>
+                    </div>
+                  </div>
+                  <div style={{background:theme.sidebarHover,padding:'24px',borderRadius:'16px',border:`2px solid ${theme.border}`}}>
+                    <table style={{width:'100%',borderCollapse:'collapse'}}>
+                      <thead><tr style={{borderBottom:`2px solid ${theme.border}`}}><th style={{padding:'12px',textAlign:'left',color:theme.text,fontWeight:'700'}}>Batch No</th><th style={{padding:'12px',textAlign:'left',color:theme.text,fontWeight:'700'}}>Product</th><th style={{padding:'12px',textAlign:'right',color:theme.text,fontWeight:'700'}}>Inward</th><th style={{padding:'12px',textAlign:'right',color:theme.text,fontWeight:'700'}}>Outward</th><th style={{padding:'12px',textAlign:'right',color:theme.text,fontWeight:'700'}}>Balance</th><th style={{padding:'12px',textAlign:'left',color:theme.text,fontWeight:'700'}}>Supplier</th></tr></thead>
+                      <tbody>
+                        {[{batch:'BATCH001',product:'Wireless Mouse',inward:50,outward:25,balance:25,supplier:'ABC Suppliers'},{batch:'BATCH002',product:'USB Cable',inward:100,outward:50,balance:50,supplier:'XYZ Distributors'},{batch:'BATCH003',product:'T-Shirt',inward:75,outward:30,balance:45,supplier:'Fashion Hub'}].map((item,i)=>(
+                          <tr key={i} style={{borderBottom:`1px solid ${theme.border}`}}>
+                            <td style={{padding:'12px',color:theme.text,fontWeight:'700'}}>{item.batch}</td>
+                            <td style={{padding:'12px',color:theme.text}}>{item.product}</td>
+                            <td style={{padding:'12px',textAlign:'right',color:'#10b981',fontWeight:'700'}}>+{item.inward}</td>
+                            <td style={{padding:'12px',textAlign:'right',color:'#f59e0b',fontWeight:'700'}}>-{item.outward}</td>
+                            <td style={{padding:'12px',textAlign:'right',color:'#3b82f6',fontWeight:'700'}}>{item.balance}</td>
+                            <td style={{padding:'12px',color:theme.textSecondary}}>{item.supplier}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
               {activeView === 'export-data' && (
                 <div style={{background:theme.cardBg,padding:'60px',borderRadius:'20px',border:`2px solid ${theme.border}`,textAlign:'center',boxShadow:darkMode?'0 8px 32px rgba(0,0,0,0.3)':'0 8px 32px rgba(0,0,0,0.1)'}}>
                   <button onClick={resetView} style={{position:'absolute',top:'20px',right:'20px',padding:'10px 24px',background:theme.sidebarHover,color:theme.text,border:`2px solid ${theme.border}`,borderRadius:'10px',fontSize:'15px',fontWeight:'700',cursor:'pointer'}}>← Back</button>
@@ -906,8 +1097,8 @@ function DashboardPage() {
                     ))}
                   </div>
                   <div style={{display:'flex',gap:'16px',justifyContent:'center'}}>
-                    <button onClick={()=>{addToast('Data exported as CSV','success');resetView();}} style={{padding:'14px 40px',background:'linear-gradient(135deg, #06b6d4, #0891b2)',color:'white',border:'none',borderRadius:'12px',fontSize:'16px',fontWeight:'800',cursor:'pointer'}}>Export as CSV</button>
-                    <button onClick={()=>{addToast('Data exported as Excel','success');resetView();}} style={{padding:'14px 40px',background:'linear-gradient(135deg, #10b981, #059669)',color:'white',border:'none',borderRadius:'12px',fontSize:'16px',fontWeight:'800',cursor:'pointer'}}>Export as Excel</button>
+                    <button onClick={()=>{const data=[{SKU:'SKU001',Product:'Wireless Mouse',Category:'Electronics',Stock:45,Price:'₹899'},{SKU:'SKU002',Product:'USB Cable',Category:'Electronics',Stock:120,Price:'₹199'}];exportToCSV(data,'inventory-data.csv');addToast('✅ Data exported as CSV','success');}} style={{padding:'14px 40px',background:'linear-gradient(135deg, #06b6d4, #0891b2)',color:'white',border:'none',borderRadius:'12px',fontSize:'16px',fontWeight:'800',cursor:'pointer'}}>Export as CSV</button>
+                    <button onClick={()=>{const data=[{SKU:'SKU001',Product:'Wireless Mouse',Category:'Electronics',Stock:45,Price:'₹899'},{SKU:'SKU002',Product:'USB Cable',Category:'Electronics',Stock:120,Price:'₹199'}];exportToExcel(data,'inventory-data.xls');addToast('✅ Data exported as Excel','success');}} style={{padding:'14px 40px',background:'linear-gradient(135deg, #10b981, #059669)',color:'white',border:'none',borderRadius:'12px',fontSize:'16px',fontWeight:'800',cursor:'pointer'}}>Export as Excel</button>
                   </div>
                 </div>
               )}
