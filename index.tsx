@@ -98,20 +98,10 @@ function DashboardPage() {
   const [userProducts, setUserProducts] = React.useState<any>({});
   const [inwardEntries, setInwardEntries] = React.useState<any[]>([]);
   const [outwardEntries, setOutwardEntries] = React.useState<any[]>([]);
+  const [products, setProducts] = React.useState<any[]>([]);
   
-  // EAN to Product mapping database (pre-configured products)
-  const eanProducts: any = {
-    '8901234567890': {name: 'Logitech Wireless Mouse M185', sku: 'TECH-WM-001', category: 'Electronics', price: 499},
-    '8901234567891': {name: 'Samsung USB Type-C Cable 1m', sku: 'TECH-UC-002', category: 'Electronics', price: 149},
-    '8901234567892': {name: 'Cotton Round Neck T-Shirt Black M', sku: 'CLTH-TS-003', category: 'Clothing', price: 299},
-    '8901234567893': {name: 'Nike Revolution 6 Running Shoes', sku: 'FOOT-RS-004', category: 'Footwear', price: 3499},
-    '8901234567894': {name: 'Milton Thermosteel Water Bottle 1L', sku: 'ACCS-WB-005', category: 'Accessories', price: 599},
-    '8901234567895': {name: 'Classmate Spiral Notebook A4 Pack', sku: 'STAT-NB-006', category: 'Stationery', price: 89},
-    '8901234567896': {name: 'Wildcraft Polyester Backpack 35L', sku: 'BAGS-BP-007', category: 'Bags', price: 1899},
-    '8901234567897': {name: 'boAt Bassheads 100 In-Ear Wired', sku: 'TECH-HP-008', category: 'Electronics', price: 399},
-    '8901234567898': {name: 'Levi\'s Denim Slim Fit Jeans Blue', sku: 'CLTH-JN-009', category: 'Clothing', price: 2199},
-    '8901234567899': {name: 'Puma Enzo 2 Weave Training Shoes', sku: 'FOOT-TS-010', category: 'Footwear', price: 2999},
-  };
+  // EAN to Product mapping database (empty initially - products added by user)
+  const eanProducts: any = {};
   
   const lookupEAN = (ean: string, lineIndex?: number) => {
     // Check both hardcoded and user-added products
@@ -537,18 +527,60 @@ function DashboardPage() {
                   </div>
                   <div style={{marginTop:'32px',display:'flex',gap:'16px'}}>
                     <button onClick={()=>{
-                      if(formData.ean && formData.name && formData.sku) {
-                        // Store product with EAN for future lookups
-                        setUserProducts({...userProducts, [formData.ean]: {name: formData.name, sku: formData.sku, category: formData.category, price: formData.price}});
-                        addToast(`✅ Product "${formData.name}" added with EAN ${formData.ean}!`, 'success');
-                      } else if(formData.name) {
-                        addToast(`✅ Product "${formData.name}" added successfully!`, 'success');
-                      } else {
-                        addToast('❌ Please enter product name', 'error');
+                      if(!formData.name || !formData.sku) {
+                        addToast('❌ Please enter product name and SKU', 'error');
                         return;
                       }
+                      const newProduct = {
+                        id: Date.now(),
+                        name: formData.name,
+                        sku: formData.sku,
+                        ean: formData.ean || '',
+                        category: formData.category || '',
+                        price: formData.price || 0,
+                        quantity: formData.quantity || 0,
+                        minThreshold: formData.minThreshold || 0,
+                        warehouse: formData.warehouse || ''
+                      };
+                      setProducts([...products, newProduct]);
+                      if(formData.ean) {
+                        setUserProducts({...userProducts, [formData.ean]: {name: formData.name, sku: formData.sku, category: formData.category, price: formData.price}});
+                      }
+                      addToast(`✅ Product "${formData.name}" added successfully!`, 'success');
                       resetView();
                     }} style={{padding:'14px 40px',background:'linear-gradient(135deg, #3b82f6, #2563eb)',color:'white',border:'none',borderRadius:'12px',fontSize:'16px',fontWeight:'800',cursor:'pointer'}}>💾 Save Product</button>
+                    <button onClick={resetView} style={{padding:'14px 40px',background:theme.sidebarHover,color:theme.text,border:`2px solid ${theme.border}`,borderRadius:'12px',fontSize:'16px',fontWeight:'700',cursor:'pointer'}}>Cancel</button>
+                  </div>
+                </div>
+              )}
+              {activeView === 'edit-product' && (
+                <div style={{background:theme.cardBg,padding:'40px',borderRadius:'20px',border:`2px solid ${theme.border}`,boxShadow:darkMode?'0 8px 32px rgba(0,0,0,0.3)':'0 8px 32px rgba(0,0,0,0.1)'}}>                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'32px'}}>
+                    <h2 style={{fontSize:'28px',fontWeight:'900',color:theme.text}}>✏️ Edit Product</h2>
+                    <button onClick={resetView} style={{padding:'10px 24px',background:theme.sidebarHover,color:theme.text,border:`2px solid ${theme.border}`,borderRadius:'10px',fontSize:'15px',fontWeight:'700',cursor:'pointer'}}>← Back</button>
+                  </div>
+                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'24px',maxWidth:'900px'}}>
+                    <div><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>Product Name</label><input type="text" placeholder="Enter product name" value={formData.name||''} style={{width:'100%',padding:'14px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px'}} onChange={(e)=>setFormData({...formData,name:e.target.value})} /></div>
+                    <div><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>SKU</label><input type="text" placeholder="Enter SKU" value={formData.sku||''} style={{width:'100%',padding:'14px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px'}} onChange={(e)=>setFormData({...formData,sku:e.target.value})} /></div>
+                    <div style={{gridColumn:'1 / -1'}}><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>EAN Number</label><input type="text" placeholder="13-digit EAN barcode" value={formData.ean||''} onChange={(e)=>setFormData({...formData,ean:e.target.value})} style={{width:'100%',padding:'14px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px'}} /></div>
+                    <div><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>Category</label><select style={{width:'100%',padding:'14px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px'}} value={formData.category||''} onChange={(e)=>setFormData({...formData,category:e.target.value})}><option value="">Select Category</option>{categories.map(cat=><option key={cat} value={cat}>{cat}</option>)}</select></div>
+                    <div><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>Price (₹)</label><input type="number" placeholder="0.00" value={formData.price||''} style={{width:'100%',padding:'14px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px'}} onChange={(e)=>setFormData({...formData,price:e.target.value})} /></div>
+                    <div><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>Stock Quantity</label><input type="number" placeholder="0" value={formData.quantity||''} style={{width:'100%',padding:'14px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px'}} onChange={(e)=>setFormData({...formData,quantity:e.target.value})} /></div>
+                    <div><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>Min Stock Threshold</label><input type="number" placeholder="Minimum stock level" value={formData.minThreshold||''} style={{width:'100%',padding:'14px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px'}} onChange={(e)=>setFormData({...formData,minThreshold:e.target.value})} /></div>
+                    <div><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>Warehouse</label><select style={{width:'100%',padding:'14px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px'}} value={formData.warehouse||''} onChange={(e)=>setFormData({...formData,warehouse:e.target.value})}><option value="">Select Warehouse</option><option>Main Warehouse</option><option>Secondary Warehouse</option></select></div>
+                  </div>
+                  <div style={{marginTop:'32px',display:'flex',gap:'16px'}}>
+                    <button onClick={()=>{
+                      if(!formData.name || !formData.sku) {
+                        addToast('❌ Please enter product name and SKU', 'error');
+                        return;
+                      }
+                      setProducts(products.map(p=>p.id===formData.id?{...formData}:p));
+                      if(formData.ean) {
+                        setUserProducts({...userProducts, [formData.ean]: {name: formData.name, sku: formData.sku, category: formData.category, price: formData.price}});
+                      }
+                      addToast(`✅ Product "${formData.name}" updated successfully!`, 'success');
+                      resetView();
+                    }} style={{padding:'14px 40px',background:'linear-gradient(135deg, #3b82f6, #2563eb)',color:'white',border:'none',borderRadius:'12px',fontSize:'16px',fontWeight:'800',cursor:'pointer'}}>💾 Update Product</button>
                     <button onClick={resetView} style={{padding:'14px 40px',background:theme.sidebarHover,color:theme.text,border:`2px solid ${theme.border}`,borderRadius:'12px',fontSize:'16px',fontWeight:'700',cursor:'pointer'}}>Cancel</button>
                   </div>
                 </div>
@@ -559,22 +591,43 @@ function DashboardPage() {
                     <h2 style={{fontSize:'28px',fontWeight:'900',color:theme.text}}>📋 All Products</h2>
                     <button onClick={resetView} style={{padding:'10px 24px',background:theme.sidebarHover,color:theme.text,border:`2px solid ${theme.border}`,borderRadius:'10px',fontSize:'15px',fontWeight:'700',cursor:'pointer'}}>← Back</button>
                   </div>
-                  <div style={{overflowX:'auto'}}>
-                    <table style={{width:'100%',borderCollapse:'collapse'}}>
-                      <thead><tr style={{background:theme.sidebarHover,borderBottom:`2px solid ${theme.border}`}}><th style={{padding:'16px',textAlign:'left',color:theme.text,fontWeight:'700'}}>SKU</th><th style={{padding:'16px',textAlign:'left',color:theme.text,fontWeight:'700'}}>Product Name</th><th style={{padding:'16px',textAlign:'left',color:theme.text,fontWeight:'700'}}>Category</th><th style={{padding:'16px',textAlign:'left',color:theme.text,fontWeight:'700'}}>Stock</th><th style={{padding:'16px',textAlign:'left',color:theme.text,fontWeight:'700'}}>Price</th></tr></thead>
-                      <tbody>
-                        {[{sku:'TECH-WM-001',name:'Logitech Wireless Mouse M185',category:'Electronics',stock:12,price:'₹499'},{sku:'TECH-UC-002',name:'Samsung USB Type-C Cable',category:'Electronics',stock:35,price:'₹149'},{sku:'CLTH-TS-003',name:'Cotton Round Neck T-Shirt',category:'Clothing',stock:67,price:'₹299'},{sku:'FOOT-RS-004',name:'Nike Revolution 6 Running Shoes',category:'Footwear',stock:18,price:'₹3499'},{sku:'ACCS-WB-005',name:'Milton Thermosteel Water Bottle',category:'Accessories',stock:22,price:'₹599'}].map((p,i)=>(
-                          <tr key={i} style={{borderBottom:`1px solid ${theme.border}`,cursor:'pointer'}} onMouseEnter={(e)=>e.currentTarget.style.background=theme.sidebarHover} onMouseLeave={(e)=>e.currentTarget.style.background='transparent'}>
-                            <td style={{padding:'16px',color:theme.text,fontWeight:'600'}}>{p.sku}</td>
-                            <td style={{padding:'16px',color:theme.text}}>{p.name}</td>
-                            <td style={{padding:'16px',color:theme.textSecondary}}>{p.category}</td>
-                            <td style={{padding:'16px',color:p.stock<30?'#ef4444':'#10b981',fontWeight:'700'}}>{p.stock}</td>
-                            <td style={{padding:'16px',color:theme.text,fontWeight:'700'}}>{p.price}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                  {products.length === 0 ? (
+                    <div style={{textAlign:'center',padding:'60px'}}>
+                      <div style={{fontSize:'64px',marginBottom:'16px'}}>📦</div>
+                      <p style={{fontSize:'18px',color:theme.textSecondary,marginBottom:'24px'}}>No products added yet</p>
+                      <button onClick={()=>setActiveView('add-product')} style={{padding:'14px 32px',background:'linear-gradient(135deg, #3b82f6, #2563eb)',color:'white',border:'none',borderRadius:'12px',fontSize:'16px',fontWeight:'700',cursor:'pointer'}}>➕ Add First Product</button>
+                    </div>
+                  ) : (
+                    <div style={{overflowX:'auto'}}>
+                      <table style={{width:'100%',borderCollapse:'collapse'}}>
+                        <thead><tr style={{background:theme.sidebarHover,borderBottom:`2px solid ${theme.border}`}}><th style={{padding:'16px',textAlign:'left',color:theme.text,fontWeight:'700'}}>SKU</th><th style={{padding:'16px',textAlign:'left',color:theme.text,fontWeight:'700'}}>Product Name</th><th style={{padding:'16px',textAlign:'left',color:theme.text,fontWeight:'700'}}>Category</th><th style={{padding:'16px',textAlign:'left',color:theme.text,fontWeight:'700'}}>Stock</th><th style={{padding:'16px',textAlign:'left',color:theme.text,fontWeight:'700'}}>Price</th><th style={{padding:'16px',textAlign:'center',color:theme.text,fontWeight:'700'}}>Actions</th></tr></thead>
+                        <tbody>
+                          {products.map((p,i)=>(
+                            <tr key={i} style={{borderBottom:`1px solid ${theme.border}`}} onMouseEnter={(e)=>e.currentTarget.style.background=theme.sidebarHover} onMouseLeave={(e)=>e.currentTarget.style.background='transparent'}>
+                              <td style={{padding:'16px',color:theme.text,fontWeight:'600'}}>{p.sku}</td>
+                              <td style={{padding:'16px',color:theme.text}}>{p.name}</td>
+                              <td style={{padding:'16px',color:theme.textSecondary}}>{p.category||'-'}</td>
+                              <td style={{padding:'16px',color:p.quantity<(p.minThreshold||10)?'#ef4444':'#10b981',fontWeight:'700'}}>{p.quantity||0}</td>
+                              <td style={{padding:'16px',color:theme.text,fontWeight:'700'}}>₹{p.price||0}</td>
+                              <td style={{padding:'16px',display:'flex',gap:'8px',justifyContent:'center'}}>
+                                <button onClick={()=>{
+                                  setFormData({...p});
+                                  setActiveView('edit-product');
+                                  addToast(`✏️ Editing ${p.name}...`,'info');
+                                }} style={{padding:'8px 16px',background:'linear-gradient(135deg, #3b82f6, #2563eb)',color:'white',border:'none',borderRadius:'8px',fontSize:'13px',fontWeight:'700',cursor:'pointer'}}>✏️ Edit</button>
+                                <button onClick={()=>{
+                                  if(window.confirm(`Delete product "${p.name}"?`)){
+                                    setProducts(products.filter(prod=>prod.id!==p.id));
+                                    addToast(`🗑️ Product "${p.name}" deleted!`,'success');
+                                  }
+                                }} style={{padding:'8px 16px',background:'linear-gradient(135deg, #ef4444, #dc2626)',color:'white',border:'none',borderRadius:'8px',fontSize:'13px',fontWeight:'700',cursor:'pointer'}}>🗑️ Delete</button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
                 </div>
               )}
               {activeView === 'import-products' && (
