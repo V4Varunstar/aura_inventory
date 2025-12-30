@@ -906,6 +906,8 @@ function DashboardPage() {
                                 
                                 if (result.summary.duplicates > 0) {
                                   const duplicateSKUs = result.duplicates.map(d => d.product.sku).join(', ');
+                                  console.log('Duplicate SKUs:', duplicateSKUs);
+                                  alert(`WARNING: ${result.summary.duplicates} duplicate SKUs found:\n\n${duplicateSKUs.substring(0, 500)}${duplicateSKUs.length > 500 ? '...' : ''}\n\nThese products already exist in database.`);
                                   addToast(`⚠️ Skipped ${result.summary.duplicates} duplicate SKU(s): ${duplicateSKUs.substring(0, 100)}${duplicateSKUs.length > 100 ? '...' : ''}`,'warning');
                                   hasErrors = true;
                                 }
