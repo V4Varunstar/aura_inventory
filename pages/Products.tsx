@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Product, ProductCategory, ProductUnit } from '../types';
-import { getProducts, addProduct, updateProduct, getAllProductStocks, getWarehouses, getCategories, addCategory } from '../services/firebaseService';
+import { getProducts, addProduct, updateProduct, getAllProductStocks, getWarehouses, getCategories, addCategory, clearAllProducts } from '../services/firebaseService';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Modal from '../components/ui/Modal';
@@ -241,6 +241,7 @@ const Products: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isBulkUploadOpen, setIsBulkUploadOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Partial<Product> | null>(null);
+  const [isClearing, setIsClearing] = useState(false);
   const { addToast } = useToast();
   const { user } = useAuth();
   
@@ -320,6 +321,24 @@ const Products: React.FC = () => {
   const handleBulkUploadSuccess = (importedProducts: Product[]) => {
     setProducts([...products, ...importedProducts]);
     refreshStocks();
+  };
+
+  const handleClearAllProducts = async () => {
+    if (!window.confirm('⚠️ WARNING: This will delete ALL products permanently!\n\nAre you sure you want to continue?')) {
+      return;
+    }
+    
+    setIsClearing(true);
+    try {
+      await clearAllProducts();
+      setProducts([]);
+      setProductStocks({});
+      addToast('All products cleared successfully! You can now import fresh data.', 'success');
+    } catch (error) {
+      addToast('Failed to clear products.', 'error');
+    } finally {
+      setIsClearing(false);
+    }
   };
 
   // Filter products based on low stock
@@ -405,6 +424,14 @@ const Products: React.FC = () => {
           </Button>
           {canEdit && (
             <>
+              <Button 
+                onClick={handleClearAllProducts}
+                variant="danger"
+                size="sm"
+                disabled={isClearing || products.length === 0}
+              >
+                {isClearing ? 'Clearing...' : 'Clear All Products'}
+              </Button>
               <Button 
                 onClick={() => setIsBulkUploadOpen(true)} 
                 leftIcon={<Upload />}
