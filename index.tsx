@@ -780,25 +780,32 @@ function DashboardPage() {
                             
                             reader.onload = async (e) => {
                               try {
-                                console.log('File loaded, parsing Excel...');
+                                console.log('=== STEP 1: File loaded, parsing Excel ===');
                                 addToast('📊 Parsing Excel data...','info');
                                 
                                 const data = new Uint8Array(e.target?.result as ArrayBuffer);
+                                console.log('Data buffer size:', data.length);
+                                
                                 const workbook = XLSX.read(data, {type: 'array'});
+                                console.log('Workbook sheets:', workbook.SheetNames);
                                 
                                 if (!workbook.SheetNames || workbook.SheetNames.length === 0) {
+                                  console.error('No sheets found in workbook');
                                   addToast('❌ Excel file has no sheets. Please check the file.','error');
                                   setIsImporting(false);
                                   return;
                                 }
                                 
                                 const sheetName = workbook.SheetNames[0];
+                                console.log('Reading sheet:', sheetName);
                                 const worksheet = workbook.Sheets[sheetName];
                                 const jsonData = XLSX.utils.sheet_to_json(worksheet);
                                 
-                                console.log('Parsed Excel data:', jsonData.length, 'rows');
+                                console.log('=== STEP 2: Parsed Excel data ===', jsonData.length, 'rows');
+                                console.log('First row sample:', jsonData[0]);
                                 
                                 if (jsonData.length === 0) {
+                                  console.error('Excel file is empty');
                                   addToast('❌ Excel file is empty. Please add product data and try again.','error');
                                   setIsImporting(false);
                                   return;
@@ -807,27 +814,34 @@ function DashboardPage() {
                                 addToast(`✅ Found ${jsonData.length} rows. Validating data...`,'info');
                                 
                                 // Map Excel columns to product fields
-                                const productsToImport = jsonData.map((row: any, index: number) => ({
-                                  rowNumber: index + 2, // Excel row number (accounting for header)
-                                  sku: row.SKU || row.sku || '',
-                                  name: row['Product Name'] || row.name || '',
-                                  ean: row['EAN No.'] || row.EAN || row.ean || '',
-                                  category: row.Category || row.category || 'Hair Care',
-                                  unit: row.Unit || row.unit || 'pcs',
-                                  mrp: parseFloat(row.MRP || row.mrp || 0),
-                                  costPrice: parseFloat(row['Cost Price'] || row.costPrice || 0),
-                                  lowStockThreshold: parseInt(row['Low Stock'] || row.lowStockThreshold || 10),
-                                  batchTracking: (row['Batch Tracking'] || row.batchTracking || 'No').toLowerCase() === 'yes',
-                                  imageUrl: row['Image URL'] || row.imageUrl || '',
-                                  companyId: user?.companyId,
-                                  orgId: user?.orgId
-                                }));
+                                console.log('=== STEP 3: Mapping products ===');
+                                const productsToImport = jsonData.map((row: any, index: number) => {
+                                  const product = {
+                                    rowNumber: index + 2, // Excel row number (accounting for header)
+                                    sku: (row.SKU || row.sku || '').toString().trim(),
+                                    name: (row['Product Name'] || row.name || '').toString().trim(),
+                                    ean: (row['EAN No.'] || row.EAN || row.ean || '').toString().trim(),
+                                    category: row.Category || row.category || 'Hair Care',
+                                    unit: row.Unit || row.unit || 'pcs',
+                                    mrp: parseFloat(row.MRP || row.mrp || 0),
+                                    costPrice: parseFloat(row['Cost Price'] || row.costPrice || 0),
+                                    lowStockThreshold: parseInt(row['Low Stock'] || row.lowStockThreshold || 10),
+                                    batchTracking: (row['Batch Tracking'] || row.batchTracking || 'No').toLowerCase() === 'yes',
+                                    imageUrl: row['Image URL'] || row.imageUrl || '',
+                                    companyId: user?.companyId,
+                                    orgId: user?.orgId
+                                  };
+                                  return product;
+                                });
                                 
-                                console.log('Products to import:', productsToImport.length);
-                                console.log('Sample product:', productsToImport[0]);
+                                console.log('Products mapped:', productsToImport.length);
+                                console.log('Sample mapped product:', productsToImport[0]);
                                 
                                 // Detailed validation with row numbers
+                                console.log('=== STEP 4: Validating products ===');
                                 const invalidProducts = productsToImport.filter(p => !p.sku || !p.name);
+                                console.log('Invalid products count:', invalidProducts.length);
+                                
                                 if (invalidProducts.length > 0) {
                                   const errorRows = invalidProducts.map(p => p.rowNumber).join(', ');
                                   console.log('Invalid products found:', invalidProducts);
@@ -837,23 +851,28 @@ function DashboardPage() {
                                 }
                                 
                                 // Check for invalid numbers
+                                console.log('=== STEP 5: Checking numbers ===');
                                 const invalidNumbers = productsToImport.filter(p => 
                                   isNaN(p.mrp) || p.mrp <= 0 || 
                                   isNaN(p.costPrice) || p.costPrice < 0
                                 );
+                                console.log('Invalid numbers count:', invalidNumbers.length);
+                                
                                 if (invalidNumbers.length > 0) {
                                   const errorRows = invalidNumbers.map(p => p.rowNumber).join(', ');
+                                  console.log('Invalid numbers in rows:', errorRows);
                                   addToast(`❌ Invalid MRP or Cost Price in rows: ${errorRows}. Please enter valid numbers.`,'error');
                                   setIsImporting(false);
                                   return;
                                 }
                                 
-                                console.log('Starting import to database...');
+                                console.log('=== STEP 6: Starting database import ===');
                                 addToast('💾 Importing products to database...','info');
                                 
                                 // Import to database
                                 const result = await addProductsBatch(productsToImport);
                                 
+                                console.log('=== STEP 7: Import completed ===');
                                 console.log('Import result:', result.summary);
                                 
                                 // Show detailed results
@@ -891,22 +910,25 @@ function DashboardPage() {
                                 }
                                 
                               } catch (error: any) {
-                                console.error('Import error:', error);
-                                addToast(`❌ Import failed: ${error.message || 'Unknown error'}. Please check Excel format and try again.`,'error');
+                                console.error('=== ERROR in reader.onload ===', error);
+                                console.error('Error stack:', error.stack);
+                                addToast(`❌ Import failed: ${error.message || 'Unknown error occurred'}. Check console for details.`,'error');
                                 setIsImporting(false);
                               }
                             };
                             
                             reader.onerror = (error) => {
-                              console.error('FileReader error:', error);
+                              console.error('=== FileReader error ===', error);
                               addToast('❌ Failed to read file. The file may be corrupted or in use. Please try again.','error');
                               setIsImporting(false);
                             };
                             
+                            console.log('=== Starting FileReader ===');
                             reader.readAsArrayBuffer(file);
                           } catch (error: any) {
-                            console.error('File read error:', error);
-                            addToast(`❌ Error: ${error.message || 'Failed to read file'}. Please try again.`,'error');
+                            console.error('=== ERROR in onClick handler ===', error);
+                            console.error('Error stack:', error.stack);
+                            addToast(`❌ Error: ${error.message || 'Failed to process file'}. Check console for details.`,'error');
                             setIsImporting(false);
                           }
                         }}
