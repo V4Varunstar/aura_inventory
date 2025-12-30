@@ -95,6 +95,7 @@ function DashboardPage() {
   const [currentPage, setCurrentPage] = React.useState('dashboard');
   const [activeView, setActiveView] = React.useState('main');
   const [formData, setFormData] = React.useState<any>({});
+  const [isImporting, setIsImporting] = React.useState(false);
   const [categories, setCategories] = React.useState<string[]>(['Electronics', 'Clothing', 'Footwear', 'Accessories', 'Stationery', 'Bags', 'Food & Beverages']);
   const [platforms, setPlatforms] = React.useState<any[]>([
     {id:1,name:'Amazon',color:'#FF9900',enabled:true},
@@ -753,23 +754,44 @@ function DashboardPage() {
                   {formData.selectedFile && (
                     <div style={{textAlign:'center',marginBottom:'32px'}}>
                       <button
+                        disabled={isImporting}
                         onClick={async ()=>{
+                          if (isImporting) return;
+                          
                           try {
                             const file = formData.selectedFile;
                             if (!file) {
-                              addToast('No file selected','error');
+                              addToast('❌ No file selected. Please select an Excel file first.','error');
                               return;
                             }
                             
+                            // Check file extension
+                            const fileName = file.name.toLowerCase();
+                            if (!fileName.endsWith('.xlsx') && !fileName.endsWith('.xls') && !fileName.endsWith('.csv')) {
+                              addToast('❌ Invalid file format. Please upload .xlsx, .xls, or .csv file only.','error');
+                              return;
+                            }
+                            
+                            setIsImporting(true);
                             console.log('Starting bulk import for file:', file.name);
-                            addToast('Processing Excel file...','info');
+                            addToast('📂 Reading Excel file...','info');
+                            
                             const reader = new FileReader();
                             
                             reader.onload = async (e) => {
                               try {
                                 console.log('File loaded, parsing Excel...');
+                                addToast('📊 Parsing Excel data...','info');
+                                
                                 const data = new Uint8Array(e.target?.result as ArrayBuffer);
                                 const workbook = XLSX.read(data, {type: 'array'});
+                                
+                                if (!workbook.SheetNames || workbook.SheetNames.length === 0) {
+                                  addToast('❌ Excel file has no sheets. Please check the file.','error');
+                                  setIsImporting(false);
+                                  return;
+                                }
+                                
                                 const sheetName = workbook.SheetNames[0];
                                 const worksheet = workbook.Sheets[sheetName];
                                 const jsonData = XLSX.utils.sheet_to_json(worksheet);
@@ -777,12 +799,16 @@ function DashboardPage() {
                                 console.log('Parsed Excel data:', jsonData.length, 'rows');
                                 
                                 if (jsonData.length === 0) {
-                                  addToast('No data found in Excel file','error');
+                                  addToast('❌ Excel file is empty. Please add product data and try again.','error');
+                                  setIsImporting(false);
                                   return;
                                 }
                                 
+                                addToast(`✅ Found ${jsonData.length} rows. Validating data...`,'info');
+                                
                                 // Map Excel columns to product fields
-                                const productsToImport = jsonData.map((row: any) => ({
+                                const productsToImport = jsonData.map((row: any, index: number) => ({
+                                  rowNumber: index + 2, // Excel row number (accounting for header)
                                   sku: row.SKU || row.sku || '',
                                   name: row['Product Name'] || row.name || '',
                                   ean: row['EAN No.'] || row.EAN || row.ean || '',
@@ -800,58 +826,107 @@ function DashboardPage() {
                                 console.log('Products to import:', productsToImport.length);
                                 console.log('Sample product:', productsToImport[0]);
                                 
-                                // Validate
+                                // Detailed validation with row numbers
                                 const invalidProducts = productsToImport.filter(p => !p.sku || !p.name);
                                 if (invalidProducts.length > 0) {
-                                  console.log('Invalid products found:', invalidProducts.length);
-                                  addToast(`${invalidProducts.length} products missing SKU or Name`,'error');
+                                  const errorRows = invalidProducts.map(p => p.rowNumber).join(', ');
+                                  console.log('Invalid products found:', invalidProducts);
+                                  addToast(`❌ Validation Failed: ${invalidProducts.length} product(s) missing required fields (SKU or Product Name) in rows: ${errorRows}. Please fix and try again.`,'error');
+                                  setIsImporting(false);
+                                  return;
+                                }
+                                
+                                // Check for invalid numbers
+                                const invalidNumbers = productsToImport.filter(p => 
+                                  isNaN(p.mrp) || p.mrp <= 0 || 
+                                  isNaN(p.costPrice) || p.costPrice < 0
+                                );
+                                if (invalidNumbers.length > 0) {
+                                  const errorRows = invalidNumbers.map(p => p.rowNumber).join(', ');
+                                  addToast(`❌ Invalid MRP or Cost Price in rows: ${errorRows}. Please enter valid numbers.`,'error');
+                                  setIsImporting(false);
                                   return;
                                 }
                                 
                                 console.log('Starting import to database...');
+                                addToast('💾 Importing products to database...','info');
+                                
                                 // Import to database
                                 const result = await addProductsBatch(productsToImport);
                                 
                                 console.log('Import result:', result.summary);
                                 
+                                // Show detailed results
+                                let hasErrors = false;
+                                
                                 if (result.summary.successful > 0) {
-                                  addToast(`Successfully imported ${result.summary.successful} products!`,'success');
+                                  addToast(`✅ Success! ${result.summary.successful} product(s) imported successfully.`,'success');
                                 }
+                                
                                 if (result.summary.duplicates > 0) {
-                                  addToast(`${result.summary.duplicates} products skipped (duplicate SKUs)`,'warning');
+                                  const duplicateSKUs = result.duplicates.map(d => d.product.sku).join(', ');
+                                  addToast(`⚠️ Skipped ${result.summary.duplicates} duplicate SKU(s): ${duplicateSKUs.substring(0, 100)}${duplicateSKUs.length > 100 ? '...' : ''}`,'warning');
+                                  hasErrors = true;
                                 }
+                                
                                 if (result.summary.failed > 0) {
-                                  addToast(`${result.summary.failed} products failed to import`,'error');
+                                  const failedSKUs = result.failed.map(f => `${f.product.sku} (${f.error})`).join(', ');
+                                  addToast(`❌ Failed to import ${result.summary.failed} product(s): ${failedSKUs.substring(0, 100)}${failedSKUs.length > 100 ? '...' : ''}`,'error');
+                                  hasErrors = true;
                                 }
                                 
-                                // Reset and go back
-                                setTimeout(() => {
-                                  setFormData({});
-                                  resetView();
-                                }, 2000);
+                                if (result.summary.successful === 0) {
+                                  addToast('❌ No products were imported. Please check the errors above and try again.','error');
+                                }
                                 
-                              } catch (error) {
+                                // Reset and go back only if successful
+                                if (result.summary.successful > 0) {
+                                  setTimeout(() => {
+                                    setFormData({});
+                                    setIsImporting(false);
+                                    resetView();
+                                  }, hasErrors ? 4000 : 2000);
+                                } else {
+                                  setIsImporting(false);
+                                }
+                                
+                              } catch (error: any) {
                                 console.error('Import error:', error);
-                                addToast('Failed to import products. Check Excel format.','error');
+                                addToast(`❌ Import failed: ${error.message || 'Unknown error'}. Please check Excel format and try again.`,'error');
+                                setIsImporting(false);
                               }
                             };
                             
                             reader.onerror = (error) => {
                               console.error('FileReader error:', error);
-                              addToast('Failed to read file. Please try again.','error');
+                              addToast('❌ Failed to read file. The file may be corrupted or in use. Please try again.','error');
+                              setIsImporting(false);
                             };
                             
                             reader.readAsArrayBuffer(file);
-                          } catch (error) {
+                          } catch (error: any) {
                             console.error('File read error:', error);
-                            addToast('Failed to read file','error');
+                            addToast(`❌ Error: ${error.message || 'Failed to read file'}. Please try again.`,'error');
+                            setIsImporting(false);
                           }
                         }}
-                        style={{padding:'16px 48px',background:'linear-gradient(135deg, #8b5cf6, #7c3aed)',color:'white',border:'none',borderRadius:'12px',fontSize:'16px',fontWeight:'700',cursor:'pointer',boxShadow:'0 4px 16px rgba(139, 92, 246, 0.4)',transition:'all 0.3s'}}
-                        onMouseEnter={(e)=>e.currentTarget.style.transform='scale(1.05)'}
+                        style={{
+                          padding:'16px 48px',
+                          background: isImporting ? '#6b7280' : 'linear-gradient(135deg, #8b5cf6, #7c3aed)',
+                          color:'white',
+                          border:'none',
+                          borderRadius:'12px',
+                          fontSize:'16px',
+                          fontWeight:'700',
+                          cursor: isImporting ? 'not-allowed' : 'pointer',
+                          boxShadow: isImporting ? 'none' : '0 4px 16px rgba(139, 92, 246, 0.4)',
+                          transition:'all 0.3s',
+                          opacity: isImporting ? 0.6 : 1
+                        }}
+                        onMouseEnter={(e)=>{if(!isImporting) e.currentTarget.style.transform='scale(1.05)'}}
                         onMouseLeave={(e)=>e.currentTarget.style.transform='scale(1)'}
                       >
-                        🚀 Start Import
+                        {isImporting ? '⏳ Importing... Please Wait' : '🚀 Start Import'}
                       </button>
                     </div>
                   )}
