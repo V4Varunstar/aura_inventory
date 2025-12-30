@@ -3,6 +3,8 @@ import ReactDOM from 'react-dom/client';
 import { HashRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ToastProvider, useToast } from './context/ToastContext';
+import { getOutwardRecords, getProducts, getInwardRecords, addProductsBatch } from './services/firebaseService';
+import * as XLSX from 'xlsx';
 import './index.css';
 
 // Add CSS animations
@@ -94,11 +96,40 @@ function DashboardPage() {
   const [activeView, setActiveView] = React.useState('main');
   const [formData, setFormData] = React.useState<any>({});
   const [categories, setCategories] = React.useState<string[]>(['Electronics', 'Clothing', 'Footwear', 'Accessories', 'Stationery', 'Bags', 'Food & Beverages']);
+  const [platforms, setPlatforms] = React.useState<any[]>([
+    {id:1,name:'Amazon',color:'#FF9900',enabled:true},
+    {id:2,name:'Flipkart',color:'#2874F0',enabled:true},
+    {id:3,name:'Myntra',color:'#D4145A',enabled:true},
+    {id:4,name:'Meesho',color:'#9C1AB1',enabled:true},
+    {id:5,name:'Retail',color:'#10B981',enabled:true}
+  ]);
   const [lineItems, setLineItems] = React.useState<any[]>([{id: 1, ean: '', productName: '', sku: '', quantity: '', batch: ''}]);
   const [userProducts, setUserProducts] = React.useState<any>({});
   const [inwardEntries, setInwardEntries] = React.useState<any[]>([]);
   const [outwardEntries, setOutwardEntries] = React.useState<any[]>([]);
   const [products, setProducts] = React.useState<any[]>([]);
+  const [realOutwardRecords, setRealOutwardRecords] = React.useState<any[]>([]);
+  const [realProducts, setRealProducts] = React.useState<any[]>([]);
+  const [realInwardRecords, setRealInwardRecords] = React.useState<any[]>([]);
+  
+  // Load real data from database
+  React.useEffect(() => {
+    const loadData = async () => {
+      try {
+        const [outwardData, productsData, inwardData] = await Promise.all([
+          getOutwardRecords(),
+          getProducts(),
+          getInwardRecords()
+        ]);
+        setRealOutwardRecords(outwardData);
+        setRealProducts(productsData);
+        setRealInwardRecords(inwardData);
+      } catch (error) {
+        console.error('Failed to load data:', error);
+      }
+    };
+    loadData();
+  }, []);
   
   // EAN to Product mapping database (empty initially - products added by user)
   const eanProducts: any = {};
@@ -669,17 +700,284 @@ function DashboardPage() {
                 </div>
               )}
               {activeView === 'import-products' && (
-                <div style={{background:theme.cardBg,padding:'60px',borderRadius:'20px',border:`2px solid ${theme.border}`,textAlign:'center',boxShadow:darkMode?'0 8px 32px rgba(0,0,0,0.3)':'0 8px 32px rgba(0,0,0,0.1)'}}>
+                <div style={{background:theme.cardBg,padding:'40px',borderRadius:'20px',border:`2px solid ${theme.border}`,boxShadow:darkMode?'0 8px 32px rgba(0,0,0,0.3)':'0 8px 32px rgba(0,0,0,0.1)'}}>
                   <button onClick={resetView} style={{position:'absolute',top:'20px',right:'20px',padding:'10px 24px',background:theme.sidebarHover,color:theme.text,border:`2px solid ${theme.border}`,borderRadius:'10px',fontSize:'15px',fontWeight:'700',cursor:'pointer'}}>← Back</button>
-                  <div style={{fontSize:'80px',marginBottom:'28px'}}>📥</div>
-                  <h2 style={{fontSize:'32px',fontWeight:'900',color:theme.text,marginBottom:'18px'}}>Import Products</h2>
-                  <p style={{fontSize:'17px',color:theme.textSecondary,marginBottom:'32px'}}>Upload CSV or Excel file to bulk import products</p>
-                  <div style={{border:`3px dashed ${theme.border}`,borderRadius:'16px',padding:'60px',marginBottom:'24px',cursor:'pointer'}} onClick={()=>addToast('File upload dialog would open here','info')}>
-                    <div style={{fontSize:'64px',marginBottom:'16px'}}>📄</div>
-                    <p style={{color:theme.text,fontSize:'18px',fontWeight:'600'}}>Click to upload or drag & drop</p>
-                    <p style={{color:theme.textSecondary,fontSize:'14px',marginTop:'8px'}}>CSV, XLSX files supported</p>
+                  
+                  <div style={{display:'flex',alignItems:'center',gap:'16px',marginBottom:'32px'}}>
+                    <div style={{fontSize:'48px'}}>📥</div>
+                    <div>
+                      <h2 style={{fontSize:'28px',fontWeight:'900',color:theme.text,marginBottom:'4px'}}>Bulk Product Upload</h2>
+                      <p style={{fontSize:'15px',color:theme.textSecondary}}>Upload Excel file to add multiple products at once</p>
+                    </div>
                   </div>
-                  <button onClick={()=>{addToast('Import completed: 156 products added','success');resetView();}} style={{padding:'14px 40px',background:'linear-gradient(135deg, #8b5cf6, #7c3aed)',color:'white',border:'none',borderRadius:'12px',fontSize:'16px',fontWeight:'800',cursor:'pointer'}}>Start Import</button>
+
+                  {/* Upload Area */}
+                  <div style={{border:`2px dashed #06b6d4`,borderRadius:'12px',padding:'48px',textAlign:'center',background:'rgba(8, 51, 68, 0.5)',marginBottom:'32px'}}>
+                    <input 
+                      id="bulk-product-file-input"
+                      type="file" 
+                      accept=".xlsx,.xls,.csv" 
+                      style={{display:'none'}} 
+                      onChange={(e)=>{
+                        const file = e.target.files?.[0];
+                        if(file){
+                          setFormData({...formData, selectedFile: file, fileName: file.name});
+                          addToast(`File "${file.name}" selected. Click Start Import to proceed.`,'success');
+                        }
+                      }}
+                    />
+                    <div style={{display:'flex',flexDirection:'column',alignItems:'center'}}>
+                      <svg width="64" height="64" viewBox="0 0 24 24" fill="currentColor" style={{color:'#9ca3af',marginBottom:'16px'}}>
+                        <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z" />
+                      </svg>
+                      <h3 style={{fontSize:'20px',fontWeight:'700',color:'white',marginBottom:'8px'}}>
+                        {formData.fileName || 'Click to upload or drag & drop'}
+                      </h3>
+                      <p style={{color:'#9ca3af',fontSize:'14px',marginBottom:'16px'}}>
+                        CSV, XLSX files supported
+                      </p>
+                      <button
+                        onClick={()=>{
+                          document.getElementById('bulk-product-file-input')?.click();
+                        }}
+                        style={{padding:'12px 32px',background:'linear-gradient(135deg, #06b6d4, #0891b2)',color:'white',border:'none',borderRadius:'10px',fontSize:'15px',fontWeight:'700',cursor:'pointer',boxShadow:'0 4px 12px rgba(6, 182, 212, 0.4)',transition:'all 0.3s'}}
+                        onMouseEnter={(e)=>e.currentTarget.style.transform='scale(1.05)'}
+                        onMouseLeave={(e)=>e.currentTarget.style.transform='scale(1)'}
+                      >
+                        📁 {formData.fileName ? 'Change File' : 'Select File'}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Start Import Button */}
+                  {formData.selectedFile && (
+                    <div style={{textAlign:'center',marginBottom:'32px'}}>
+                      <button
+                        onClick={async ()=>{
+                          try {
+                            const file = formData.selectedFile;
+                            if (!file) {
+                              addToast('No file selected','error');
+                              return;
+                            }
+                            
+                            console.log('Starting bulk import for file:', file.name);
+                            addToast('Processing Excel file...','info');
+                            const reader = new FileReader();
+                            
+                            reader.onload = async (e) => {
+                              try {
+                                console.log('File loaded, parsing Excel...');
+                                const data = new Uint8Array(e.target?.result as ArrayBuffer);
+                                const workbook = XLSX.read(data, {type: 'array'});
+                                const sheetName = workbook.SheetNames[0];
+                                const worksheet = workbook.Sheets[sheetName];
+                                const jsonData = XLSX.utils.sheet_to_json(worksheet);
+                                
+                                console.log('Parsed Excel data:', jsonData.length, 'rows');
+                                
+                                if (jsonData.length === 0) {
+                                  addToast('No data found in Excel file','error');
+                                  return;
+                                }
+                                
+                                // Map Excel columns to product fields
+                                const productsToImport = jsonData.map((row: any) => ({
+                                  sku: row.SKU || row.sku || '',
+                                  name: row['Product Name'] || row.name || '',
+                                  ean: row['EAN No.'] || row.EAN || row.ean || '',
+                                  category: row.Category || row.category || 'Hair Care',
+                                  unit: row.Unit || row.unit || 'pcs',
+                                  mrp: parseFloat(row.MRP || row.mrp || 0),
+                                  costPrice: parseFloat(row['Cost Price'] || row.costPrice || 0),
+                                  lowStockThreshold: parseInt(row['Low Stock'] || row.lowStockThreshold || 10),
+                                  batchTracking: (row['Batch Tracking'] || row.batchTracking || 'No').toLowerCase() === 'yes',
+                                  imageUrl: row['Image URL'] || row.imageUrl || '',
+                                  companyId: user?.companyId,
+                                  orgId: user?.orgId
+                                }));
+                                
+                                console.log('Products to import:', productsToImport.length);
+                                console.log('Sample product:', productsToImport[0]);
+                                
+                                // Validate
+                                const invalidProducts = productsToImport.filter(p => !p.sku || !p.name);
+                                if (invalidProducts.length > 0) {
+                                  console.log('Invalid products found:', invalidProducts.length);
+                                  addToast(`${invalidProducts.length} products missing SKU or Name`,'error');
+                                  return;
+                                }
+                                
+                                console.log('Starting import to database...');
+                                // Import to database
+                                const result = await addProductsBatch(productsToImport);
+                                
+                                console.log('Import result:', result.summary);
+                                
+                                if (result.summary.successful > 0) {
+                                  addToast(`Successfully imported ${result.summary.successful} products!`,'success');
+                                }
+                                if (result.summary.duplicates > 0) {
+                                  addToast(`${result.summary.duplicates} products skipped (duplicate SKUs)`,'warning');
+                                }
+                                if (result.summary.failed > 0) {
+                                  addToast(`${result.summary.failed} products failed to import`,'error');
+                                }
+                                
+                                // Reset and go back
+                                setTimeout(() => {
+                                  setFormData({});
+                                  resetView();
+                                }, 2000);
+                                
+                              } catch (error) {
+                                console.error('Import error:', error);
+                                addToast('Failed to import products. Check Excel format.','error');
+                              }
+                            };
+                            
+                            reader.onerror = (error) => {
+                              console.error('FileReader error:', error);
+                              addToast('Failed to read file. Please try again.','error');
+                            };
+                            
+                            reader.readAsArrayBuffer(file);
+                          } catch (error) {
+                            console.error('File read error:', error);
+                            addToast('Failed to read file','error');
+                          }
+                        }}
+                        style={{padding:'16px 48px',background:'linear-gradient(135deg, #8b5cf6, #7c3aed)',color:'white',border:'none',borderRadius:'12px',fontSize:'16px',fontWeight:'700',cursor:'pointer',boxShadow:'0 4px 16px rgba(139, 92, 246, 0.4)',transition:'all 0.3s'}}
+                        onMouseEnter={(e)=>e.currentTarget.style.transform='scale(1.05)'}
+                        onMouseLeave={(e)=>e.currentTarget.style.transform='scale(1)'}
+                      >
+                        🚀 Start Import
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Template Format Section */}
+                  <div style={{background:'rgb(31, 41, 55)',borderRadius:'12px',padding:'24px',border:'1px solid rgb(55, 65, 81)'}}>
+                    <div style={{display:'flex',alignItems:'center',marginBottom:'16px'}}>
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" style={{color:'#ec4899',marginRight:'8px'}}>
+                        <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z" />
+                      </svg>
+                      <h3 style={{fontSize:'18px',fontWeight:'800',color:'white'}}>Excel Template Format</h3>
+                    </div>
+                    
+                    {/* Sample Data Table */}
+                    <div style={{overflowX:'auto'}}>
+                      <table style={{width:'100%',fontSize:'13px',borderCollapse:'collapse'}}>
+                        <thead>
+                          <tr style={{borderBottom:'1px solid rgb(55, 65, 81)'}}>
+                            <th style={{textAlign:'left',padding:'12px 16px',color:'#9ca3af',fontWeight:'700'}}>SKU</th>
+                            <th style={{textAlign:'left',padding:'12px 16px',color:'#9ca3af',fontWeight:'700'}}>Product Name</th>
+                            <th style={{textAlign:'left',padding:'12px 16px',color:'#9ca3af',fontWeight:'700'}}>EAN No.</th>
+                            <th style={{textAlign:'left',padding:'12px 16px',color:'#9ca3af',fontWeight:'700'}}>Category</th>
+                            <th style={{textAlign:'left',padding:'12px 16px',color:'#9ca3af',fontWeight:'700'}}>Unit</th>
+                            <th style={{textAlign:'left',padding:'12px 16px',color:'#9ca3af',fontWeight:'700'}}>MRP</th>
+                            <th style={{textAlign:'left',padding:'12px 16px',color:'#9ca3af',fontWeight:'700'}}>Cost Price</th>
+                            <th style={{textAlign:'left',padding:'12px 16px',color:'#9ca3af',fontWeight:'700'}}>Low Stock</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr style={{borderBottom:'1px solid rgba(55, 65, 81, 0.5)'}}>
+                            <td style={{padding:'12px 16px',color:'#d1d5db'}}>SAMPLE-001</td>
+                            <td style={{padding:'12px 16px',color:'#d1d5db'}}>Aloe Vera Serum</td>
+                            <td style={{padding:'12px 16px',color:'#d1d5db'}}>8901234567890</td>
+                            <td style={{padding:'12px 16px',color:'#d1d5db'}}>Hair Care</td>
+                            <td style={{padding:'12px 16px',color:'#d1d5db'}}>ml</td>
+                            <td style={{padding:'12px 16px',color:'#d1d5db'}}>599</td>
+                            <td style={{padding:'12px 16px',color:'#d1d5db'}}>150</td>
+                            <td style={{padding:'12px 16px',color:'#d1d5db'}}>50</td>
+                          </tr>
+                          <tr style={{borderBottom:'1px solid rgba(55, 65, 81, 0.5)'}}>
+                            <td style={{padding:'12px 16px',color:'#d1d5db'}}>SAMPLE-002</td>
+                            <td style={{padding:'12px 16px',color:'#d1d5db'}}>Rose Face Cream</td>
+                            <td style={{padding:'12px 16px',color:'#d1d5db'}}>8901234567891</td>
+                            <td style={{padding:'12px 16px',color:'#d1d5db'}}>Face Care</td>
+                            <td style={{padding:'12px 16px',color:'#d1d5db'}}>g</td>
+                            <td style={{padding:'12px 16px',color:'#d1d5db'}}>899</td>
+                            <td style={{padding:'12px 16px',color:'#d1d5db'}}>220</td>
+                            <td style={{padding:'12px 16px',color:'#d1d5db'}}>30</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div style={{display:'flex',gap:'12px',marginTop:'24px'}}>
+                      <button
+                        onClick={()=>{
+                          // Create proper XLSX template
+                          const wb = XLSX.utils.book_new();
+                          
+                          // Sample data
+                          const sampleData = [
+                            {SKU:'SAMPLE-001','Product Name':'Aloe Vera Hair Serum 100ml','EAN No.':'8901234567890',Category:'Hair Care',Unit:'ml',MRP:599,'Cost Price':150,'Low Stock':50,'Batch Tracking':'Yes','Image URL':''},
+                            {SKU:'SAMPLE-002','Product Name':'Rose Face Cream 50g','EAN No.':'8901234567891',Category:'Face Care',Unit:'g',MRP:899,'Cost Price':220,'Low Stock':30,'Batch Tracking':'No','Image URL':''},
+                            {SKU:'SAMPLE-003','Product Name':'Vitamin C Serum 30ml','EAN No.':'8901234567892',Category:'Skin Care',Unit:'ml',MRP:1299,'Cost Price':350,'Low Stock':40,'Batch Tracking':'Yes','Image URL':''},
+                          ];
+                          
+                          const ws = XLSX.utils.json_to_sheet(sampleData);
+                          
+                          // Set column widths
+                          ws['!cols'] = [
+                            {wch: 15},  // SKU
+                            {wch: 35},  // Product Name
+                            {wch: 18},  // EAN No.
+                            {wch: 15},  // Category
+                            {wch: 8},   // Unit
+                            {wch: 10},  // MRP
+                            {wch: 12},  // Cost Price
+                            {wch: 12},  // Low Stock
+                            {wch: 15},  // Batch Tracking
+                            {wch: 20}   // Image URL
+                          ];
+                          
+                          XLSX.utils.book_append_sheet(wb, ws, 'Products');
+                          
+                          // Add instructions sheet
+                          const instructions = [
+                            {Field: 'SKU', Description: 'Unique product code (required)', Example: 'SAMPLE-001'},
+                            {Field: 'Product Name', Description: 'Full product name (required)', Example: 'Aloe Vera Hair Serum 100ml'},
+                            {Field: 'EAN No.', Description: 'EAN/Barcode number (13 digits, optional)', Example: '8901234567890'},
+                            {Field: 'Category', Description: 'Hair Care, Skin Care, Face Care, Body Care', Example: 'Hair Care'},
+                            {Field: 'Unit', Description: 'pcs, ml, or g', Example: 'ml'},
+                            {Field: 'MRP', Description: 'Maximum retail price in ₹', Example: '599'},
+                            {Field: 'Cost Price', Description: 'Your cost price in ₹', Example: '150'},
+                            {Field: 'Low Stock', Description: 'Minimum stock alert threshold', Example: '50'},
+                            {Field: 'Batch Tracking', Description: 'Yes or No', Example: 'Yes'},
+                            {Field: 'Image URL', Description: 'Product image URL (optional)', Example: 'https://...'}
+                          ];
+                          const wsInstructions = XLSX.utils.json_to_sheet(instructions);
+                          wsInstructions['!cols'] = [{wch: 20}, {wch: 45}, {wch: 30}];
+                          XLSX.utils.book_append_sheet(wb, wsInstructions, 'Instructions');
+                          
+                          XLSX.writeFile(wb, 'Product_Upload_Template.xlsx');
+                          addToast('Template downloaded successfully!','success');
+                        }}
+                        style={{padding:'12px 24px',background:'#06b6d4',color:'white',border:'none',borderRadius:'8px',fontSize:'14px',fontWeight:'700',cursor:'pointer',display:'flex',alignItems:'center',gap:'8px'}}
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+                        </svg>
+                        Download Template
+                      </button>
+                      <button
+                        onClick={()=>{
+                          addToast('Required columns: SKU, Product Name, Category, Unit, MRP, Cost Price, Low Stock\\n\\nValid categories: Hair Care, Skin Care, Face Care, Body Care\\nValid units: pcs, ml, g\\n\\nOptional: Batch Tracking (Yes/No), Image URL','info');
+                        }}
+                        style={{padding:'12px 24px',background:'rgb(55, 65, 81)',color:'white',border:'none',borderRadius:'8px',fontSize:'14px',fontWeight:'700',cursor:'pointer',display:'flex',alignItems:'center',gap:'8px'}}
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <circle cx="12" cy="12" r="10"/>
+                          <path d="M12 16v-4M12 8h.01"/>
+                        </svg>
+                        View Sample
+                      </button>
+                    </div>
+                  </div>
                 </div>
               )}
               {activeView === 'manage-categories' && (
@@ -920,37 +1218,68 @@ function DashboardPage() {
                   </div>
                 </div>
               )}
-              {activeView === 'platform-orders' && (
-                <div style={{background:theme.cardBg,padding:'40px',borderRadius:'20px',border:`2px solid ${theme.border}`,boxShadow:darkMode?'0 8px 32px rgba(0,0,0,0.3)':'0 8px 32px rgba(0,0,0,0.1)'}}>
-                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'32px'}}>
-                    <h2 style={{fontSize:'28px',fontWeight:'900',color:theme.text}}>🛒 Platform Orders</h2>
-                    <button onClick={resetView} style={{padding:'10px 24px',background:theme.sidebarHover,color:theme.text,border:`2px solid ${theme.border}`,borderRadius:'10px',fontSize:'15px',fontWeight:'700',cursor:'pointer'}}>← Back</button>
-                  </div>
-                  <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:'20px',marginBottom:'32px'}}>
-                    {[{platform:'Amazon',orders:45,color:'#ff9900'},{platform:'Flipkart',orders:32,color:'#2874f0'},{platform:'Meesho',orders:28,color:'#9c1ab1'}].map((p,i)=>(
-                      <div key={i} style={{background:theme.sidebarHover,padding:'24px',borderRadius:'16px',border:`2px solid ${theme.border}`,cursor:'pointer'}} onMouseEnter={(e)=>e.currentTarget.style.borderColor=p.color} onMouseLeave={(e)=>e.currentTarget.style.borderColor=theme.border}>
-                        <h3 style={{color:theme.text,fontSize:'20px',fontWeight:'800',marginBottom:'12px'}}>{p.platform}</h3>
-                        <p style={{color:p.color,fontSize:'32px',fontWeight:'900'}}>{p.orders}</p>
-                        <p style={{color:theme.textSecondary,fontSize:'14px'}}>Pending Orders</p>
-                      </div>
-                    ))}
-                  </div>
-                  <table style={{width:'100%',borderCollapse:'collapse'}}>
-                    <thead><tr style={{background:theme.sidebarHover,borderBottom:`2px solid ${theme.border}`}}><th style={{padding:'16px',textAlign:'left',color:theme.text,fontWeight:'700'}}>Order ID</th><th style={{padding:'16px',textAlign:'left',color:theme.text,fontWeight:'700'}}>Platform</th><th style={{padding:'16px',textAlign:'left',color:theme.text,fontWeight:'700'}}>Product</th><th style={{padding:'16px',textAlign:'left',color:theme.text,fontWeight:'700'}}>Status</th><th style={{padding:'16px',textAlign:'left',color:theme.text,fontWeight:'700'}}>Action</th></tr></thead>
-                    <tbody>
-                      {[{id:'AMZ12345',platform:'Amazon',product:'Wireless Mouse',status:'Pending'},{id:'FLP67890',platform:'Flipkart',product:'USB Cable',status:'Processing'},{id:'MSH45678',platform:'Meesho',product:'T-Shirt',status:'Pending'}].map((order,i)=>(
-                        <tr key={i} style={{borderBottom:`1px solid ${theme.border}`}}>
-                          <td style={{padding:'16px',color:theme.text,fontWeight:'600'}}>{order.id}</td>
-                          <td style={{padding:'16px',color:theme.text}}>{order.platform}</td>
-                          <td style={{padding:'16px',color:theme.textSecondary}}>{order.product}</td>
-                          <td style={{padding:'16px'}}><span style={{padding:'6px 14px',background:'#fbbf2420',color:'#f59e0b',borderRadius:'8px',fontSize:'13px',fontWeight:'700'}}>{order.status}</span></td>
-                          <td style={{padding:'16px'}}><button onClick={()=>addToast(`Processing order ${order.id}`,'success')} style={{padding:'8px 20px',background:'linear-gradient(135deg, #f59e0b, #d97706)',color:'white',border:'none',borderRadius:'8px',fontSize:'13px',fontWeight:'700',cursor:'pointer'}}>Process</button></td>
-                        </tr>
+              {activeView === 'platform-orders' && (() => {
+                // Calculate platform-wise orders from real data
+                const platformCounts = realOutwardRecords.reduce((acc: any, record: any) => {
+                  const platform = record.platform || 'Other';
+                  acc[platform] = (acc[platform] || 0) + 1;
+                  return acc;
+                }, {});
+                
+                const platformData = [
+                  {platform: 'Amazon', orders: platformCounts['Amazon'] || 0, color: '#ff9900'},
+                  {platform: 'Flipkart', orders: platformCounts['Flipkart'] || 0, color: '#2874f0'},
+                  {platform: 'Meesho', orders: platformCounts['Meesho'] || 0, color: '#9c1ab1'}
+                ];
+                
+                // Get recent orders with product names
+                const recentOrders = realOutwardRecords.slice(-10).reverse().map((record: any) => {
+                  const product = realProducts.find((p: any) => p.id === record.productId);
+                  return {
+                    id: record.orderNumber || record.awbNumber || record.id,
+                    platform: record.platform || 'Other',
+                    product: product?.name || 'Unknown Product',
+                    quantity: record.quantity,
+                    status: 'Completed',
+                    date: new Date(record.createdAt).toLocaleDateString()
+                  };
+                });
+                
+                return (
+                  <div style={{background:theme.cardBg,padding:'40px',borderRadius:'20px',border:`2px solid ${theme.border}`,boxShadow:darkMode?'0 8px 32px rgba(0,0,0,0.3)':'0 8px 32px rgba(0,0,0,0.1)'}}>
+                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'32px'}}>
+                      <h2 style={{fontSize:'28px',fontWeight:'900',color:theme.text}}>🛒 Platform Orders</h2>
+                      <button onClick={resetView} style={{padding:'10px 24px',background:theme.sidebarHover,color:theme.text,border:`2px solid ${theme.border}`,borderRadius:'10px',fontSize:'15px',fontWeight:'700',cursor:'pointer'}}>← Back</button>
+                    </div>
+                    <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:'20px',marginBottom:'32px'}}>
+                      {platformData.map((p,i)=>(
+                        <div key={i} style={{background:theme.sidebarHover,padding:'24px',borderRadius:'16px',border:`2px solid ${theme.border}`,cursor:'pointer'}} onMouseEnter={(e)=>e.currentTarget.style.borderColor=p.color} onMouseLeave={(e)=>e.currentTarget.style.borderColor=theme.border}>
+                          <h3 style={{color:theme.text,fontSize:'20px',fontWeight:'800',marginBottom:'12px'}}>{p.platform}</h3>
+                          <p style={{color:p.color,fontSize:'32px',fontWeight:'900'}}>{p.orders}</p>
+                          <p style={{color:theme.textSecondary,fontSize:'14px'}}>Total Orders</p>
+                        </div>
                       ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
+                    </div>
+                    <table style={{width:'100%',borderCollapse:'collapse'}}>
+                      <thead><tr style={{background:theme.sidebarHover,borderBottom:`2px solid ${theme.border}`}}><th style={{padding:'16px',textAlign:'left',color:theme.text,fontWeight:'700'}}>Order ID</th><th style={{padding:'16px',textAlign:'left',color:theme.text,fontWeight:'700'}}>Platform</th><th style={{padding:'16px',textAlign:'left',color:theme.text,fontWeight:'700'}}>Product</th><th style={{padding:'16px',textAlign:'left',color:theme.text,fontWeight:'700'}}>Quantity</th><th style={{padding:'16px',textAlign:'left',color:theme.text,fontWeight:'700'}}>Date</th><th style={{padding:'16px',textAlign:'left',color:theme.text,fontWeight:'700'}}>Status</th></tr></thead>
+                      <tbody>
+                        {recentOrders.length > 0 ? recentOrders.map((order: any, i: number)=>(
+                          <tr key={i} style={{borderBottom:`1px solid ${theme.border}`}}>
+                            <td style={{padding:'16px',color:theme.text,fontWeight:'600'}}>{order.id}</td>
+                            <td style={{padding:'16px',color:theme.text}}>{order.platform}</td>
+                            <td style={{padding:'16px',color:theme.textSecondary}}>{order.product}</td>
+                            <td style={{padding:'16px',color:theme.text}}>{order.quantity}</td>
+                            <td style={{padding:'16px',color:theme.textSecondary,fontSize:'13px'}}>{order.date}</td>
+                            <td style={{padding:'16px'}}><span style={{padding:'6px 14px',background:'#10b98120',color:'#10b981',borderRadius:'8px',fontSize:'13px',fontWeight:'700'}}>{order.status}</span></td>
+                          </tr>
+                        )) : (
+                          <tr><td colSpan={6} style={{padding:'32px',textAlign:'center',color:theme.textSecondary}}>No platform orders found. Create outward entries to see data here.</td></tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                );
+              })()}
             </div>
           )}
           
@@ -1262,6 +1591,7 @@ function DashboardPage() {
                   <div style={{display:'flex',gap:'16px',justifyContent:'center',flexWrap:'wrap'}}>
                     <button onClick={()=>handleAction('Opening Profile Settings','profile-settings')} style={{padding:'16px 40px',background:'linear-gradient(135deg, #6366f1, #4f46e5)',color:'white',border:'none',borderRadius:'14px',fontSize:'17px',fontWeight:'800',cursor:'pointer',boxShadow:'0 6px 24px #6366f150',transition:'all 0.4s'}} onMouseEnter={(e)=>{e.currentTarget.style.transform='translateY(-4px) scale(1.05)';e.currentTarget.style.boxShadow='0 12px 40px #6366f170';}} onMouseLeave={(e)=>{e.currentTarget.style.transform='translateY(0) scale(1)';e.currentTarget.style.boxShadow='0 6px 24px #6366f150';}}>👤 Profile</button>
                     <button onClick={()=>handleAction('Opening Warehouse Config','warehouse-config')} style={{padding:'16px 40px',background:theme.sidebarHover,color:theme.text,border:`2px solid ${theme.border}`,borderRadius:'14px',fontSize:'17px',fontWeight:'800',cursor:'pointer',transition:'all 0.4s'}} onMouseEnter={(e)=>{e.currentTarget.style.borderColor='#6366f1';e.currentTarget.style.transform='translateY(-4px)';e.currentTarget.style.boxShadow='0 8px 24px rgba(99,102,241,0.2)';}} onMouseLeave={(e)=>{e.currentTarget.style.borderColor=theme.border;e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.boxShadow='none';}}>🏭 Warehouse</button>
+                    <button onClick={()=>handleAction('Opening Platform Management','platform-management')} style={{padding:'16px 40px',background:theme.sidebarHover,color:theme.text,border:`2px solid ${theme.border}`,borderRadius:'14px',fontSize:'17px',fontWeight:'800',cursor:'pointer',transition:'all 0.4s'}} onMouseEnter={(e)=>{e.currentTarget.style.borderColor='#f59e0b';e.currentTarget.style.transform='translateY(-4px)';e.currentTarget.style.boxShadow='0 8px 24px rgba(245,158,11,0.2)';}} onMouseLeave={(e)=>{e.currentTarget.style.borderColor=theme.border;e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.boxShadow='none';}}>🛒 Platforms</button>
                   </div>
                 </div>
               )}
@@ -1342,6 +1672,208 @@ function DashboardPage() {
                   <div style={{marginTop:'32px',display:'flex',gap:'16px'}}>
                     <button onClick={()=>{if(formData.warehouseName && formData.warehouseLocation){addToast(`✅ Warehouse "${formData.warehouseName}" updated successfully!`,'success');resetView();}else{addToast('❌ Please fill warehouse name and location','error');}}} style={{padding:'14px 40px',background:'linear-gradient(135deg, #6366f1, #4f46e5)',color:'white',border:'none',borderRadius:'12px',fontSize:'16px',fontWeight:'800',cursor:'pointer'}}>💾 Save Changes</button>
                     <button onClick={resetView} style={{padding:'14px 40px',background:theme.sidebarHover,color:theme.text,border:`2px solid ${theme.border}`,borderRadius:'12px',fontSize:'16px',fontWeight:'700',cursor:'pointer'}}>Cancel</button>
+                  </div>
+                </div>
+              )}
+              {activeView === 'platform-management' && (
+                <div style={{background:theme.cardBg,padding:'40px',borderRadius:'20px',border:`2px solid ${theme.border}`,boxShadow:darkMode?'0 8px 32px rgba(0,0,0,0.3)':'0 8px 32px rgba(0,0,0,0.1)'}}>
+                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'32px'}}>
+                    <h2 style={{fontSize:'28px',fontWeight:'900',color:theme.text}}>🛒 Platform Management</h2>
+                    <button onClick={resetView} style={{padding:'10px 24px',background:theme.sidebarHover,color:theme.text,border:`2px solid ${theme.border}`,borderRadius:'10px',fontSize:'15px',fontWeight:'700',cursor:'pointer'}}>← Back</button>
+                  </div>
+                  
+                  {/* Add New Platform Form */}
+                  <div style={{marginBottom:'32px',padding:'24px',background:'linear-gradient(135deg, #f59e0b10, #d9770610)',border:`2px solid #f59e0b30`,borderRadius:'16px'}}>
+                    <label style={{display:'block',color:theme.text,marginBottom:'12px',fontWeight:'700',fontSize:'17px'}}>➕ Add New Platform</label>
+                    <div style={{display:'grid',gridTemplateColumns:'2fr 1fr auto',gap:'12px'}}>
+                      <input 
+                        type="text" 
+                        placeholder="Platform name (e.g., Nykaa, Blinkit)" 
+                        value={formData.newPlatformName||''} 
+                        onChange={(e)=>setFormData({...formData,newPlatformName:e.target.value})} 
+                        style={{padding:'14px',background:theme.cardBg,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px'}} 
+                      />
+                      <input 
+                        type="color" 
+                        value={formData.newPlatformColor||'#FF9900'} 
+                        onChange={(e)=>setFormData({...formData,newPlatformColor:e.target.value})} 
+                        style={{padding:'6px',background:theme.cardBg,border:`2px solid ${theme.border}`,borderRadius:'10px',cursor:'pointer',height:'100%'}}
+                        title="Choose platform color"
+                      />
+                      <button 
+                        onClick={()=>{
+                          if(formData.newPlatformName){
+                            const newId = Math.max(...platforms.map(p=>p.id),0)+1;
+                            setPlatforms([...platforms,{
+                              id:newId,
+                              name:formData.newPlatformName,
+                              color:formData.newPlatformColor||'#FF9900',
+                              enabled:true
+                            }]);
+                            addToast(`Platform "${formData.newPlatformName}" added!`,'success');
+                            setFormData({...formData,newPlatformName:'',newPlatformColor:'#FF9900'});
+                          }else{
+                            addToast('Please enter platform name','error');
+                          }
+                        }} 
+                        style={{padding:'14px 32px',background:'linear-gradient(135deg, #f59e0b, #d97706)',color:'white',border:'none',borderRadius:'10px',fontSize:'15px',fontWeight:'700',cursor:'pointer',whiteSpace:'nowrap'}}
+                      >
+                        Add Platform
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Platforms List */}
+                  <h3 style={{fontSize:'20px',fontWeight:'800',color:theme.text,marginBottom:'20px'}}>📋 All Platforms ({platforms.length})</h3>
+                  <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill, minmax(320px, 1fr))',gap:'16px'}}>
+                    {platforms.map((platform)=>(
+                      <div 
+                        key={platform.id} 
+                        style={{
+                          padding:'20px',
+                          background:theme.sidebarHover,
+                          border:`2px solid ${platform.enabled?platform.color+'40':theme.border}`,
+                          borderRadius:'12px',
+                          display:'flex',
+                          justifyContent:'space-between',
+                          alignItems:'center',
+                          transition:'all 0.3s',
+                          opacity:platform.enabled?1:0.6
+                        }} 
+                        onMouseEnter={(e)=>{
+                          if(platform.enabled){
+                            e.currentTarget.style.borderColor=platform.color;
+                            e.currentTarget.style.transform='translateY(-2px)';
+                          }
+                        }} 
+                        onMouseLeave={(e)=>{
+                          e.currentTarget.style.borderColor=platform.enabled?platform.color+'40':theme.border;
+                          e.currentTarget.style.transform='translateY(0)';
+                        }}
+                      >
+                        <div style={{display:'flex',alignItems:'center',gap:'12px',flex:1}}>
+                          <div style={{width:'40px',height:'40px',background:platform.color,borderRadius:'8px',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'20px'}}>🛒</div>
+                          <div>
+                            <p style={{color:theme.text,fontSize:'16px',fontWeight:'700',marginBottom:'4px'}}>{platform.name}</p>
+                            <p style={{color:theme.textSecondary,fontSize:'13px'}}>{platform.enabled?'✅ Active':'⏸️ Disabled'}</p>
+                          </div>
+                        </div>
+                        <div style={{display:'flex',gap:'8px'}}>
+                          <button 
+                            onClick={()=>{
+                              setPlatforms(platforms.map(p=>p.id===platform.id?{...p,enabled:!p.enabled}:p));
+                              addToast(`Platform "${platform.name}" ${!platform.enabled?'enabled':'disabled'}!`,!platform.enabled?'success':'info');
+                            }} 
+                            style={{
+                              padding:'8px 12px',
+                              background:platform.enabled?'linear-gradient(135deg, #6b7280, #4b5563)':'linear-gradient(135deg, #10b981, #059669)',
+                              color:'white',
+                              border:'none',
+                              borderRadius:'8px',
+                              fontSize:'12px',
+                              fontWeight:'700',
+                              cursor:'pointer'
+                            }}
+                          >
+                            {platform.enabled?'⏸️':'▶️'}
+                          </button>
+                          <button 
+                            onClick={()=>{
+                              setFormData({
+                                ...formData,
+                                editPlatformId:platform.id,
+                                editPlatformName:platform.name,
+                                editPlatformColor:platform.color
+                              });
+                              setActiveView('edit-platform');
+                              addToast(`Editing ${platform.name}...`,'info');
+                            }} 
+                            style={{
+                              padding:'8px 12px',
+                              background:'linear-gradient(135deg, #3b82f6, #2563eb)',
+                              color:'white',
+                              border:'none',
+                              borderRadius:'8px',
+                              fontSize:'12px',
+                              fontWeight:'700',
+                              cursor:'pointer'
+                            }}
+                          >
+                            ✏️
+                          </button>
+                          <button 
+                            onClick={()=>{
+                              if(window.confirm(`Delete platform "${platform.name}"? This cannot be undone.`)){
+                                setPlatforms(platforms.filter(p=>p.id!==platform.id));
+                                addToast(`Platform "${platform.name}" deleted!`,'success');
+                              }
+                            }} 
+                            style={{
+                              padding:'8px 12px',
+                              background:'linear-gradient(135deg, #ef4444, #dc2626)',
+                              color:'white',
+                              border:'none',
+                              borderRadius:'8px',
+                              fontSize:'12px',
+                              fontWeight:'700',
+                              cursor:'pointer'
+                            }}
+                          >
+                            🗑️
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {activeView === 'edit-platform' && (
+                <div style={{background:theme.cardBg,padding:'40px',borderRadius:'20px',border:`2px solid ${theme.border}`,boxShadow:darkMode?'0 8px 32px rgba(0,0,0,0.3)':'0 8px 32px rgba(0,0,0,0.1)'}}>
+                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'32px'}}>
+                    <h2 style={{fontSize:'28px',fontWeight:'900',color:theme.text}}>✏️ Edit Platform</h2>
+                    <button onClick={()=>setActiveView('platform-management')} style={{padding:'10px 24px',background:theme.sidebarHover,color:theme.text,border:`2px solid ${theme.border}`,borderRadius:'10px',fontSize:'15px',fontWeight:'700',cursor:'pointer'}}>← Back</button>
+                  </div>
+                  <div style={{display:'grid',gridTemplateColumns:'2fr 1fr',gap:'24px',maxWidth:'600px'}}>
+                    <div>
+                      <label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>Platform Name</label>
+                      <input 
+                        type="text" 
+                        placeholder="Platform name" 
+                        value={formData.editPlatformName||''} 
+                        onChange={(e)=>setFormData({...formData,editPlatformName:e.target.value})} 
+                        style={{width:'100%',padding:'14px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px'}} 
+                      />
+                    </div>
+                    <div>
+                      <label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>Platform Color</label>
+                      <input 
+                        type="color" 
+                        value={formData.editPlatformColor||'#FF9900'} 
+                        onChange={(e)=>setFormData({...formData,editPlatformColor:e.target.value})} 
+                        style={{width:'100%',padding:'6px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',cursor:'pointer',height:'52px'}}
+                      />
+                    </div>
+                  </div>
+                  <div style={{marginTop:'32px',display:'flex',gap:'16px'}}>
+                    <button 
+                      onClick={()=>{
+                        if(formData.editPlatformName){
+                          setPlatforms(platforms.map(p=>
+                            p.id===formData.editPlatformId
+                              ?{...p,name:formData.editPlatformName,color:formData.editPlatformColor}
+                              :p
+                          ));
+                          addToast('Platform updated successfully!','success');
+                          setActiveView('platform-management');
+                        }else{
+                          addToast('Please enter platform name','error');
+                        }
+                      }} 
+                      style={{padding:'14px 40px',background:'linear-gradient(135deg, #f59e0b, #d97706)',color:'white',border:'none',borderRadius:'12px',fontSize:'16px',fontWeight:'800',cursor:'pointer'}}
+                    >
+                      💾 Save Changes
+                    </button>
+                    <button onClick={()=>setActiveView('platform-management')} style={{padding:'14px 40px',background:theme.sidebarHover,color:theme.text,border:`2px solid ${theme.border}`,borderRadius:'12px',fontSize:'16px',fontWeight:'700',cursor:'pointer'}}>Cancel</button>
                   </div>
                 </div>
               )}

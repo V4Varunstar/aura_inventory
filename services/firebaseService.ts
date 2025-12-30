@@ -1177,10 +1177,16 @@ export const getDashboardData = async () => {
             totalUnits += qty;
             const product = products.find(p => p.sku === sku);
             if (product) {
-                totalStockValue += qty * product.costPrice;
+                const itemValue = qty * product.costPrice;
+                totalStockValue += itemValue;
+                console.log(`Inventory Value - SKU: ${sku}, Qty: ${qty}, Cost: ₹${product.costPrice}, Value: ₹${itemValue}`);
+            } else {
+                console.log(`Inventory Value - Product not found for SKU: ${sku}`);
             }
         }
     });
+    
+    console.log(`Total Inventory: ${totalUnits} pcs, Value: ₹${totalStockValue.toFixed(2)}`);
     
     // Calculate low stock items
     const lowStockItems = products.filter(product => {

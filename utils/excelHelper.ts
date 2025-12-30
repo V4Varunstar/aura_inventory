@@ -244,7 +244,7 @@ export const generateSampleTemplate = (): void => {
   const sampleData = [
     {
       sku: 'SAMPLE-001',
-      name: 'Sample Product 1',
+      name: 'Aloe Vera Hair Serum 100ml',
       category: 'Hair Care',
       unit: 'ml',
       mrp: 599,
@@ -255,7 +255,7 @@ export const generateSampleTemplate = (): void => {
     },
     {
       sku: 'SAMPLE-002',
-      name: 'Sample Product 2',
+      name: 'Rose Face Cream 50g',
       category: 'Face Care',
       unit: 'g',
       mrp: 899,
@@ -264,28 +264,106 @@ export const generateSampleTemplate = (): void => {
       batchTracking: 'No',
       imageUrl: '',
     },
+    {
+      sku: 'SAMPLE-003',
+      name: 'Vitamin C Face Wash',
+      category: 'Skin Care',
+      unit: 'ml',
+      mrp: 349,
+      costPrice: 95,
+      lowStockThreshold: 40,
+      batchTracking: 'Yes',
+      imageUrl: '',
+    },
+    {
+      sku: 'SAMPLE-004',
+      name: 'Body Lotion 200ml',
+      category: 'Body Care',
+      unit: 'ml',
+      mrp: 450,
+      costPrice: 125,
+      lowStockThreshold: 25,
+      batchTracking: 'No',
+      imageUrl: '',
+    },
+    {
+      sku: 'SAMPLE-005',
+      name: 'Hand Sanitizer Pack (5 pcs)',
+      category: 'Body Care',
+      unit: 'pcs',
+      mrp: 299,
+      costPrice: 80,
+      lowStockThreshold: 100,
+      batchTracking: 'Yes',
+      imageUrl: '',
+    },
   ];
 
   const worksheet = XLSX.utils.json_to_sheet(sampleData);
+  
+  // Set column widths for better visibility
+  worksheet['!cols'] = [
+    { wch: 15 },  // sku
+    { wch: 35 },  // name
+    { wch: 12 },  // category
+    { wch: 8 },   // unit
+    { wch: 10 },  // mrp
+    { wch: 12 },  // costPrice
+    { wch: 18 },  // lowStockThreshold
+    { wch: 15 },  // batchTracking
+    { wch: 30 },  // imageUrl
+  ];
+  
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, worksheet, 'Products');
 
-  // Add instructions sheet
+  // Add instructions sheet with comprehensive guidance
   const instructions = [
-    { Field: 'sku', Required: 'Yes', Description: 'Unique product SKU code' },
-    { Field: 'name', Required: 'Yes', Description: 'Product name' },
-    { Field: 'category', Required: 'Yes', Description: 'One of: Hair Care, Skin Care, Face Care, Body Care' },
-    { Field: 'unit', Required: 'Yes', Description: 'One of: pcs, ml, g' },
-    { Field: 'mrp', Required: 'Yes', Description: 'Maximum Retail Price (positive number)' },
-    { Field: 'costPrice', Required: 'Yes', Description: 'Cost price (positive number)' },
-    { Field: 'lowStockThreshold', Required: 'Yes', Description: 'Minimum stock alert level (number)' },
-    { Field: 'batchTracking', Required: 'No', Description: 'Yes or No (default: No)' },
-    { Field: 'imageUrl', Required: 'No', Description: 'Product image URL (optional)' },
+    { Field: 'sku', Required: 'Yes', Type: 'Text', Description: 'Unique product SKU/code (e.g., PROD-001, SKU-ABC-123)', Example: 'SAMPLE-001' },
+    { Field: 'name', Required: 'Yes', Type: 'Text', Description: 'Product name - be descriptive and include size/variant', Example: 'Aloe Vera Hair Serum 100ml' },
+    { Field: 'category', Required: 'Yes', Type: 'Dropdown', Description: 'Must be exactly one of: Hair Care, Skin Care, Face Care, Body Care', Example: 'Hair Care' },
+    { Field: 'unit', Required: 'Yes', Type: 'Dropdown', Description: 'Measurement unit - Must be: pcs, ml, or g', Example: 'ml' },
+    { Field: 'mrp', Required: 'Yes', Type: 'Number', Description: 'Maximum Retail Price in ₹ (must be positive number)', Example: '599' },
+    { Field: 'costPrice', Required: 'Yes', Type: 'Number', Description: 'Your cost/purchase price in ₹ (must be positive)', Example: '150' },
+    { Field: 'lowStockThreshold', Required: 'Yes', Type: 'Number', Description: 'Minimum stock level before alert (0 or positive)', Example: '50' },
+    { Field: 'batchTracking', Required: 'No', Type: 'Yes/No', Description: 'Enable batch tracking? Type "Yes" or "No". Default: No', Example: 'Yes' },
+    { Field: 'imageUrl', Required: 'No', Type: 'URL', Description: 'Product image URL (leave blank for default image)', Example: 'https://example.com/image.jpg' },
   ];
   const instructionSheet = XLSX.utils.json_to_sheet(instructions);
+  
+  // Set column widths for instructions
+  instructionSheet['!cols'] = [
+    { wch: 20 },  // Field
+    { wch: 10 },  // Required
+    { wch: 12 },  // Type
+    { wch: 60 },  // Description
+    { wch: 30 },  // Example
+  ];
+  
   XLSX.utils.book_append_sheet(workbook, instructionSheet, 'Instructions');
 
-  XLSX.writeFile(workbook, 'Bulk_Product_Upload_Template.xlsx');
+  // Add tips sheet
+  const tips = [
+    { 'Tip #': '1', Category: 'General', Tip: 'Make sure there are NO EMPTY ROWS in your data' },
+    { 'Tip #': '2', Category: 'SKU', Tip: 'SKUs must be unique - duplicate SKUs will be rejected' },
+    { 'Tip #': '3', Category: 'Category', Tip: 'Copy-paste category names from examples to avoid typos' },
+    { 'Tip #': '4', Category: 'Unit', Tip: 'Valid units are: pcs, ml, g (case-insensitive)' },
+    { 'Tip #': '5', Category: 'Prices', Tip: 'Do not include ₹ symbol or commas in price fields' },
+    { 'Tip #': '6', Category: 'Numbers', Tip: 'MRP and Cost Price must be greater than 0' },
+    { 'Tip #': '7', Category: 'Batch', Tip: 'Use batch tracking for items with expiry dates' },
+    { 'Tip #': '8', Category: 'Images', Tip: 'Image URL is optional - leave blank for default' },
+    { 'Tip #': '9', Category: 'Testing', Tip: 'Upload 2-3 products first to test before bulk upload' },
+    { 'Tip #': '10', Category: 'Format', Tip: 'Keep the column headers exactly as shown in template' },
+  ];
+  const tipsSheet = XLSX.utils.json_to_sheet(tips);
+  tipsSheet['!cols'] = [
+    { wch: 8 },   // Tip #
+    { wch: 15 },  // Category
+    { wch: 70 },  // Tip
+  ];
+  XLSX.utils.book_append_sheet(workbook, tipsSheet, 'Tips');
+
+  XLSX.writeFile(workbook, 'Product_Upload_Template.xlsx');
 };
 
 /**

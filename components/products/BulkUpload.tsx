@@ -140,49 +140,104 @@ const BulkUpload: React.FC<BulkUploadProps> = ({ isOpen, onClose, onSuccess }) =
 
   const renderSelectFile = () => (
     <div className="space-y-6">
-      <div className="text-center">
-        <Upload className="mx-auto h-12 w-12 text-gray-400" />
-        <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-gray-100">
-          Upload Excel File
-        </h3>
-        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-          Upload an Excel file (.xlsx) with product data
-        </p>
-      </div>
-
-      <div className="flex items-center justify-center w-full">
-        <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:hover:border-gray-500 dark:hover:bg-gray-600">
-          <div className="flex flex-col items-center justify-center pt-5 pb-6">
-            <Upload className="w-8 h-8 mb-2 text-gray-500 dark:text-gray-400" />
-            <p className="mb-2 text-sm text-gray-500 dark:text-gray-400">
-              <span className="font-semibold">Click to upload</span> or drag and drop
-            </p>
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              Excel files only (.xlsx, .xls)
-            </p>
+      {/* Upload Area */}
+      <div className="border-2 border-dashed border-cyan-500 rounded-lg p-12 text-center bg-gray-800/50">
+        <input
+          id="bulk-upload-file-input"
+          type="file"
+          className="hidden"
+          accept=".xlsx,.xls,.csv"
+          onChange={handleFileChange}
+          disabled={isProcessing}
+        />
+        <div className="flex flex-col items-center">
+          <div className="w-16 h-16 mb-4 text-gray-400">
+            <svg viewBox="0 0 24 24" fill="currentColor">
+              <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z" />
+            </svg>
           </div>
-          <input
-            type="file"
-            className="hidden"
-            accept=".xlsx,.xls"
-            onChange={handleFileChange}
+          <h3 className="text-xl font-semibold text-white mb-2">
+            {selectedFile ? selectedFile.name : 'Click to upload or drag & drop'}
+          </h3>
+          <p className="text-gray-400 text-sm mb-4">CSV, XLSX files supported</p>
+          <button
+            type="button"
+            onClick={() => document.getElementById('bulk-upload-file-input')?.click()}
             disabled={isProcessing}
-          />
-        </label>
+            className="px-8 py-3 bg-gradient-to-r from-cyan-600 to-cyan-700 hover:from-cyan-700 hover:to-cyan-800 text-white font-bold rounded-lg shadow-lg transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isProcessing ? '⏳ Processing...' : (selectedFile ? '🔄 Change File' : '📁 Select File')}
+          </button>
+        </div>
       </div>
 
-      <div className="flex items-center justify-between pt-4 border-t border-gray-200 dark:border-gray-700">
-        <Button
-          variant="secondary"
-          onClick={handleDownloadTemplate}
-          leftIcon={<Download />}
-          size="sm"
-        >
-          Download Template
-        </Button>
-        <p className="text-xs text-gray-500 dark:text-gray-400">
-          Need help? Download our template
-        </p>
+      {/* Template Format Section */}
+      <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
+        <div className="flex items-center mb-4">
+          <div className="w-6 h-6 mr-2 text-pink-500">
+            <svg viewBox="0 0 24 24" fill="currentColor">
+              <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z" />
+            </svg>
+          </div>
+          <h3 className="text-lg font-bold text-white">Excel Template Format</h3>
+        </div>
+        
+        {/* Sample Data Table */}
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-gray-700">
+                <th className="text-left py-3 px-4 text-gray-400 font-semibold">SKU</th>
+                <th className="text-left py-3 px-4 text-gray-400 font-semibold">Product Name</th>
+                <th className="text-left py-3 px-4 text-gray-400 font-semibold">Category</th>
+                <th className="text-left py-3 px-4 text-gray-400 font-semibold">Unit</th>
+                <th className="text-left py-3 px-4 text-gray-400 font-semibold">MRP</th>
+                <th className="text-left py-3 px-4 text-gray-400 font-semibold">Cost Price</th>
+                <th className="text-left py-3 px-4 text-gray-400 font-semibold">Low Stock</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr className="border-b border-gray-700/50">
+                <td className="py-3 px-4 text-gray-300">SAMPLE-001</td>
+                <td className="py-3 px-4 text-gray-300">Aloe Vera Serum</td>
+                <td className="py-3 px-4 text-gray-300">Hair Care</td>
+                <td className="py-3 px-4 text-gray-300">ml</td>
+                <td className="py-3 px-4 text-gray-300">599</td>
+                <td className="py-3 px-4 text-gray-300">150</td>
+                <td className="py-3 px-4 text-gray-300">50</td>
+              </tr>
+              <tr className="border-b border-gray-700/50">
+                <td className="py-3 px-4 text-gray-300">SAMPLE-002</td>
+                <td className="py-3 px-4 text-gray-300">Rose Face Cream</td>
+                <td className="py-3 px-4 text-gray-300">Face Care</td>
+                <td className="py-3 px-4 text-gray-300">g</td>
+                <td className="py-3 px-4 text-gray-300">899</td>
+                <td className="py-3 px-4 text-gray-300">220</td>
+                <td className="py-3 px-4 text-gray-300">30</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex gap-3 mt-6">
+          <Button
+            onClick={handleDownloadTemplate}
+            leftIcon={<Download />}
+            className="bg-cyan-600 hover:bg-cyan-700 text-white"
+          >
+            Download Template
+          </Button>
+          <Button
+            onClick={() => {
+              addToast('Template format:\nsku, name, category, unit, mrp, costPrice, lowStockThreshold, batchTracking, imageUrl\n\nValid categories: Hair Care, Skin Care, Face Care, Body Care\nValid units: pcs, ml, g', 'info');
+            }}
+            variant="secondary"
+            leftIcon={<AlertCircle />}
+          >
+            View Sample
+          </Button>
+        </div>
       </div>
     </div>
   );
