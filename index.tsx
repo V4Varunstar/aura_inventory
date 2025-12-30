@@ -895,6 +895,7 @@ function DashboardPage() {
                                 
                                 console.log('=== STEP 7: Import completed ===');
                                 console.log('Import result:', result.summary);
+                                alert(`Step 7: Import completed!\nTotal: ${result.summary.total}\nSuccessful: ${result.summary.successful}\nFailed: ${result.summary.failed}\nDuplicates: ${result.summary.duplicates}`);
                                 
                                 // Show detailed results
                                 let hasErrors = false;
