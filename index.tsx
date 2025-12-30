@@ -791,21 +791,17 @@ function DashboardPage() {
                             
                             reader.onload = async (e) => {
                               try {
-                                alert('Step 1: File reading started');
                                 console.log('=== STEP 1: File loaded, parsing Excel ===');
                                 addToast('📊 Parsing Excel data...','info');
                                 
                                 const data = new Uint8Array(e.target?.result as ArrayBuffer);
                                 console.log('Data buffer size:', data.length);
-                                alert(`Step 2: File size is ${data.length} bytes`);
                                 
                                 const workbook = XLSX.read(data, {type: 'array'});
                                 console.log('Workbook sheets:', workbook.SheetNames);
-                                alert(`Step 3: Found sheets: ${workbook.SheetNames.join(', ')}`);
                                 
                                 if (!workbook.SheetNames || workbook.SheetNames.length === 0) {
                                   console.error('No sheets found in workbook');
-                                  alert('ERROR: No sheets found in Excel file!');
                                   addToast('❌ Excel file has no sheets. Please check the file.','error');
                                   setIsImporting(false);
                                   return;
@@ -818,18 +814,15 @@ function DashboardPage() {
                                 
                                 console.log('=== STEP 2: Parsed Excel data ===', jsonData.length, 'rows');
                                 console.log('First row sample:', jsonData[0]);
-                                alert(`Step 4: Found ${jsonData.length} rows of data`);
                                 
                                 if (jsonData.length === 0) {
                                   console.error('Excel file is empty');
-                                  alert('ERROR: Excel file is empty - no data rows found!');
                                   addToast('❌ Excel file is empty. Please add product data and try again.','error');
                                   setIsImporting(false);
                                   return;
                                 }
                                 
                                 addToast(`✅ Found ${jsonData.length} rows. Validating data...`,'info');
-                                alert(`Step 5: Starting data validation for ${jsonData.length} products`);
                                 
                                 // Map Excel columns to product fields
                                 console.log('=== STEP 3: Mapping products ===');
@@ -863,7 +856,6 @@ function DashboardPage() {
                                 if (invalidProducts.length > 0) {
                                   const errorRows = invalidProducts.map(p => p.rowNumber).join(', ');
                                   console.log('Invalid products found:', invalidProducts);
-                                  alert(`ERROR: ${invalidProducts.length} products missing SKU or Name in rows: ${errorRows}`);
                                   addToast(`❌ Validation Failed: ${invalidProducts.length} product(s) missing required fields (SKU or Product Name) in rows: ${errorRows}. Please fix and try again.`,'error');
                                   setIsImporting(false);
                                   return;
@@ -880,13 +872,11 @@ function DashboardPage() {
                                 if (invalidNumbers.length > 0) {
                                   const errorRows = invalidNumbers.map(p => p.rowNumber).join(', ');
                                   console.log('Invalid numbers in rows:', errorRows);
-                                  alert(`ERROR: Invalid MRP or Cost Price in rows: ${errorRows}`);
                                   addToast(`❌ Invalid MRP or Cost Price in rows: ${errorRows}. Please enter valid numbers.`,'error');
                                   setIsImporting(false);
                                   return;
                                 }
                                 
-                                alert('Step 6: Validation passed! Starting database import...');
                                 console.log('=== STEP 6: Starting database import ===');
                                 addToast('💾 Importing products to database...','info');
                                 
@@ -895,7 +885,6 @@ function DashboardPage() {
                                 
                                 console.log('=== STEP 7: Import completed ===');
                                 console.log('Import result:', result.summary);
-                                alert(`Step 7: Import completed!\nTotal: ${result.summary.total}\nSuccessful: ${result.summary.successful}\nFailed: ${result.summary.failed}\nDuplicates: ${result.summary.duplicates}`);
                                 
                                 // Show detailed results
                                 let hasErrors = false;
@@ -907,8 +896,8 @@ function DashboardPage() {
                                 if (result.summary.duplicates > 0) {
                                   const duplicateSKUs = result.duplicates.map(d => d.product.sku).join(', ');
                                   console.log('Duplicate SKUs:', duplicateSKUs);
-                                  alert(`WARNING: ${result.summary.duplicates} duplicate SKUs found:\n\n${duplicateSKUs.substring(0, 500)}${duplicateSKUs.length > 500 ? '...' : ''}\n\nThese products already exist in database.`);
-                                  addToast(`⚠️ Skipped ${result.summary.duplicates} duplicate SKU(s): ${duplicateSKUs.substring(0, 100)}${duplicateSKUs.length > 100 ? '...' : ''}`,'warning');
+                                  const shortList = duplicateSKUs.substring(0, 200);
+                                  addToast(`⚠️ ${result.summary.duplicates} duplicate SKU(s) skipped (already in database): ${shortList}${duplicateSKUs.length > 200 ? '...' : ''}`,'warning');
                                   hasErrors = true;
                                 }
                                 
