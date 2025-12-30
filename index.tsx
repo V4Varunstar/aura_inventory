@@ -759,22 +759,33 @@ function DashboardPage() {
                           if (isImporting) return;
                           
                           try {
+                            console.log('=== onClick triggered ===');
                             const file = formData.selectedFile;
+                            console.log('File object:', file);
+                            
                             if (!file) {
+                              console.error('No file found in formData');
                               addToast('❌ No file selected. Please select an Excel file first.','error');
                               return;
                             }
                             
                             // Check file extension
                             const fileName = file.name.toLowerCase();
+                            console.log('File name:', fileName);
+                            
                             if (!fileName.endsWith('.xlsx') && !fileName.endsWith('.xls') && !fileName.endsWith('.csv')) {
+                              console.error('Invalid file extension:', fileName);
                               addToast('❌ Invalid file format. Please upload .xlsx, .xls, or .csv file only.','error');
                               return;
                             }
                             
+                            console.log('Setting isImporting to true');
                             setIsImporting(true);
                             console.log('Starting bulk import for file:', file.name);
                             addToast('📂 Reading Excel file...','info');
+                            
+                            // Add a visual debug message
+                            addToast(`Debug: File size ${file.size} bytes, type: ${file.type}`,'info');
                             
                             const reader = new FileReader();
                             
