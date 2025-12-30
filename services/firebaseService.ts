@@ -624,7 +624,22 @@ export const updatePassword = (userId: string, currentPassword: string, newPassw
 
 
 // Products
-export const getProducts = () => simulateApi(products);
+export const getProducts = () => {
+    // Get current user from session
+    const userJson = localStorage.getItem(SESSION_KEY);
+    if (!userJson) {
+        return simulateApi([]);
+    }
+    
+    const user = JSON.parse(userJson);
+    
+    // Filter products by orgId
+    const filteredProducts = user.orgId 
+        ? products.filter(p => p.orgId === user.orgId)
+        : products;
+    
+    return simulateApi(filteredProducts);
+};
 export const addProduct = (data: Partial<Product>) => {
     const newProduct: Product = {
         id: `prod_${Date.now()}`,
@@ -688,9 +703,10 @@ export const addProductsBatch = async (productsData: Partial<Product>[]): Promis
 
             productsData.forEach((productData) => {
                 try {
-                    // Check for duplicate SKU
+                    // Check for duplicate SKU within same orgId
                     const existingProduct = products.find(
-                        p => p.sku.toLowerCase() === productData.sku!.toLowerCase()
+                        p => p.sku.toLowerCase() === productData.sku!.toLowerCase() && 
+                        p.orgId === productData.orgId
                     );
 
                     if (existingProduct) {
