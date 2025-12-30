@@ -911,6 +911,9 @@ function DashboardPage() {
                                   addToast('❌ No products were imported. Please check the errors above and try again.','error');
                                 }
                                 
+                                // Show final summary alert
+                                alert(`Import Summary:\n\n✅ Successful: ${result.summary.successful}\n❌ Failed: ${result.summary.failed}\n⚠️ Duplicates: ${result.summary.duplicates}\n\nTotal: ${result.summary.total}\n\n${result.summary.duplicates > 0 ? 'Note: Duplicate SKUs were skipped (already exist in database)' : ''}`);
+                                
                                 // Reset and go back only if successful
                                 if (result.summary.successful > 0) {
                                   setTimeout(() => {
