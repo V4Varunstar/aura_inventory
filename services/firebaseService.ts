@@ -640,6 +640,15 @@ export const getProducts = () => {
     
     return simulateApi(filteredProducts);
 };
+
+// Clear all products (utility function for fixing duplicate issues)
+export const clearAllProducts = () => {
+    products.length = 0;
+    localStorage.removeItem(STORAGE_KEYS.PRODUCTS);
+    console.log('✅ All products cleared from memory and localStorage');
+    return simulateApi({ success: true });
+};
+
 export const addProduct = (data: Partial<Product>) => {
     const newProduct: Product = {
         id: `prod_${Date.now()}`,
