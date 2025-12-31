@@ -854,6 +854,30 @@ const reloadDataFromStorage = () => {
   products.push(...initProducts);
   console.log('🔄 Reloaded', initProducts.length, 'products from localStorage');
   
+  // Reload warehouses
+  const initWarehouses = loadFromStorage<Warehouse[]>(STORAGE_KEYS.WAREHOUSES, []);
+  warehouses.length = 0;
+  warehouses.push(...initWarehouses);
+  console.log('🔄 Reloaded', initWarehouses.length, 'warehouses from localStorage');
+  
+  // Reload inward records
+  const initInward = loadFromStorage<Inward[]>(STORAGE_KEYS.INWARD, []);
+  inwardRecords.length = 0;
+  inwardRecords.push(...initInward);
+  console.log('🔄 Reloaded', initInward.length, 'inward records from localStorage');
+  
+  // Reload outward records
+  const initOutward = loadFromStorage<Outward[]>(STORAGE_KEYS.OUTWARD, []);
+  outwardRecords.length = 0;
+  outwardRecords.push(...initOutward);
+  console.log('🔄 Reloaded', initOutward.length, 'outward records from localStorage');
+  
+  // Reload adjustment records
+  const initAdjustments = loadFromStorage<Adjustment[]>(STORAGE_KEYS.ADJUSTMENTS, []);
+  adjustmentRecords.length = 0;
+  adjustmentRecords.push(...initAdjustments);
+  console.log('🔄 Reloaded', initAdjustments.length, 'adjustment records from localStorage');
+  
   return initProducts.length;
 };
 
@@ -869,6 +893,31 @@ const initWarehouses = loadFromStorage<Warehouse[]>(STORAGE_KEYS.WAREHOUSES, [])
 if (initWarehouses.length > 0) {
   warehouses.length = 0;
   warehouses.push(...initWarehouses);
+  console.log('✅ Initial load:', initWarehouses.length, 'warehouses from localStorage');
+}
+
+// Initialize inward records from localStorage
+const initInward = loadFromStorage<Inward[]>(STORAGE_KEYS.INWARD, []);
+if (initInward.length > 0) {
+  inwardRecords.length = 0;
+  inwardRecords.push(...initInward);
+  console.log('✅ Initial load:', initInward.length, 'inward records from localStorage');
+}
+
+// Initialize outward records from localStorage
+const initOutward = loadFromStorage<Outward[]>(STORAGE_KEYS.OUTWARD, []);
+if (initOutward.length > 0) {
+  outwardRecords.length = 0;
+  outwardRecords.push(...initOutward);
+  console.log('✅ Initial load:', initOutward.length, 'outward records from localStorage');
+}
+
+// Initialize adjustment records from localStorage
+const initAdjustments = loadFromStorage<Adjustment[]>(STORAGE_KEYS.ADJUSTMENTS, []);
+if (initAdjustments.length > 0) {
+  adjustmentRecords.length = 0;
+  adjustmentRecords.push(...initAdjustments);
+  console.log('✅ Initial load:', initAdjustments.length, 'adjustment records from localStorage');
 }
 
 // Mock Orders data - using outward as sales orders
@@ -997,7 +1046,15 @@ export const getAllProductStocks = () => {
 };
 
 // Warehouses
-export const getWarehouses = () => simulateApi(warehouses);
+export const getWarehouses = () => {
+    // Reload warehouses from localStorage to get latest data
+    const storedWarehouses = loadFromStorage<Warehouse[]>(STORAGE_KEYS.WAREHOUSES, []);
+    if (storedWarehouses.length > 0) {
+        warehouses.length = 0;
+        warehouses.push(...storedWarehouses);
+    }
+    return simulateApi(warehouses);
+};
 export const addWarehouse = (data: Partial<Warehouse>) => {
     const newWarehouse: Warehouse = {
         id: `wh_${Date.now()}`,
@@ -1017,8 +1074,9 @@ export const addWarehouse = (data: Partial<Warehouse>) => {
 export const updateWarehouse = (id: string, data: Partial<Warehouse>) => {
     const whIndex = warehouses.findIndex(w => w.id === id);
     if (whIndex > -1) {
-        warehouses[whIndex] = { ...warehouses[whIndex], ...data };
+        warehouses[whIndex] = { ...warehouses[whIndex], ...data, updatedAt: new Date() };
         saveToStorage(STORAGE_KEYS.WAREHOUSES, warehouses);
+        console.log('✅ Warehouse updated and saved:', warehouses[whIndex]);
         return simulateApi(warehouses[whIndex]);
     }
     return Promise.reject('Warehouse not found');
@@ -1065,7 +1123,15 @@ export const addInward = (data: Partial<Inward>) => {
     return simulateApi(newInward);
 };
 
-export const getInwardRecords = () => simulateApi(inwardRecords);
+export const getInwardRecords = () => {
+    // Reload inward records from localStorage to get latest data
+    const storedInward = loadFromStorage<Inward[]>(STORAGE_KEYS.INWARD, []);
+    if (storedInward.length > 0 || inwardRecords.length === 0) {
+        inwardRecords.length = 0;
+        inwardRecords.push(...storedInward);
+    }
+    return simulateApi(inwardRecords);
+};
 
 // Outward
 export const addOutward = (data: Partial<Outward>) => {
@@ -1090,7 +1156,15 @@ export const addOutward = (data: Partial<Outward>) => {
     return simulateApi(newOutward);
 };
 
-export const getOutwardRecords = () => simulateApi(outwardRecords);
+export const getOutwardRecords = () => {
+    // Reload outward records from localStorage to get latest data
+    const storedOutward = loadFromStorage<Outward[]>(STORAGE_KEYS.OUTWARD, []);
+    if (storedOutward.length > 0 || outwardRecords.length === 0) {
+        outwardRecords.length = 0;
+        outwardRecords.push(...storedOutward);
+    }
+    return simulateApi(outwardRecords);
+};
 
 // Adjustment
 export const addAdjustment = (data: Partial<Adjustment>) => {
