@@ -628,15 +628,20 @@ export const getProducts = () => {
     // Get current user from session
     const userJson = localStorage.getItem(SESSION_KEY);
     if (!userJson) {
+        console.log('❌ No user session found');
         return simulateApi([]);
     }
     
     const user = JSON.parse(userJson);
+    console.log('👤 Current user:', user.email, 'orgId:', user.orgId);
+    console.log('📦 Total products in memory:', products.length);
     
     // Filter products by orgId
     const filteredProducts = user.orgId 
         ? products.filter(p => p.orgId === user.orgId)
         : products;
+    
+    console.log('✅ Filtered products for user:', filteredProducts.length);
     
     return simulateApi(filteredProducts);
 };
@@ -698,6 +703,9 @@ export const checkExistingSKUs = (skus: string[]): Promise<string[]> => {
 export const addProductsBatch = async (productsData: Partial<Product>[]): Promise<BulkUploadResult> => {
     return new Promise((resolve) => {
         setTimeout(() => {
+            console.log('🚀 Starting batch import...', productsData.length, 'products');
+            console.log('📦 Current products in memory:', products.length);
+            
             const result: BulkUploadResult = {
                 imported: [],
                 failed: [],
@@ -710,8 +718,10 @@ export const addProductsBatch = async (productsData: Partial<Product>[]): Promis
                 },
             };
 
-            productsData.forEach((productData) => {
+            productsData.forEach((productData, idx) => {
                 try {
+                    console.log(`Processing product ${idx + 1}:`, productData.sku, 'orgId:', productData.orgId);
+                    
                     // Check for duplicate SKU within same orgId
                     const existingProduct = products.find(
                         p => p.sku.toLowerCase() === productData.sku!.toLowerCase() && 
@@ -719,6 +729,7 @@ export const addProductsBatch = async (productsData: Partial<Product>[]): Promis
                     );
 
                     if (existingProduct) {
+                        console.log('❌ Duplicate found:', productData.sku);
                         result.duplicates.push({
                             product: productData,
                             existingSKU: existingProduct.sku,
@@ -736,9 +747,10 @@ export const addProductsBatch = async (productsData: Partial<Product>[]): Promis
                         products.push(newProduct);
                         result.imported.push(newProduct);
                         result.summary.successful++;
-                        saveToStorage(STORAGE_KEYS.PRODUCTS, products);
+                        console.log('✅ Added:', newProduct.sku, 'Total now:', products.length);
                     }
                 } catch (error) {
+                    console.error('❌ Error adding product:', error);
                     result.failed.push({
                         product: productData,
                         error: error instanceof Error ? error.message : 'Unknown error',
@@ -746,6 +758,11 @@ export const addProductsBatch = async (productsData: Partial<Product>[]): Promis
                     result.summary.failed++;
                 }
             });
+            
+            // Save all at once after loop
+            console.log('💾 Saving to localStorage...', products.length, 'products');
+            saveToStorage(STORAGE_KEYS.PRODUCTS, products);
+            console.log('✅ Batch import complete!');
 
             resolve(result);
         }, 1000); // Simulate API delay
