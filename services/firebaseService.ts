@@ -338,6 +338,43 @@ const restoreSessionFromBackup = (): boolean => {
 // Backup session periodically (every 5 seconds)
 setInterval(backupSession, 5000);
 
+// Also backup session before page unload
+if (typeof window !== 'undefined') {
+  window.addEventListener('beforeunload', () => {
+    console.log('📤 Page unloading - backing up session...');
+    backupSession();
+  });
+  
+  // Check and restore session on page load
+  window.addEventListener('load', () => {
+    console.log('📥 Page loaded - checking session...');
+    const session = localStorage.getItem(SESSION_KEY);
+    if (session) {
+      console.log('✅ Session found on page load');
+      backupSession();
+    } else {
+      console.log('⚠️ No session on page load - attempting restore from backup...');
+      if (restoreSessionFromBackup()) {
+        console.log('✅ Session restored from backup!');
+      }
+    }
+  });
+  
+  // Listen for storage events to detect if session is cleared by another tab
+  window.addEventListener('storage', (e) => {
+    if (e.key === SESSION_KEY && e.newValue === null && e.oldValue !== null) {
+      console.log('🚨 Session was cleared - attempting to restore from backup...');
+      if (restoreSessionFromBackup()) {
+        console.log('✅ Session restored after being cleared!');
+        // Reload to re-authenticate
+        setTimeout(() => {
+          window.location.reload();
+        }, 100);
+      }
+    }
+  });
+}
+
 // Clean up corrupted outward data on load
 const cleanCorruptedOutwardData = () => {
     try {
@@ -599,7 +636,8 @@ export const mockLogout = (): Promise<void> => {
         const wasLoggedIn = currentUser?.email;
         currentUser = null;
         localStorage.removeItem(SESSION_KEY);
-        console.log('🚪 Logout:', wasLoggedIn, '- Session cleared, all data preserved in localStorage');
+        localStorage.removeItem(SESSION_BACKUP_KEY); // Also clear backup on explicit logout
+        console.log('🚪 Logout:', wasLoggedIn, '- Session and backup cleared, all data preserved in localStorage');
         resolve();
     });
 }

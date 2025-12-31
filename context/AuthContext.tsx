@@ -15,45 +15,41 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true); // TRUE initially to prevent redirect during session check
-
-  const checkUserSession = useCallback(async () => {
-    setLoading(true);
-    try {
-      console.log('🔍 Checking user session on mount/refresh...');
-      const loggedInUser = await mockFetchUser();
-      console.log('✅ Session check successful:', {
-        email: loggedInUser.email,
-        role: loggedInUser.role,
-        orgId: loggedInUser.orgId,
-        timestamp: new Date().toISOString()
-      });
-      setUser(loggedInUser);
-    } catch (error: any) {
-      console.log('⚠️ Session check failed:', error?.message || error);
-      
-      // Only set user to null if session is truly invalid
-      // Don't logout on network/temporary errors
-      if (error?.message?.includes('No active session') || 
-          error?.message?.includes('Invalid session') ||
-          error?.message?.includes('disabled')) {
-        console.log('🚪 Clearing user state - session invalid');
-        setUser(null);
-      } else {
-        // For unexpected errors, keep user logged in and retry
-        console.log('🔄 Temporary error, retrying session check...');
-        setTimeout(() => {
-          checkUserSession();
-        }, 1000);
-      }
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const [sessionChecked, setSessionChecked] = useState(false);
 
   useEffect(() => {
-    // Check session on mount - loading state prevents premature redirect
-    checkUserSession();
-  }, [checkUserSession]);
+    // Check session ONLY once on mount - no retries to prevent infinite loops
+    if (sessionChecked) return;
+    
+    const checkSession = async () => {
+      setLoading(true);
+      try {
+        console.log('🔍 AuthProvider: Checking user session on mount/refresh...');
+        console.log('📦 localStorage keys:', Object.keys(localStorage));
+        console.log('🔑 Session key present:', !!localStorage.getItem('aura_inventory_user'));
+        
+        const loggedInUser = await mockFetchUser();
+        
+        console.log('✅ AuthProvider: Session restored successfully:', {
+          email: loggedInUser.email,
+          role: loggedInUser.role,
+          orgId: loggedInUser.orgId,
+          timestamp: new Date().toISOString()
+        });
+        
+        setUser(loggedInUser);
+      } catch (error: any) {
+        console.log('⚠️ AuthProvider: Session check failed:', error?.message || error);
+        console.log('🚪 AuthProvider: No valid session - user will be redirected to login');
+        setUser(null);
+      } finally {
+        setLoading(false);
+        setSessionChecked(true);
+      }
+    };
+    
+    checkSession();
+  }, [sessionChecked]);
 
   const login = async (email: string, pass: string) => {
     setLoading(true);
@@ -90,6 +86,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await mockLogout();
     setUser(null);
   };
+
+  // Listen for visibility changes to restore session if lost
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && !user && sessionChecked) {
+        console.log('👁️ Tab became visible - checking if session needs restoration');
+        const sessionExists = localStorage.getItem('aura_inventory_user');
+        if (sessionExists && !user) {
+          console.log('🔄 Session exists but user not set - restoring...');
+          setSessionChecked(false); // Trigger re-check
+        }
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [user, sessionChecked]);
 
   const value = { user, loading, login, logout };
 
