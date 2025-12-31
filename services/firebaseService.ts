@@ -527,6 +527,10 @@ export const mockLogin = (email: string, pass: string): Promise<User> => {
             console.log('🔐 Setting session for user:', foundUser.email);
             currentUser = foundUser;
             localStorage.setItem(SESSION_KEY, JSON.stringify(foundUser));
+            
+            // CRITICAL: Reload all data from localStorage after login
+            reloadDataFromStorage();
+            
             console.log('✅ Session established successfully for:', foundUser.email);
             resolve(foundUser);
         }
@@ -821,14 +825,20 @@ let inwardRecords: Inward[] = [];
 let outwardRecords: Outward[] = [];
 let adjustmentRecords: Adjustment[] = [];
 
-// CLEANUP DISABLED - Products will load normally from localStorage
+// Function to reload all data from localStorage
+const reloadDataFromStorage = () => {
+  const initProducts = loadFromStorage<Product[]>(STORAGE_KEYS.PRODUCTS, []);
+  products.length = 0;
+  products.push(...initProducts);
+  console.log('🔄 Reloaded', initProducts.length, 'products from localStorage');
+};
 
-// Initialize products and warehouses from localStorage or use defaults
+// Initialize products and warehouses from localStorage on app start
 const initProducts = loadFromStorage<Product[]>(STORAGE_KEYS.PRODUCTS, []);
 if (initProducts.length > 0) {
   products.length = 0;
   products.push(...initProducts);
-  console.log('✅ Loaded', initProducts.length, 'products from localStorage');
+  console.log('✅ Initial load:', initProducts.length, 'products from localStorage');
 }
 
 const initWarehouses = loadFromStorage<Warehouse[]>(STORAGE_KEYS.WAREHOUSES, []);
