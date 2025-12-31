@@ -114,6 +114,20 @@ function Login() {
 function DashboardPage() {
   const { user, logout, loading } = useAuth();
   const { addToast } = useToast();
+
+  const SIMPLE_INWARD_KEY = 'aura_inventory_simple_inward_entries';
+  const SIMPLE_OUTWARD_KEY = 'aura_inventory_simple_outward_entries';
+
+  const readArrayFromStorage = (key: string): any[] => {
+    try {
+      const raw = localStorage.getItem(key);
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  };
   const [darkMode, setDarkMode] = React.useState(true);
   const [currentPage, setCurrentPage] = React.useState('dashboard');
   const [activeView, setActiveView] = React.useState('main');
@@ -134,8 +148,8 @@ function DashboardPage() {
   ]);
   const [lineItems, setLineItems] = React.useState<any[]>([{id: 1, ean: '', productName: '', sku: '', quantity: '', batch: ''}]);
   const [userProducts, setUserProducts] = React.useState<any>({});
-  const [inwardEntries, setInwardEntries] = React.useState<any[]>([]);
-  const [outwardEntries, setOutwardEntries] = React.useState<any[]>([]);
+  const [inwardEntries, setInwardEntries] = React.useState<any[]>(() => readArrayFromStorage(SIMPLE_INWARD_KEY));
+  const [outwardEntries, setOutwardEntries] = React.useState<any[]>(() => readArrayFromStorage(SIMPLE_OUTWARD_KEY));
   const [products, setProducts] = React.useState<any[]>([]);
   const [realOutwardRecords, setRealOutwardRecords] = React.useState<any[]>([]);
   const [realProducts, setRealProducts] = React.useState<any[]>([]);
@@ -159,6 +173,23 @@ function DashboardPage() {
     };
     loadData();
   }, []);
+
+  // Persist simple (UI-only) inward/outward entries so they survive refresh
+  React.useEffect(() => {
+    try {
+      localStorage.setItem(SIMPLE_INWARD_KEY, JSON.stringify(inwardEntries));
+    } catch (e) {
+      console.error('Failed to persist inward entries:', e);
+    }
+  }, [inwardEntries]);
+
+  React.useEffect(() => {
+    try {
+      localStorage.setItem(SIMPLE_OUTWARD_KEY, JSON.stringify(outwardEntries));
+    } catch (e) {
+      console.error('Failed to persist outward entries:', e);
+    }
+  }, [outwardEntries]);
   
   // EAN to Product mapping database (empty initially - products added by user)
   const eanProducts: any = {};
@@ -1283,7 +1314,7 @@ function DashboardPage() {
                     <div><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>Date</label><input type="date" value={formData.date||''} style={{width:'100%',padding:'14px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px'}} onChange={(e)=>setFormData({...formData,date:e.target.value})} /></div>
                   </div>
                   <div style={{display:'flex',gap:'16px'}}>
-                    <button onClick={()=>{const validItems=lineItems.filter(item=>item.productName && item.quantity);if(validItems.length>0 && formData.supplier && formData.date){const newEntries=validItems.map(item=>({...item,supplier:formData.supplier,date:formData.date,po:formData.po,entryDate:new Date().toLocaleDateString('en-IN')}));setInwardEntries([...inwardEntries,...newEntries]);addToast(`✅ Inward entry recorded: ${validItems.length} product(s) added!`,'success');setLineItems([{id:1,ean:'',productName:'',sku:'',quantity:'',batch:''}]);setFormData({});resetView();}else{addToast('❌ Please fill all required fields (products, supplier, date)','error');}}} style={{padding:'14px 40px',background:'linear-gradient(135deg, #10b981, #059669)',color:'white',border:'none',borderRadius:'12px',fontSize:'16px',fontWeight:'800',cursor:'pointer'}}>✓ Submit All Entries</button>
+                    <button onClick={()=>{const validItems=lineItems.filter(item=>item.productName && item.quantity);if(validItems.length>0 && formData.supplier && formData.date){const newEntries=validItems.map(item=>({...item,supplier:formData.supplier,date:formData.date,po:formData.po,entryDate:new Date().toLocaleDateString('en-IN')}));setInwardEntries(prev=>[...prev,...newEntries]);addToast(`✅ Inward entry recorded: ${validItems.length} product(s) added!`,'success');setLineItems([{id:1,ean:'',productName:'',sku:'',quantity:'',batch:''}]);setFormData({});resetView();}else{addToast('❌ Please fill all required fields (products, supplier, date)','error');}}} style={{padding:'14px 40px',background:'linear-gradient(135deg, #10b981, #059669)',color:'white',border:'none',borderRadius:'12px',fontSize:'16px',fontWeight:'800',cursor:'pointer'}}>✓ Submit All Entries</button>
                     <button onClick={resetView} style={{padding:'14px 40px',background:theme.sidebarHover,color:theme.text,border:`2px solid ${theme.border}`,borderRadius:'12px',fontSize:'16px',fontWeight:'700',cursor:'pointer'}}>Cancel</button>
                   </div>
                 </div>
@@ -1401,7 +1432,7 @@ function DashboardPage() {
                     <div><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>Platform</label><select style={{width:'100%',padding:'14px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px'}} value={formData.platform||''} onChange={(e)=>setFormData({...formData,platform:e.target.value})}><option value="">Select Platform</option><option>Meesho</option><option>Amazon</option><option>Flipkart</option><option>Myntra</option><option>Ajio</option><option>Direct Order</option></select></div>
                   </div>
                   <div style={{display:'flex',gap:'16px'}}>
-                    <button onClick={()=>{const validItems=lineItems.filter(item=>item.productName && item.quantity);if(validItems.length>0 && formData.platform){const shipDate=formData.shipmentDate||new Date().toISOString().split('T')[0];const newEntries=validItems.map(item=>({...item,orderNo:formData.orderNo||'',platform:formData.platform,entryDate:new Date(shipDate).toLocaleDateString('en-IN'),shipmentDate:shipDate}));setOutwardEntries([...outwardEntries,...newEntries]);addToast(`✅ Shipment created: ${validItems.length} product(s) dispatched to ${formData.platform}!`,'success');setLineItems([{id:1,ean:'',productName:'',sku:'',quantity:'',batch:''}]);setFormData({});resetView();}else{addToast('❌ Please fill all required fields (products, platform)','error');}}} style={{padding:'14px 40px',background:'linear-gradient(135deg, #f59e0b, #d97706)',color:'white',border:'none',borderRadius:'12px',fontSize:'16px',fontWeight:'800',cursor:'pointer'}}>🚚 Create Shipment</button>
+                    <button onClick={()=>{const validItems=lineItems.filter(item=>item.productName && item.quantity);if(validItems.length>0 && formData.platform){const shipDate=formData.shipmentDate||new Date().toISOString().split('T')[0];const newEntries=validItems.map(item=>({...item,orderNo:formData.orderNo||'',platform:formData.platform,entryDate:new Date(shipDate).toLocaleDateString('en-IN'),shipmentDate:shipDate}));setOutwardEntries(prev=>[...prev,...newEntries]);addToast(`✅ Shipment created: ${validItems.length} product(s) dispatched to ${formData.platform}!`,'success');setLineItems([{id:1,ean:'',productName:'',sku:'',quantity:'',batch:''}]);setFormData({});resetView();}else{addToast('❌ Please fill all required fields (products, platform)','error');}}} style={{padding:'14px 40px',background:'linear-gradient(135deg, #f59e0b, #d97706)',color:'white',border:'none',borderRadius:'12px',fontSize:'16px',fontWeight:'800',cursor:'pointer'}}>🚚 Create Shipment</button>
                     <button onClick={resetView} style={{padding:'14px 40px',background:theme.sidebarHover,color:theme.text,border:`2px solid ${theme.border}`,borderRadius:'12px',fontSize:'16px',fontWeight:'700',cursor:'pointer'}}>Cancel</button>
                   </div>
                 </div>
