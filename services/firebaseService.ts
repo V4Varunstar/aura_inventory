@@ -632,20 +632,23 @@ export const getProducts = () => {
         products.push(...storedProducts);
     }
     
-    // Get current user from session
-    const userJson = localStorage.getItem(SESSION_KEY);
-    if (!userJson) {
-        return simulateApi([]);
+    // TEMPORARY: Return ALL products without filtering to debug visibility issue
+    console.log('🔍 Total products loaded from storage:', storedProducts.length);
+    console.log('🔍 Products in memory:', products.length);
+    if (products.length > 0) {
+        console.log('🔍 First product orgId:', products[0].orgId);
+        console.log('🔍 First product SKU:', products[0].sku);
     }
     
-    const user = JSON.parse(userJson);
+    // Get current user from session
+    const userJson = localStorage.getItem(SESSION_KEY);
+    if (userJson) {
+        const user = JSON.parse(userJson);
+        console.log('🔍 Current user orgId:', user.orgId);
+    }
     
-    // Filter products by orgId
-    const filteredProducts = user.orgId 
-        ? products.filter(p => p.orgId === user.orgId)
-        : products;
-    
-    return simulateApi(filteredProducts);
+    // TEMPORARILY DISABLED FILTERING - RETURN ALL PRODUCTS
+    return simulateApi(products);
 };
 
 // Clear all products (utility function for fixing duplicate issues)
