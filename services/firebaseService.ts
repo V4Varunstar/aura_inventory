@@ -710,8 +710,11 @@ export const checkExistingSKUs = (skus: string[]): Promise<string[]> => {
 export const addProductsBatch = async (productsData: Partial<Product>[]): Promise<BulkUploadResult> => {
     return new Promise((resolve) => {
         setTimeout(() => {
+            // CRITICAL: Reload from localStorage first to get latest data
+            reloadDataFromStorage();
+            
             console.log('🚀 Starting batch import...', productsData.length, 'products');
-            console.log('📦 Current products in memory:', products.length);
+            console.log('📦 Products in memory after reload:', products.length);
             
             const result: BulkUploadResult = {
                 imported: [],
@@ -727,8 +730,6 @@ export const addProductsBatch = async (productsData: Partial<Product>[]): Promis
 
             productsData.forEach((productData, idx) => {
                 try {
-                    console.log(`Processing product ${idx + 1}:`, productData.sku, 'orgId:', productData.orgId);
-                    
                     // Check for duplicate SKU within same orgId
                     const existingProduct = products.find(
                         p => p.sku.toLowerCase() === productData.sku!.toLowerCase() && 
@@ -736,7 +737,6 @@ export const addProductsBatch = async (productsData: Partial<Product>[]): Promis
                     );
 
                     if (existingProduct) {
-                        console.log('❌ Duplicate found:', productData.sku);
                         result.duplicates.push({
                             product: productData,
                             existingSKU: existingProduct.sku,
@@ -754,10 +754,8 @@ export const addProductsBatch = async (productsData: Partial<Product>[]): Promis
                         products.push(newProduct);
                         result.imported.push(newProduct);
                         result.summary.successful++;
-                        console.log('✅ Added:', newProduct.sku, 'Total now:', products.length);
                     }
                 } catch (error) {
-                    console.error('❌ Error adding product:', error);
                     result.failed.push({
                         product: productData,
                         error: error instanceof Error ? error.message : 'Unknown error',
@@ -766,10 +764,8 @@ export const addProductsBatch = async (productsData: Partial<Product>[]): Promis
                 }
             });
             
-            // Save all at once after loop
-            console.log('💾 Saving to localStorage...', products.length, 'products');
+            // Save all products to localStorage after batch processing
             saveToStorage(STORAGE_KEYS.PRODUCTS, products);
-            console.log('✅ Batch import complete!');
 
             resolve(result);
         }, 1000); // Simulate API delay
