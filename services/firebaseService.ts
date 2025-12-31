@@ -625,30 +625,27 @@ export const updatePassword = (userId: string, currentPassword: string, newPassw
 
 // Products
 export const getProducts = () => {
-    // CRITICAL FIX: Always reload from localStorage to ensure fresh data
-    const storedProducts = loadFromStorage<Product[]>(STORAGE_KEYS.PRODUCTS, []);
-    if (storedProducts.length > 0) {
+    // DIRECT localStorage read - bypassing all caching/complexity
+    try {
+        const rawData = localStorage.getItem('aura_inventory_products');
+        if (!rawData) {
+            console.log('⚠️ No products in localStorage');
+            return simulateApi([]);
+        }
+        
+        const storedProducts = JSON.parse(rawData);
+        console.log('✅ Found products in localStorage:', storedProducts.length);
+        
+        // Update memory array
         products.length = 0;
         products.push(...storedProducts);
+        
+        // Return ALL products (no filtering)
+        return simulateApi(storedProducts);
+    } catch (error) {
+        console.error('❌ Error loading products:', error);
+        return simulateApi([]);
     }
-    
-    // TEMPORARY: Return ALL products without filtering to debug visibility issue
-    console.log('🔍 Total products loaded from storage:', storedProducts.length);
-    console.log('🔍 Products in memory:', products.length);
-    if (products.length > 0) {
-        console.log('🔍 First product orgId:', products[0].orgId);
-        console.log('🔍 First product SKU:', products[0].sku);
-    }
-    
-    // Get current user from session
-    const userJson = localStorage.getItem(SESSION_KEY);
-    if (userJson) {
-        const user = JSON.parse(userJson);
-        console.log('🔍 Current user orgId:', user.orgId);
-    }
-    
-    // TEMPORARILY DISABLED FILTERING - RETURN ALL PRODUCTS
-    return simulateApi(products);
 };
 
 // Clear all products (utility function for fixing duplicate issues)
