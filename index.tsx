@@ -27,6 +27,24 @@ document.head.appendChild(style);
 
 function Landing() {
   const navigate = useNavigate();
+  const { user, loading } = useAuth();
+
+  React.useEffect(() => {
+    if (loading) return;
+    if (user) navigate('/dashboard', { replace: true });
+  }, [loading, user, navigate]);
+
+  if (loading) {
+    return (
+      <div style={{display:'flex',alignItems:'center',justifyContent:'center',minHeight:'100vh',background:'linear-gradient(135deg,#667eea 0%,#764ba2 100%)',fontFamily:'system-ui',color:'white'}}>
+        <div style={{textAlign:'center'}}>
+          <div style={{width:'36px',height:'36px',border:'3px solid rgba(255,255,255,0.35)',borderTopColor:'#ffffff',borderRadius:'999px',margin:'0 auto 12px',animation:'spin 1s linear infinite'}} />
+          <div style={{fontSize:'14px',fontWeight:700}}>Restoring session…</div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={{minHeight:'100vh',background:'linear-gradient(135deg,#667eea 0%,#764ba2 100%)',fontFamily:'system-ui',display:'flex',alignItems:'center',justifyContent:'center',padding:'20px'}}>
       <div style={{maxWidth:'800px',textAlign:'center',color:'white'}}>
@@ -45,8 +63,13 @@ function Login() {
   const [password, setPassword] = React.useState('');
   const [loading, setLoading] = React.useState(false);
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login, user, loading: authLoading } = useAuth();
   const { addToast } = useToast();
+
+  React.useEffect(() => {
+    if (authLoading) return;
+    if (user) navigate('/dashboard', { replace: true });
+  }, [authLoading, user, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -89,7 +112,7 @@ function Login() {
 }
 
 function DashboardPage() {
-  const { user, logout } = useAuth();
+  const { user, logout, loading } = useAuth();
   const { addToast } = useToast();
   const [darkMode, setDarkMode] = React.useState(true);
   const [currentPage, setCurrentPage] = React.useState('dashboard');
@@ -297,7 +320,18 @@ function DashboardPage() {
     setFormData({});
     setLineItems([{id: 1, ean: '', productName: '', sku: '', quantity: '', batch: ''}]);
   };
-  
+
+  if (loading) {
+    return (
+      <div style={{display:'flex',alignItems:'center',justifyContent:'center',minHeight:'100vh',background:'#0f172a',color:'#f1f5f9',fontFamily:'system-ui'}}>
+        <div style={{textAlign:'center'}}>
+          <div style={{width:'36px',height:'36px',border:'3px solid rgba(241,245,249,0.25)',borderTopColor:'#f1f5f9',borderRadius:'999px',margin:'0 auto 12px',animation:'spin 1s linear infinite'}} />
+          <div style={{fontSize:'14px',fontWeight:700}}>Restoring session…</div>
+        </div>
+      </div>
+    );
+  }
+
   if (!user) return <Navigate to="/login" replace />;
   
   const theme = {
@@ -542,7 +576,7 @@ function DashboardPage() {
                       acc[platform].totalQty += parseInt(entry.quantity) || 0;
                       return acc;
                     }, {} as Record<string, {orders: number, totalQty: number}>);
-                    const totalOrders = Object.values(platformData).reduce((sum, p) => sum + p.orders, 0) || 1;
+                    const totalOrders = (Object.values(platformData) as Array<{ orders: number; totalQty: number }>).reduce((sum, p) => sum + p.orders, 0) || 1;
                     const platforms = [
                       { platform: 'Meesho', color: '#FF006E' },
                       { platform: 'Amazon', color: '#FF9500' },
@@ -590,7 +624,7 @@ function DashboardPage() {
                       return acc;
                     }, {} as Record<string, {name: string, sku: string, units: number, revenue: number}>);
                     const colors = ['#FFD700', '#C0C0C0', '#CD7F32', '#6366f1'];
-                    return Object.values(skuData)
+                    return (Object.values(skuData) as Array<{ name: string; sku: string; units: number; revenue: number }>)
                       .sort((a, b) => b.units - a.units)
                       .slice(0, 4)
                       .map((s, i) => ({ ...s, rank: i + 1, revenue: (s.revenue / 100000).toFixed(2) + 'L', trend: '+0%', color: colors[i] }));
@@ -2438,7 +2472,17 @@ function DashboardPage() {
 }
 
 const ProtectedRoute: React.FC<{children: React.ReactElement}> = ({children}) => {
-  const {user} = useAuth();
+  const { user, loading } = useAuth();
+  if (loading) {
+    return (
+      <div style={{display:'flex',alignItems:'center',justifyContent:'center',minHeight:'100vh',background:'#0f172a',color:'#f1f5f9',fontFamily:'system-ui'}}>
+        <div style={{textAlign:'center'}}>
+          <div style={{width:'36px',height:'36px',border:'3px solid rgba(241,245,249,0.25)',borderTopColor:'#f1f5f9',borderRadius:'999px',margin:'0 auto 12px',animation:'spin 1s linear infinite'}} />
+          <div style={{fontSize:'14px',fontWeight:700}}>Restoring session…</div>
+        </div>
+      </div>
+    );
+  }
   if (!user) return <Navigate to="/login" replace />;
   return children;
 };

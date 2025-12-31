@@ -684,16 +684,37 @@ export const mockFetchUser = (): Promise<User> => {
                 return;
             }
 
-            // Validate user still exists and is enabled
+            // Validate user/company status (be tolerant on refresh).
+            // NOTE: This app is localStorage-backed; the in-memory registry can be out of sync during reload.
+            // Only force-logout if we can prove the user/company is disabled.
             const superAdminUsers = JSON.parse(localStorage.getItem('superadmin_users') || '[]');
-            const isUserValid = users.find(u => u.email === user.email && u.isEnabled !== false) ||
-                              superAdminUsers.find((u: any) => u.email === user.email && u.isEnabled !== false);
-            
-            if (!isUserValid && user.role !== 'SuperAdmin') {
-                console.error('❌ User no longer exists or is disabled:', user.email);
+            const superAdminCompanies = JSON.parse(localStorage.getItem('superadmin_companies') || '[]');
+
+            const registryUser = users.find(u => u.email === user.email) as any;
+            const storedUser = superAdminUsers.find((u: any) => u.email === user.email);
+
+            const isExplicitlyDisabled =
+              (registryUser && registryUser.isEnabled === false) ||
+              (storedUser && storedUser.isEnabled === false);
+
+            if (isExplicitlyDisabled && user.role !== 'SuperAdmin') {
+                console.error('❌ User is disabled:', user.email);
                 localStorage.removeItem(SESSION_KEY);
-                reject(new Error('User account not found or disabled'));
+                reject(new Error('Your account is disabled. Please contact an administrator.'));
                 return;
+            }
+
+            if (user.orgId) {
+              const company = superAdminCompanies.find((c: any) => c.orgId === user.orgId);
+              if (company) {
+                const companyDisabled = company.isActive === false || company.loginAllowed === false || company.subscriptionStatus === 'expired';
+                if (companyDisabled && user.role !== 'SuperAdmin') {
+                  console.error('❌ Company is disabled or subscription expired for:', user.email);
+                  localStorage.removeItem(SESSION_KEY);
+                  reject(new Error('Your company account is disabled or subscription expired. Please contact support.'));
+                  return;
+                }
+              }
             }
 
             // Session is valid, restore it and create backup

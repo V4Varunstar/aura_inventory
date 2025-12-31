@@ -3,6 +3,21 @@ import React, { createContext, useState, useContext, useEffect, useCallback } fr
 import { User, Role } from '../types';
 import { mockLogin, mockLogout, mockFetchUser } from '../services/firebaseService';
 
+const SESSION_KEY = 'aura_inventory_user';
+const SESSION_BACKUP_KEY = 'aura_inventory_user_backup';
+
+const tryReadStoredUser = (): User | null => {
+  try {
+    const raw = localStorage.getItem(SESSION_KEY) || localStorage.getItem(SESSION_BACKUP_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || !parsed.email || !parsed.id || !parsed.role) return null;
+    return parsed as User;
+  } catch {
+    return null;
+  }
+};
+
 interface AuthContextType {
   user: User | null;
   loading: boolean;
@@ -13,7 +28,8 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
+  // Optimistic initial restore helps prevent false logouts during refresh.
+  const [user, setUser] = useState<User | null>(() => tryReadStoredUser());
   const [loading, setLoading] = useState(true); // TRUE initially to prevent redirect during session check
   const [sessionChecked, setSessionChecked] = useState(false);
 
@@ -26,7 +42,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       try {
         console.log('🔍 AuthProvider: Checking user session on mount/refresh...');
         console.log('📦 localStorage keys:', Object.keys(localStorage));
-        console.log('🔑 Session key present:', !!localStorage.getItem('aura_inventory_user'));
+        console.log('🔑 Session key present:', !!localStorage.getItem(SESSION_KEY));
         
         const loggedInUser = await mockFetchUser();
         
@@ -40,8 +56,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(loggedInUser);
       } catch (error: any) {
         console.log('⚠️ AuthProvider: Session check failed:', error?.message || error);
-        console.log('🚪 AuthProvider: No valid session - user will be redirected to login');
-        setUser(null);
+        const fallbackUser = tryReadStoredUser();
+        if (fallbackUser) {
+          console.log('🛟 AuthProvider: Using fallback stored session (will re-validate later):', {
+            email: (fallbackUser as any).email,
+            role: (fallbackUser as any).role,
+            orgId: (fallbackUser as any).orgId,
+          });
+          setUser(fallbackUser);
+        } else {
+          console.log('🚪 AuthProvider: No valid session - user will be redirected to login');
+          setUser(null);
+        }
       } finally {
         setLoading(false);
         setSessionChecked(true);
@@ -57,7 +83,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.log('🔐 Login attempt:', { email, timestamp: new Date().toISOString() });
       
       // Prevent any automatic session switching during login
-      const currentSession = localStorage.getItem('aura_inventory_user');
+      const currentSession = localStorage.getItem(SESSION_KEY);
       if (currentSession) {
         const currentUser = JSON.parse(currentSession);
         console.log('🔍 Existing session detected for:', currentUser.email);
@@ -92,7 +118,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible' && !user && sessionChecked) {
         console.log('👁️ Tab became visible - checking if session needs restoration');
-        const sessionExists = localStorage.getItem('aura_inventory_user');
+        const sessionExists = localStorage.getItem(SESSION_KEY) || localStorage.getItem(SESSION_BACKUP_KEY);
         if (sessionExists && !user) {
           console.log('🔄 Session exists but user not set - restoring...');
           setSessionChecked(false); // Trigger re-check
