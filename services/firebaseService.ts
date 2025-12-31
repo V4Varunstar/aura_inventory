@@ -896,29 +896,23 @@ if (initWarehouses.length > 0) {
   console.log('✅ Initial load:', initWarehouses.length, 'warehouses from localStorage');
 }
 
-// Initialize inward records from localStorage
+// Initialize inward records from localStorage (ALWAYS load, even if empty)
 const initInward = loadFromStorage<Inward[]>(STORAGE_KEYS.INWARD, []);
-if (initInward.length > 0) {
-  inwardRecords.length = 0;
-  inwardRecords.push(...initInward);
-  console.log('✅ Initial load:', initInward.length, 'inward records from localStorage');
-}
+inwardRecords.length = 0;
+inwardRecords.push(...initInward);
+console.log('✅ Initial load:', initInward.length, 'inward records from localStorage');
 
-// Initialize outward records from localStorage
+// Initialize outward records from localStorage (ALWAYS load, even if empty)
 const initOutward = loadFromStorage<Outward[]>(STORAGE_KEYS.OUTWARD, []);
-if (initOutward.length > 0) {
-  outwardRecords.length = 0;
-  outwardRecords.push(...initOutward);
-  console.log('✅ Initial load:', initOutward.length, 'outward records from localStorage');
-}
+outwardRecords.length = 0;
+outwardRecords.push(...initOutward);
+console.log('✅ Initial load:', initOutward.length, 'outward records from localStorage');
 
-// Initialize adjustment records from localStorage
+// Initialize adjustment records from localStorage (ALWAYS load, even if empty)
 const initAdjustments = loadFromStorage<Adjustment[]>(STORAGE_KEYS.ADJUSTMENTS, []);
-if (initAdjustments.length > 0) {
-  adjustmentRecords.length = 0;
-  adjustmentRecords.push(...initAdjustments);
-  console.log('✅ Initial load:', initAdjustments.length, 'adjustment records from localStorage');
-}
+adjustmentRecords.length = 0;
+adjustmentRecords.push(...initAdjustments);
+console.log('✅ Initial load:', initAdjustments.length, 'adjustment records from localStorage');
 
 // Mock Orders data - using outward as sales orders
 const generateMockOrders = () => {
@@ -1117,19 +1111,29 @@ export const addInward = (data: Partial<Inward>) => {
         transactionDate: new Date(),
         ...data
     } as Inward;
+    
+    console.log('📥 Adding inward record:', newInward.id, 'Product:', newInward.productId, 'Qty:', newInward.quantity);
+    console.log('📊 Before add - inwardRecords.length:', inwardRecords.length);
+    
     inwardRecords.push(newInward);
     saveToStorage(STORAGE_KEYS.INWARD, inwardRecords);
-    console.log("Adding inward:", newInward);
+    
+    console.log('📊 After add - inwardRecords.length:', inwardRecords.length);
+    console.log('✅ Inward record saved to localStorage');
+    
+    // Verify it was saved
+    const verifyData = loadFromStorage<Inward[]>(STORAGE_KEYS.INWARD, []);
+    console.log('🔍 Verification - localStorage has', verifyData.length, 'inward records');
+    
     return simulateApi(newInward);
 };
 
 export const getInwardRecords = () => {
-    // Reload inward records from localStorage to get latest data
+    // ALWAYS reload inward records from localStorage to get latest data
     const storedInward = loadFromStorage<Inward[]>(STORAGE_KEYS.INWARD, []);
-    if (storedInward.length > 0 || inwardRecords.length === 0) {
-        inwardRecords.length = 0;
-        inwardRecords.push(...storedInward);
-    }
+    inwardRecords.length = 0;
+    inwardRecords.push(...storedInward);
+    console.log('🔄 Reloaded', storedInward.length, 'inward records from localStorage');
     return simulateApi(inwardRecords);
 };
 
@@ -1150,19 +1154,29 @@ export const addOutward = (data: Partial<Outward>) => {
         transactionDate: new Date(),
         ...data
     } as Outward;
+    
+    console.log('📤 Adding outward record:', newOutward.id, 'Product:', newOutward.productId, 'Qty:', newOutward.quantity);
+    console.log('📊 Before add - outwardRecords.length:', outwardRecords.length);
+    
     outwardRecords.push(newOutward);
     saveToStorage(STORAGE_KEYS.OUTWARD, outwardRecords);
-    console.log("Adding outward:", newOutward);
+    
+    console.log('📊 After add - outwardRecords.length:', outwardRecords.length);
+    console.log('✅ Outward record saved to localStorage');
+    
+    // Verify it was saved
+    const verifyData = loadFromStorage<Outward[]>(STORAGE_KEYS.OUTWARD, []);
+    console.log('🔍 Verification - localStorage has', verifyData.length, 'outward records');
+    
     return simulateApi(newOutward);
 };
 
 export const getOutwardRecords = () => {
-    // Reload outward records from localStorage to get latest data
+    // ALWAYS reload outward records from localStorage to get latest data
     const storedOutward = loadFromStorage<Outward[]>(STORAGE_KEYS.OUTWARD, []);
-    if (storedOutward.length > 0 || outwardRecords.length === 0) {
-        outwardRecords.length = 0;
-        outwardRecords.push(...storedOutward);
-    }
+    outwardRecords.length = 0;
+    outwardRecords.push(...storedOutward);
+    console.log('🔄 Reloaded', storedOutward.length, 'outward records from localStorage');
     return simulateApi(outwardRecords);
 };
 
