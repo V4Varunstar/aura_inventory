@@ -104,6 +104,11 @@ function DashboardPage() {
     {id:4,name:'Meesho',color:'#9C1AB1',enabled:true},
     {id:5,name:'Retail',color:'#10B981',enabled:true}
   ]);
+  const [suppliers, setSuppliers] = React.useState<any[]>([
+    {id:1,name:'ABC Suppliers',contact:'Rajesh Kumar',phone:'+91 9876543210',email:'rajesh@abc.com'},
+    {id:2,name:'XYZ Distributors',contact:'Amit Shah',phone:'+91 9876543211',email:'amit@xyz.com'},
+    {id:3,name:'Global Imports',contact:'Priya Sharma',phone:'+91 9876543212',email:'priya@global.com'}
+  ]);
   const [lineItems, setLineItems] = React.useState<any[]>([{id: 1, ean: '', productName: '', sku: '', quantity: '', batch: ''}]);
   const [userProducts, setUserProducts] = React.useState<any>({});
   const [inwardEntries, setInwardEntries] = React.useState<any[]>([]);
@@ -395,7 +400,7 @@ function DashboardPage() {
                   {title:"Today's Inward",value:inwardEntries.filter(e=>e.entryDate===new Date().toLocaleDateString('en-IN')).reduce((sum,e)=>sum+(parseInt(e.quantity)||0),0).toString(),change:'+12%',icon:'📥',color:'#10b981',gradient:'linear-gradient(135deg, #10b981, #059669)',trend:'up',page:'inward'},
                   {title:"Today's Outward",value:outwardEntries.filter(e=>e.entryDate===new Date().toLocaleDateString('en-IN')).reduce((sum,e)=>sum+(parseInt(e.quantity)||0),0).toString(),change:'+15%',icon:'📤',color:'#f59e0b',gradient:'linear-gradient(135deg, #f59e0b, #d97706)',trend:'up',page:'outward'},
                   {title:'Inventory Value',value:(()=>{const total=products.reduce((sum,p)=>sum+((parseFloat(p.price)||0)*(parseFloat(p.quantity)||0)),0);return total>=100000?'₹'+(total/100000).toFixed(2)+'L':'₹'+(total/1000).toFixed(2)+'K';})(),change:'+0%',icon:'💰',color:'#8b5cf6',gradient:'linear-gradient(135deg, #8b5cf6, #7c3aed)',trend:'up',page:'reports'},
-                  {title:'Low Stock Items',value:products.filter(p=>(parseFloat(p.quantity)||0)<(parseFloat(p.minThreshold)||0)).length.toString(),change:'-0%',icon:'⚠️',color:'#ef4444',gradient:'linear-gradient(135deg, #ef4444, #dc2626)',trend:'down',page:'reports'}
+                  {title:'Low Stock Items',value:realProducts.filter(p=>(parseFloat(p.quantity)||0)<(parseFloat(p.lowStockThreshold)||parseFloat(p.minThreshold)||10)).length.toString(),change:'-0%',icon:'⚠️',color:'#ef4444',gradient:'linear-gradient(135deg, #ef4444, #dc2626)',trend:'down',page:'reports'}
                 ].map((stat,i)=>(
                   <div key={i} onClick={()=>{setCurrentPage(stat.page);resetView();addToast(`Opening ${stat.title}...`,'info');}} style={{background:theme.cardBg,padding:'26px',borderRadius:'16px',border:`2px solid ${theme.border}`,transition:'all 0.4s',cursor:'pointer',position:'relative',overflow:'hidden',boxShadow:darkMode?'0 4px 16px rgba(0,0,0,0.3)':'0 4px 16px rgba(0,0,0,0.08)'}} onMouseEnter={(e)=>{e.currentTarget.style.transform='translateY(-8px)';e.currentTarget.style.borderColor=stat.color;e.currentTarget.style.boxShadow=`0 12px 32px ${stat.color}40`;}} onMouseLeave={(e)=>{e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.borderColor=theme.border;e.currentTarget.style.boxShadow=darkMode?'0 4px 16px rgba(0,0,0,0.3)':'0 4px 16px rgba(0,0,0,0.08)';}}>
                     <div style={{position:'absolute',top:0,right:0,width:'120px',height:'120px',background:stat.gradient,opacity:0.08,borderRadius:'50%',transform:'translate(30%, -30%)'}}></div>
@@ -1239,7 +1244,7 @@ function DashboardPage() {
                     <button onClick={addLineItem} style={{padding:'12px 28px',background:'linear-gradient(135deg, #06b6d4, #0891b2)',color:'white',border:'none',borderRadius:'10px',fontSize:'14px',fontWeight:'700',cursor:'pointer'}}>➕ Add Another Product</button>
                   </div>
                   <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:'20px',marginBottom:'32px'}}>
-                    <div><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>Supplier</label><select style={{width:'100%',padding:'14px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px'}} value={formData.supplier||''} onChange={(e)=>setFormData({...formData,supplier:e.target.value})}><option value="">Select Supplier</option><option>ABC Suppliers</option><option>XYZ Distributors</option><option>Global Imports</option></select></div>
+                    <div><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>Supplier</label><select style={{width:'100%',padding:'14px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px'}} value={formData.supplier||''} onChange={(e)=>setFormData({...formData,supplier:e.target.value})}><option value="">Select Supplier</option>{suppliers.map(s=><option key={s.id} value={s.name}>{s.name}</option>)}</select></div>
                     <div><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>Purchase Order</label><input type="text" placeholder="PO Number" value={formData.po||''} style={{width:'100%',padding:'14px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px'}} onChange={(e)=>setFormData({...formData,po:e.target.value})} /></div>
                     <div><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>Date</label><input type="date" value={formData.date||''} style={{width:'100%',padding:'14px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px'}} onChange={(e)=>setFormData({...formData,date:e.target.value})} /></div>
                   </div>
@@ -1775,6 +1780,7 @@ function DashboardPage() {
                     <button onClick={()=>handleAction('Opening Profile Settings','profile-settings')} style={{padding:'16px 40px',background:'linear-gradient(135deg, #6366f1, #4f46e5)',color:'white',border:'none',borderRadius:'14px',fontSize:'17px',fontWeight:'800',cursor:'pointer',boxShadow:'0 6px 24px #6366f150',transition:'all 0.4s'}} onMouseEnter={(e)=>{e.currentTarget.style.transform='translateY(-4px) scale(1.05)';e.currentTarget.style.boxShadow='0 12px 40px #6366f170';}} onMouseLeave={(e)=>{e.currentTarget.style.transform='translateY(0) scale(1)';e.currentTarget.style.boxShadow='0 6px 24px #6366f150';}}>👤 Profile</button>
                     <button onClick={()=>handleAction('Opening Warehouse Config','warehouse-config')} style={{padding:'16px 40px',background:theme.sidebarHover,color:theme.text,border:`2px solid ${theme.border}`,borderRadius:'14px',fontSize:'17px',fontWeight:'800',cursor:'pointer',transition:'all 0.4s'}} onMouseEnter={(e)=>{e.currentTarget.style.borderColor='#6366f1';e.currentTarget.style.transform='translateY(-4px)';e.currentTarget.style.boxShadow='0 8px 24px rgba(99,102,241,0.2)';}} onMouseLeave={(e)=>{e.currentTarget.style.borderColor=theme.border;e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.boxShadow='none';}}>🏭 Warehouse</button>
                     <button onClick={()=>handleAction('Opening Platform Management','platform-management')} style={{padding:'16px 40px',background:theme.sidebarHover,color:theme.text,border:`2px solid ${theme.border}`,borderRadius:'14px',fontSize:'17px',fontWeight:'800',cursor:'pointer',transition:'all 0.4s'}} onMouseEnter={(e)=>{e.currentTarget.style.borderColor='#f59e0b';e.currentTarget.style.transform='translateY(-4px)';e.currentTarget.style.boxShadow='0 8px 24px rgba(245,158,11,0.2)';}} onMouseLeave={(e)=>{e.currentTarget.style.borderColor=theme.border;e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.boxShadow='none';}}>🛒 Platforms</button>
+                    <button onClick={()=>handleAction('Opening Supplier Management','supplier-management')} style={{padding:'16px 40px',background:theme.sidebarHover,color:theme.text,border:`2px solid ${theme.border}`,borderRadius:'14px',fontSize:'17px',fontWeight:'800',cursor:'pointer',transition:'all 0.4s'}} onMouseEnter={(e)=>{e.currentTarget.style.borderColor='#8b5cf6';e.currentTarget.style.transform='translateY(-4px)';e.currentTarget.style.boxShadow='0 8px 24px rgba(139,92,246,0.2)';}} onMouseLeave={(e)=>{e.currentTarget.style.borderColor=theme.border;e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.boxShadow='none';}}>🏭 Suppliers</button>
                   </div>
                 </div>
               )}
@@ -2057,6 +2063,226 @@ function DashboardPage() {
                       💾 Save Changes
                     </button>
                     <button onClick={()=>setActiveView('platform-management')} style={{padding:'14px 40px',background:theme.sidebarHover,color:theme.text,border:`2px solid ${theme.border}`,borderRadius:'12px',fontSize:'16px',fontWeight:'700',cursor:'pointer'}}>Cancel</button>
+                  </div>
+                </div>
+              )}
+              {activeView === 'supplier-management' && (
+                <div style={{background:theme.cardBg,padding:'40px',borderRadius:'20px',border:`2px solid ${theme.border}`,boxShadow:darkMode?'0 8px 32px rgba(0,0,0,0.3)':'0 8px 32px rgba(0,0,0,0.1)'}}>
+                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'32px'}}>
+                    <h2 style={{fontSize:'28px',fontWeight:'900',color:theme.text}}>🏭 Supplier Management</h2>
+                    <button onClick={resetView} style={{padding:'10px 24px',background:theme.sidebarHover,color:theme.text,border:`2px solid ${theme.border}`,borderRadius:'10px',fontSize:'15px',fontWeight:'700',cursor:'pointer'}}>← Back</button>
+                  </div>
+                  
+                  {/* Add New Supplier Form */}
+                  <div style={{marginBottom:'32px',padding:'24px',background:'linear-gradient(135deg, #8b5cf610, #7c3aed10)',border:`2px solid #8b5cf630`,borderRadius:'16px'}}>
+                    <label style={{display:'block',color:theme.text,marginBottom:'12px',fontWeight:'700',fontSize:'17px'}}>➕ Add New Supplier</label>
+                    <div style={{display:'grid',gridTemplateColumns:'2fr 1.5fr 1.5fr 1fr auto',gap:'12px'}}>
+                      <input 
+                        type="text" 
+                        placeholder="Supplier name" 
+                        value={formData.newSupplierName||''} 
+                        onChange={(e)=>setFormData({...formData,newSupplierName:e.target.value})} 
+                        style={{padding:'14px',background:theme.cardBg,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px'}} 
+                      />
+                      <input 
+                        type="text" 
+                        placeholder="Contact person" 
+                        value={formData.newSupplierContact||''} 
+                        onChange={(e)=>setFormData({...formData,newSupplierContact:e.target.value})} 
+                        style={{padding:'14px',background:theme.cardBg,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px'}} 
+                      />
+                      <input 
+                        type="tel" 
+                        placeholder="Phone number" 
+                        value={formData.newSupplierPhone||''} 
+                        onChange={(e)=>setFormData({...formData,newSupplierPhone:e.target.value})} 
+                        style={{padding:'14px',background:theme.cardBg,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px'}} 
+                      />
+                      <input 
+                        type="email" 
+                        placeholder="Email" 
+                        value={formData.newSupplierEmail||''} 
+                        onChange={(e)=>setFormData({...formData,newSupplierEmail:e.target.value})} 
+                        style={{padding:'14px',background:theme.cardBg,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px'}} 
+                      />
+                      <button 
+                        onClick={()=>{
+                          if(formData.newSupplierName && formData.newSupplierPhone){
+                            const newId = Math.max(...suppliers.map(s=>s.id),0)+1;
+                            setSuppliers([...suppliers,{
+                              id:newId,
+                              name:formData.newSupplierName,
+                              contact:formData.newSupplierContact||'',
+                              phone:formData.newSupplierPhone,
+                              email:formData.newSupplierEmail||''
+                            }]);
+                            addToast(`Supplier "${formData.newSupplierName}" added!`,'success');
+                            setFormData({...formData,newSupplierName:'',newSupplierContact:'',newSupplierPhone:'',newSupplierEmail:''});
+                          }else{
+                            addToast('Please enter supplier name and phone','error');
+                          }
+                        }} 
+                        style={{padding:'14px 32px',background:'linear-gradient(135deg, #8b5cf6, #7c3aed)',color:'white',border:'none',borderRadius:'10px',fontSize:'15px',fontWeight:'700',cursor:'pointer',whiteSpace:'nowrap'}}
+                      >
+                        Add Supplier
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Suppliers List */}
+                  <h3 style={{fontSize:'20px',fontWeight:'800',color:theme.text,marginBottom:'20px'}}>📋 All Suppliers ({suppliers.length})</h3>
+                  <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill, minmax(350px, 1fr))',gap:'16px'}}>
+                    {suppliers.map((supplier)=>(
+                      <div 
+                        key={supplier.id} 
+                        style={{
+                          padding:'20px',
+                          background:theme.sidebarHover,
+                          border:`2px solid ${theme.border}`,
+                          borderRadius:'12px',
+                          transition:'all 0.3s'
+                        }} 
+                        onMouseEnter={(e)=>{
+                          e.currentTarget.style.borderColor='#8b5cf6';
+                          e.currentTarget.style.transform='translateY(-2px)';
+                        }} 
+                        onMouseLeave={(e)=>{
+                          e.currentTarget.style.borderColor=theme.border;
+                          e.currentTarget.style.transform='translateY(0)';
+                        }}
+                      >
+                        <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:'12px'}}>
+                          <div style={{flex:1}}>
+                            <div style={{display:'flex',alignItems:'center',gap:'12px',marginBottom:'8px'}}>
+                              <div style={{width:'40px',height:'40px',background:'linear-gradient(135deg, #8b5cf6, #7c3aed)',borderRadius:'8px',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'20px'}}>🏭</div>
+                              <p style={{color:theme.text,fontSize:'18px',fontWeight:'700'}}>{supplier.name}</p>
+                            </div>
+                            {supplier.contact && <p style={{color:theme.textSecondary,fontSize:'13px',marginBottom:'4px'}}>👤 {supplier.contact}</p>}
+                            <p style={{color:theme.textSecondary,fontSize:'13px',marginBottom:'4px'}}>📞 {supplier.phone}</p>
+                            {supplier.email && <p style={{color:theme.textSecondary,fontSize:'13px'}}>✉️ {supplier.email}</p>}
+                          </div>
+                          <div style={{display:'flex',gap:'8px',flexDirection:'column'}}>
+                            <button 
+                              onClick={()=>{
+                                setFormData({
+                                  ...formData,
+                                  editSupplierId:supplier.id,
+                                  editSupplierName:supplier.name,
+                                  editSupplierContact:supplier.contact,
+                                  editSupplierPhone:supplier.phone,
+                                  editSupplierEmail:supplier.email
+                                });
+                                setActiveView('edit-supplier');
+                                addToast(`Editing ${supplier.name}...`,'info');
+                              }} 
+                              style={{
+                                padding:'8px 16px',
+                                background:'linear-gradient(135deg, #3b82f6, #2563eb)',
+                                color:'white',
+                                border:'none',
+                                borderRadius:'8px',
+                                fontSize:'12px',
+                                fontWeight:'700',
+                                cursor:'pointer'
+                              }}
+                            >
+                              ✏️ Edit
+                            </button>
+                            <button 
+                              onClick={()=>{
+                                if(window.confirm(`Delete supplier "${supplier.name}"? This cannot be undone.`)){
+                                  setSuppliers(suppliers.filter(s=>s.id!==supplier.id));
+                                  addToast(`Supplier "${supplier.name}" deleted!`,'success');
+                                }
+                              }} 
+                              style={{
+                                padding:'8px 16px',
+                                background:'linear-gradient(135deg, #ef4444, #dc2626)',
+                                color:'white',
+                                border:'none',
+                                borderRadius:'8px',
+                                fontSize:'12px',
+                                fontWeight:'700',
+                                cursor:'pointer'
+                              }}
+                            >
+                              🗑️ Delete
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {activeView === 'edit-supplier' && (
+                <div style={{background:theme.cardBg,padding:'40px',borderRadius:'20px',border:`2px solid ${theme.border}`,boxShadow:darkMode?'0 8px 32px rgba(0,0,0,0.3)':'0 8px 32px rgba(0,0,0,0.1)'}}>
+                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'32px'}}>
+                    <h2 style={{fontSize:'28px',fontWeight:'900',color:theme.text}}>✏️ Edit Supplier</h2>
+                    <button onClick={()=>setActiveView('supplier-management')} style={{padding:'10px 24px',background:theme.sidebarHover,color:theme.text,border:`2px solid ${theme.border}`,borderRadius:'10px',fontSize:'15px',fontWeight:'700',cursor:'pointer'}}>← Back</button>
+                  </div>
+                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'24px',maxWidth:'800px'}}>
+                    <div>
+                      <label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>Supplier Name</label>
+                      <input 
+                        type="text" 
+                        placeholder="Supplier name" 
+                        value={formData.editSupplierName||''} 
+                        onChange={(e)=>setFormData({...formData,editSupplierName:e.target.value})} 
+                        style={{width:'100%',padding:'14px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px'}} 
+                      />
+                    </div>
+                    <div>
+                      <label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>Contact Person</label>
+                      <input 
+                        type="text" 
+                        placeholder="Contact person name" 
+                        value={formData.editSupplierContact||''} 
+                        onChange={(e)=>setFormData({...formData,editSupplierContact:e.target.value})} 
+                        style={{width:'100%',padding:'14px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px'}} 
+                      />
+                    </div>
+                    <div>
+                      <label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>Phone Number</label>
+                      <input 
+                        type="tel" 
+                        placeholder="+91 XXXXXXXXXX" 
+                        value={formData.editSupplierPhone||''} 
+                        onChange={(e)=>setFormData({...formData,editSupplierPhone:e.target.value})} 
+                        style={{width:'100%',padding:'14px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px'}} 
+                      />
+                    </div>
+                    <div>
+                      <label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>Email Address</label>
+                      <input 
+                        type="email" 
+                        placeholder="email@example.com" 
+                        value={formData.editSupplierEmail||''} 
+                        onChange={(e)=>setFormData({...formData,editSupplierEmail:e.target.value})} 
+                        style={{width:'100%',padding:'14px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px'}} 
+                      />
+                    </div>
+                  </div>
+                  <div style={{marginTop:'32px',display:'flex',gap:'16px'}}>
+                    <button 
+                      onClick={()=>{
+                        if(formData.editSupplierName && formData.editSupplierPhone){
+                          setSuppliers(suppliers.map(s=>
+                            s.id===formData.editSupplierId
+                              ?{...s,name:formData.editSupplierName,contact:formData.editSupplierContact,phone:formData.editSupplierPhone,email:formData.editSupplierEmail}
+                              :s
+                          ));
+                          addToast('Supplier updated successfully!','success');
+                          setActiveView('supplier-management');
+                        }else{
+                          addToast('Please enter supplier name and phone','error');
+                        }
+                      }} 
+                      style={{padding:'14px 40px',background:'linear-gradient(135deg, #8b5cf6, #7c3aed)',color:'white',border:'none',borderRadius:'12px',fontSize:'16px',fontWeight:'800',cursor:'pointer'}}
+                    >
+                      💾 Save Changes
+                    </button>
+                    <button onClick={()=>setActiveView('supplier-management')} style={{padding:'14px 40px',background:theme.sidebarHover,color:theme.text,border:`2px solid ${theme.border}`,borderRadius:'12px',fontSize:'16px',fontWeight:'700',cursor:'pointer'}}>Cancel</button>
                   </div>
                 </div>
               )}
