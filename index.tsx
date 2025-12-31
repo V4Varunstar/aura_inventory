@@ -136,28 +136,54 @@ function DashboardPage() {
   const eanProducts: any = {};
   
   const lookupEAN = (ean: string, lineIndex?: number) => {
-    // Check both hardcoded and user-added products
-    const product = eanProducts[ean] || userProducts[ean];
+    if (!ean || ean.trim() === '') {
+      addToast('❌ Please enter an EAN', 'error');
+      return;
+    }
+    
+    console.log('🔍 Looking up EAN:', ean, 'in', realProducts.length, 'products');
+    
+    // Search in realProducts by EAN or eanNo field
+    const trimmedEAN = ean.trim();
+    const product = realProducts.find(p => 
+      (p.ean && p.ean.trim() === trimmedEAN) || 
+      (p.eanNo && p.eanNo.trim() === trimmedEAN)
+    );
+    
     if (product) {
+      console.log('✅ Product found:', product);
       if (lineIndex !== undefined) {
         // For multiple line items
         const updatedItems = [...lineItems];
-        updatedItems[lineIndex] = {...updatedItems[lineIndex], ean, productName: product.name, sku: product.sku, price: product.price};
+        updatedItems[lineIndex] = {
+          ...updatedItems[lineIndex], 
+          ean: trimmedEAN, 
+          productName: product.name, 
+          sku: product.sku, 
+          price: product.mrp || product.price || 0
+        };
         setLineItems(updatedItems);
         addToast(`✅ Product found: ${product.name}`, 'success');
       } else {
         // For single entry
-        setFormData({...formData, ean, productName: product.name, sku: product.sku, price: product.price});
+        setFormData({
+          ...formData, 
+          ean: trimmedEAN, 
+          productName: product.name, 
+          sku: product.sku, 
+          price: product.mrp || product.price || 0
+        });
         addToast(`✅ Product found: ${product.name} (${product.sku})`, 'success');
       }
     } else {
+      console.log('❌ EAN not found:', ean);
       addToast('❌ EAN not found in database', 'error');
       if (lineIndex !== undefined) {
         const updatedItems = [...lineItems];
-        updatedItems[lineIndex] = {...updatedItems[lineIndex], ean, productName: '', sku: ''};
+        updatedItems[lineIndex] = {...updatedItems[lineIndex], ean: trimmedEAN, productName: '', sku: ''};
         setLineItems(updatedItems);
       } else {
-        setFormData({...formData, ean, productName: '', sku: ''});
+        setFormData({...formData, ean: trimmedEAN, productName: '', sku: ''});
       }
     }
   };
