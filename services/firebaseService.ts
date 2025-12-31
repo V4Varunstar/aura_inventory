@@ -540,8 +540,10 @@ export const mockLogin = (email: string, pass: string): Promise<User> => {
 
 export const mockLogout = (): Promise<void> => {
     return new Promise(resolve => {
+        // Only clear session, NOT products or other data
         currentUser = null;
         localStorage.removeItem(SESSION_KEY);
+        console.log('🚪 Logout: Session cleared, products data preserved');
         resolve();
     });
 }
@@ -629,21 +631,20 @@ export const getProducts = () => {
     try {
         const rawData = localStorage.getItem('aura_inventory_products');
         if (!rawData) {
-            console.log('⚠️ No products in localStorage');
             return simulateApi([]);
         }
         
         const storedProducts = JSON.parse(rawData);
-        console.log('✅ Found products in localStorage:', storedProducts.length);
         
         // Update memory array
         products.length = 0;
         products.push(...storedProducts);
         
-        // Return ALL products (no filtering)
+        // Return ALL products without filtering (temporary fix)
+        // This ensures products are visible after import
         return simulateApi(storedProducts);
     } catch (error) {
-        console.error('❌ Error loading products:', error);
+        console.error('Error loading products:', error);
         return simulateApi([]);
     }
 };
