@@ -801,6 +801,17 @@ let inwardRecords: Inward[] = [];
 let outwardRecords: Outward[] = [];
 let adjustmentRecords: Adjustment[] = [];
 
+// ONE-TIME FORCED CLEANUP: Clear all old products data
+// This will run once and clear localStorage to fix duplicate issues
+const CLEANUP_FLAG = 'aura_products_cleaned_v2';
+if (!localStorage.getItem(CLEANUP_FLAG)) {
+  console.log('🧹 FORCE CLEANUP: Removing all old products from localStorage...');
+  localStorage.removeItem(STORAGE_KEYS.PRODUCTS);
+  localStorage.removeItem('products'); // Also remove old key if exists
+  localStorage.setItem(CLEANUP_FLAG, 'true');
+  console.log('✅ All products cleared! You can now import fresh data.');
+}
+
 // Initialize products and warehouses from localStorage or use defaults
 const initProducts = loadFromStorage<Product[]>(STORAGE_KEYS.PRODUCTS, []);
 if (initProducts.length > 0) {
