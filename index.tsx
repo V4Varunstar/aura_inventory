@@ -396,13 +396,13 @@ function DashboardPage() {
               {/* Stats Cards */}
               <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(260px,1fr))',gap:'24px',marginBottom:'40px'}}>
                 {[
-                  {title:'Total SKU',value:products.length.toString(),change:'+0%',icon:'📦',color:'#3b82f6',gradient:'linear-gradient(135deg, #3b82f6, #2563eb)',trend:'up',page:'products'},
-                  {title:"Today's Inward",value:inwardEntries.filter(e=>e.entryDate===new Date().toLocaleDateString('en-IN')).reduce((sum,e)=>sum+(parseInt(e.quantity)||0),0).toString(),change:'+12%',icon:'📥',color:'#10b981',gradient:'linear-gradient(135deg, #10b981, #059669)',trend:'up',page:'inward'},
-                  {title:"Today's Outward",value:outwardEntries.filter(e=>e.entryDate===new Date().toLocaleDateString('en-IN')).reduce((sum,e)=>sum+(parseInt(e.quantity)||0),0).toString(),change:'+15%',icon:'📤',color:'#f59e0b',gradient:'linear-gradient(135deg, #f59e0b, #d97706)',trend:'up',page:'outward'},
-                  {title:'Inventory Value',value:(()=>{const total=products.reduce((sum,p)=>sum+((parseFloat(p.price)||0)*(parseFloat(p.quantity)||0)),0);return total>=100000?'₹'+(total/100000).toFixed(2)+'L':'₹'+(total/1000).toFixed(2)+'K';})(),change:'+0%',icon:'💰',color:'#8b5cf6',gradient:'linear-gradient(135deg, #8b5cf6, #7c3aed)',trend:'up',page:'reports'},
-                  {title:'Low Stock Items',value:realProducts.filter(p=>(parseFloat(p.quantity)||0)<(parseFloat(p.lowStockThreshold)||parseFloat(p.minThreshold)||10)).length.toString(),change:'-0%',icon:'⚠️',color:'#ef4444',gradient:'linear-gradient(135deg, #ef4444, #dc2626)',trend:'down',page:'reports'}
+                  {title:'Total SKU',value:products.length.toString(),change:'+0%',icon:'📦',color:'#3b82f6',gradient:'linear-gradient(135deg, #3b82f6, #2563eb)',trend:'up',page:'products',view:''},
+                  {title:"Today's Inward",value:inwardEntries.filter(e=>e.entryDate===new Date().toLocaleDateString('en-IN')).reduce((sum,e)=>sum+(parseInt(e.quantity)||0),0).toString(),change:'+12%',icon:'📥',color:'#10b981',gradient:'linear-gradient(135deg, #10b981, #059669)',trend:'up',page:'inward',view:''},
+                  {title:"Today's Outward",value:outwardEntries.filter(e=>e.entryDate===new Date().toLocaleDateString('en-IN')).reduce((sum,e)=>sum+(parseInt(e.quantity)||0),0).toString(),change:'+15%',icon:'📤',color:'#f59e0b',gradient:'linear-gradient(135deg, #f59e0b, #d97706)',trend:'up',page:'outward',view:''},
+                  {title:'Inventory Value',value:(()=>{const total=products.reduce((sum,p)=>sum+((parseFloat(p.price)||0)*(parseFloat(p.quantity)||0)),0);return total>=100000?'₹'+(total/100000).toFixed(2)+'L':'₹'+(total/1000).toFixed(2)+'K';})(),change:'+0%',icon:'💰',color:'#8b5cf6',gradient:'linear-gradient(135deg, #8b5cf6, #7c3aed)',trend:'up',page:'reports',view:''},
+                  {title:'Low Stock SKU',value:realProducts.filter(p=>(parseFloat(p.quantity)||0)<(parseFloat(p.lowStockThreshold)||parseFloat(p.minThreshold)||10)).length.toString(),change:'-0%',icon:'⚠️',color:'#ef4444',gradient:'linear-gradient(135deg, #ef4444, #dc2626)',trend:'down',page:'reports',view:'low-stock-list'}
                 ].map((stat,i)=>(
-                  <div key={i} onClick={()=>{setCurrentPage(stat.page);resetView();addToast(`Opening ${stat.title}...`,'info');}} style={{background:theme.cardBg,padding:'26px',borderRadius:'16px',border:`2px solid ${theme.border}`,transition:'all 0.4s',cursor:'pointer',position:'relative',overflow:'hidden',boxShadow:darkMode?'0 4px 16px rgba(0,0,0,0.3)':'0 4px 16px rgba(0,0,0,0.08)'}} onMouseEnter={(e)=>{e.currentTarget.style.transform='translateY(-8px)';e.currentTarget.style.borderColor=stat.color;e.currentTarget.style.boxShadow=`0 12px 32px ${stat.color}40`;}} onMouseLeave={(e)=>{e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.borderColor=theme.border;e.currentTarget.style.boxShadow=darkMode?'0 4px 16px rgba(0,0,0,0.3)':'0 4px 16px rgba(0,0,0,0.08)';}}>
+                  <div key={i} onClick={()=>{setCurrentPage(stat.page);if(stat.view){setActiveView(stat.view);}else{resetView();}addToast(`Opening ${stat.title}...`,'info');}} style={{background:theme.cardBg,padding:'26px',borderRadius:'16px',border:`2px solid ${theme.border}`,transition:'all 0.4s',cursor:'pointer',position:'relative',overflow:'hidden',boxShadow:darkMode?'0 4px 16px rgba(0,0,0,0.3)':'0 4px 16px rgba(0,0,0,0.08)'}} onMouseEnter={(e)=>{e.currentTarget.style.transform='translateY(-8px)';e.currentTarget.style.borderColor=stat.color;e.currentTarget.style.boxShadow=`0 12px 32px ${stat.color}40`;}} onMouseLeave={(e)=>{e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.borderColor=theme.border;e.currentTarget.style.boxShadow=darkMode?'0 4px 16px rgba(0,0,0,0.3)':'0 4px 16px rgba(0,0,0,0.08)';}}>
                     <div style={{position:'absolute',top:0,right:0,width:'120px',height:'120px',background:stat.gradient,opacity:0.08,borderRadius:'50%',transform:'translate(30%, -30%)'}}></div>
                     <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:'18px'}}>
                       <div style={{width:'56px',height:'56px',borderRadius:'14px',background:stat.gradient,display:'flex',alignItems:'center',justifyContent:'center',fontSize:'28px',boxShadow:`0 6px 20px ${stat.color}35`,animation:'pulse 2s infinite'}}>
@@ -1634,6 +1634,131 @@ function DashboardPage() {
                         </td></tr>
                       </tbody>
                     </table>
+                  </div>
+                </div>
+              )}
+              {activeView === 'low-stock-list' && (
+                <div style={{background:theme.cardBg,padding:'40px',borderRadius:'20px',border:`2px solid ${theme.border}`,boxShadow:darkMode?'0 8px 32px rgba(0,0,0,0.3)':'0 8px 32px rgba(0,0,0,0.1)'}}>
+                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'32px'}}>
+                    <div>
+                      <h2 style={{fontSize:'28px',fontWeight:'900',color:theme.text,marginBottom:'8px'}}>⚠️ Low Stock SKU List</h2>
+                      <p style={{fontSize:'15px',color:theme.textSecondary}}>Products with stock below threshold</p>
+                    </div>
+                    <div style={{display:'flex',gap:'12px'}}>
+                      <button 
+                        onClick={()=>{
+                          const lowStockProducts = realProducts.filter(p=>(parseFloat(p.quantity)||0)<(parseFloat(p.lowStockThreshold)||parseFloat(p.minThreshold)||10));
+                          if(lowStockProducts.length === 0){
+                            addToast('No low stock items to export','info');
+                            return;
+                          }
+                          const exportData = lowStockProducts.map(p=>({
+                            'EAN': p.ean || p.eanNo || '-',
+                            'Product Name': p.name,
+                            'SKU': p.sku,
+                            'Category': p.category || '-',
+                            'Current Stock': p.quantity || 0,
+                            'Threshold': p.lowStockThreshold || p.minThreshold || 10,
+                            'Shortage': (p.lowStockThreshold || p.minThreshold || 10) - (p.quantity || 0),
+                            'MRP': p.mrp || p.price || 0,
+                            'Cost Price': p.costPrice || 0
+                          }));
+                          exportToExcel(exportData,'low-stock-sku-list.xls');
+                          addToast(`✅ Exported ${lowStockProducts.length} low stock SKUs to Excel`,'success');
+                        }} 
+                        style={{padding:'12px 28px',background:'linear-gradient(135deg, #10b981, #059669)',color:'white',border:'none',borderRadius:'10px',fontSize:'15px',fontWeight:'700',cursor:'pointer',boxShadow:'0 4px 16px rgba(16,185,129,0.3)'}}
+                      >
+                        📊 Export to Excel
+                      </button>
+                      <button onClick={resetView} style={{padding:'10px 24px',background:theme.sidebarHover,color:theme.text,border:`2px solid ${theme.border}`,borderRadius:'10px',fontSize:'15px',fontWeight:'700',cursor:'pointer'}}>← Back</button>
+                    </div>
+                  </div>
+                  
+                  {/* Summary Cards */}
+                  <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:'20px',marginBottom:'32px'}}>
+                    {[
+                      {label:'Total Low Stock SKUs',value:realProducts.filter(p=>(parseFloat(p.quantity)||0)<(parseFloat(p.lowStockThreshold)||parseFloat(p.minThreshold)||10)).length.toString(),color:'#ef4444',icon:'⚠️'},
+                      {label:'Critical (Stock = 0)',value:realProducts.filter(p=>(parseFloat(p.quantity)||0)===0).length.toString(),color:'#dc2626',icon:'🚨'},
+                      {label:'Total SKUs',value:realProducts.length.toString(),color:'#3b82f6',icon:'📦'}
+                    ].map((stat,i)=>(
+                      <div key={i} style={{background:theme.sidebarHover,padding:'24px',borderRadius:'16px',border:`2px solid ${theme.border}`,textAlign:'center'}}>
+                        <div style={{fontSize:'32px',marginBottom:'8px'}}>{stat.icon}</div>
+                        <p style={{color:theme.textSecondary,fontSize:'13px',marginBottom:'8px',fontWeight:'600'}}>{stat.label}</p>
+                        <p style={{color:stat.color,fontSize:'32px',fontWeight:'900'}}>{stat.value}</p>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Low Stock Products Table */}
+                  <div style={{background:theme.sidebarHover,padding:'24px',borderRadius:'16px',border:`2px solid ${theme.border}`}}>
+                    {realProducts.filter(p=>(parseFloat(p.quantity)||0)<(parseFloat(p.lowStockThreshold)||parseFloat(p.minThreshold)||10)).length === 0 ? (
+                      <div style={{textAlign:'center',padding:'60px'}}>
+                        <div style={{fontSize:'64px',marginBottom:'16px'}}>✅</div>
+                        <p style={{fontSize:'18px',color:theme.text,fontWeight:'700',marginBottom:'8px'}}>All stocks are healthy!</p>
+                        <p style={{fontSize:'15px',color:theme.textSecondary}}>No products below threshold</p>
+                      </div>
+                    ) : (
+                      <div style={{overflowX:'auto'}}>
+                        <table style={{width:'100%',borderCollapse:'collapse'}}>
+                          <thead>
+                            <tr style={{borderBottom:`2px solid ${theme.border}`}}>
+                              <th style={{padding:'14px',textAlign:'left',color:theme.text,fontWeight:'700',fontSize:'13px'}}>EAN</th>
+                              <th style={{padding:'14px',textAlign:'left',color:theme.text,fontWeight:'700',fontSize:'13px'}}>Product Name</th>
+                              <th style={{padding:'14px',textAlign:'left',color:theme.text,fontWeight:'700',fontSize:'13px'}}>SKU</th>
+                              <th style={{padding:'14px',textAlign:'left',color:theme.text,fontWeight:'700',fontSize:'13px'}}>Category</th>
+                              <th style={{padding:'14px',textAlign:'right',color:theme.text,fontWeight:'700',fontSize:'13px'}}>Current Stock</th>
+                              <th style={{padding:'14px',textAlign:'right',color:theme.text,fontWeight:'700',fontSize:'13px'}}>Threshold</th>
+                              <th style={{padding:'14px',textAlign:'right',color:theme.text,fontWeight:'700',fontSize:'13px'}}>Shortage</th>
+                              <th style={{padding:'14px',textAlign:'center',color:theme.text,fontWeight:'700',fontSize:'13px'}}>Status</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {realProducts
+                              .filter(p=>(parseFloat(p.quantity)||0)<(parseFloat(p.lowStockThreshold)||parseFloat(p.minThreshold)||10))
+                              .sort((a,b)=>(parseFloat(a.quantity)||0)-(parseFloat(b.quantity)||0))
+                              .map((p,i)=>{
+                                const currentStock = parseFloat(p.quantity)||0;
+                                const threshold = parseFloat(p.lowStockThreshold)||parseFloat(p.minThreshold)||10;
+                                const shortage = threshold - currentStock;
+                                const isCritical = currentStock === 0;
+                                const isVeryLow = currentStock > 0 && currentStock < threshold * 0.3;
+                                
+                                return (
+                                  <tr 
+                                    key={i} 
+                                    style={{
+                                      borderBottom:`1px solid ${theme.border}`,
+                                      background: isCritical ? '#dc262610' : isVeryLow ? '#ef444410' : 'transparent'
+                                    }} 
+                                    onMouseEnter={(e)=>e.currentTarget.style.background=isCritical?'#dc262620':isVeryLow?'#ef444420':theme.sidebarHover} 
+                                    onMouseLeave={(e)=>e.currentTarget.style.background=isCritical?'#dc262610':isVeryLow?'#ef444410':'transparent'}
+                                  >
+                                    <td style={{padding:'14px',color:theme.textSecondary,fontSize:'13px'}}>{p.ean || p.eanNo || '-'}</td>
+                                    <td style={{padding:'14px',color:theme.text,fontWeight:'600',fontSize:'14px'}}>{p.name}</td>
+                                    <td style={{padding:'14px',color:theme.text,fontSize:'13px',fontFamily:'monospace'}}>{p.sku}</td>
+                                    <td style={{padding:'14px',color:theme.textSecondary,fontSize:'13px'}}>{p.category || '-'}</td>
+                                    <td style={{padding:'14px',textAlign:'right',color:isCritical?'#dc2626':isVeryLow?'#ef4444':'#f59e0b',fontWeight:'900',fontSize:'16px'}}>{currentStock}</td>
+                                    <td style={{padding:'14px',textAlign:'right',color:theme.textSecondary,fontSize:'14px'}}>{threshold}</td>
+                                    <td style={{padding:'14px',textAlign:'right',color:'#ef4444',fontWeight:'700',fontSize:'14px'}}>↓ {shortage}</td>
+                                    <td style={{padding:'14px',textAlign:'center'}}>
+                                      <span style={{
+                                        padding:'6px 14px',
+                                        borderRadius:'8px',
+                                        fontSize:'12px',
+                                        fontWeight:'700',
+                                        background: isCritical ? '#dc2626' : isVeryLow ? '#ef4444' : '#f59e0b',
+                                        color:'white'
+                                      }}>
+                                        {isCritical ? '🚨 Critical' : isVeryLow ? '⚠️ Very Low' : '⚠️ Low'}
+                                      </span>
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
