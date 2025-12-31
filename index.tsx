@@ -179,21 +179,41 @@ function DashboardPage() {
   };
   
   const getAllProducts = () => {
-    const allProducts: any[] = [];
-    Object.entries(eanProducts).forEach(([ean, product]: [string, any]) => {
-      allProducts.push({ean, ...product});
-    });
-    Object.entries(userProducts).forEach(([ean, product]: [string, any]) => {
-      allProducts.push({ean, ...product});
-    });
-    return allProducts;
+    // Return realProducts from database instead of empty eanProducts/userProducts
+    // This ensures inward/outward dropdowns show all products from database
+    console.log('📦 getAllProducts called, returning', realProducts.length, 'products');
+    return realProducts || [];
   };
   
   const selectProductByName = (productName: string, lineIndex?: number) => {
     const allProducts = getAllProducts();
     const product = allProducts.find(p => p.name === productName);
     if (product) {
-      lookupEAN(product.ean, lineIndex);
+      console.log('✅ Product selected:', product);
+      // Update line item directly with product details
+      if (lineIndex !== undefined) {
+        const updatedItems = [...lineItems];
+        updatedItems[lineIndex] = {
+          ...updatedItems[lineIndex], 
+          ean: product.ean || product.eanNo || '', 
+          productName: product.name, 
+          sku: product.sku, 
+          price: product.mrp || product.price || 0
+        };
+        setLineItems(updatedItems);
+        addToast(`✅ Product selected: ${product.name}`, 'success');
+      } else {
+        setFormData({
+          ...formData, 
+          ean: product.ean || product.eanNo || '', 
+          productName: product.name, 
+          sku: product.sku, 
+          price: product.mrp || product.price || 0
+        });
+        addToast(`✅ Product selected: ${product.name} (${product.sku})`, 'success');
+      }
+    } else {
+      addToast('❌ Product not found', 'error');
     }
   };
   
