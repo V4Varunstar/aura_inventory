@@ -625,23 +625,25 @@ export const updatePassword = (userId: string, currentPassword: string, newPassw
 
 // Products
 export const getProducts = () => {
+    // CRITICAL FIX: Always reload from localStorage to ensure fresh data
+    const storedProducts = loadFromStorage<Product[]>(STORAGE_KEYS.PRODUCTS, []);
+    if (storedProducts.length > 0) {
+        products.length = 0;
+        products.push(...storedProducts);
+    }
+    
     // Get current user from session
     const userJson = localStorage.getItem(SESSION_KEY);
     if (!userJson) {
-        console.log('❌ No user session found');
         return simulateApi([]);
     }
     
     const user = JSON.parse(userJson);
-    console.log('👤 Current user:', user.email, 'orgId:', user.orgId);
-    console.log('📦 Total products in memory:', products.length);
     
     // Filter products by orgId
     const filteredProducts = user.orgId 
         ? products.filter(p => p.orgId === user.orgId)
         : products;
-    
-    console.log('✅ Filtered products for user:', filteredProducts.length);
     
     return simulateApi(filteredProducts);
 };
