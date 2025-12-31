@@ -18,8 +18,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const checkUserSession = useCallback(async () => {
     try {
-      const loggedInUser = await mockFetchUser(); // Simulate checking session
-      console.log('✅ Session check successful:', loggedInUser);
+      const loggedInUser = await mockFetchUser();
+      console.log('✅ Session check successful:', loggedInUser.email, loggedInUser.role);
       setUser(loggedInUser);
     } catch (error) {
       console.log('ℹ️ No session found, user needs to login');

@@ -528,9 +528,6 @@ export const mockLogin = (email: string, pass: string): Promise<User> => {
             currentUser = foundUser;
             localStorage.setItem(SESSION_KEY, JSON.stringify(foundUser));
             
-            // CRITICAL: Reload all data from localStorage after login
-            reloadDataFromStorage();
-            
             console.log('✅ Session established successfully for:', foundUser.email);
             resolve(foundUser);
         }
@@ -545,21 +542,30 @@ export const mockLogin = (email: string, pass: string): Promise<User> => {
 export const mockLogout = (): Promise<void> => {
     return new Promise(resolve => {
         // Only clear session, NOT products or other data
+        const wasLoggedIn = currentUser?.email;
         currentUser = null;
         localStorage.removeItem(SESSION_KEY);
-        console.log('🚪 Logout: Session cleared, products data preserved');
+        console.log('🚪 Logout:', wasLoggedIn, '- Session cleared, all data preserved in localStorage');
         resolve();
     });
 }
 
 export const mockFetchUser = (): Promise<User> => {
     return new Promise((resolve, reject) => {
-        const userJson = localStorage.getItem(SESSION_KEY);
-        if (userJson) {
-            currentUser = JSON.parse(userJson);
-            resolve(currentUser as User);
-        } else {
-            reject();
+        try {
+            const userJson = localStorage.getItem(SESSION_KEY);
+            if (userJson) {
+                const user = JSON.parse(userJson);
+                currentUser = user;
+                console.log('✅ Session recovered for:', user.email, 'role:', user.role);
+                resolve(currentUser as User);
+            } else {
+                console.log('ℹ️ No active session found');
+                reject(new Error('No active session'));
+            }
+        } catch (error) {
+            console.error('❌ Error fetching user session:', error);
+            reject(error);
         }
     });
 };
