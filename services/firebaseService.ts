@@ -294,6 +294,7 @@ const activities: ActivityLog[] = [];
 
 let currentUser: User | null = null;
 const SESSION_KEY = 'aura_inventory_user';
+const SESSION_BACKUP_KEY = 'aura_inventory_user_backup';
 const STORAGE_KEYS = {
   PRODUCTS: 'aura_inventory_products',
   WAREHOUSES: 'aura_inventory_warehouses',
@@ -304,6 +305,38 @@ const STORAGE_KEYS = {
   CATEGORIES: 'aura_inventory_categories',
   COURIER_PARTNERS: 'aura_inventory_courier_partners',
 };
+
+// Session protection - prevent accidental clearing
+const backupSession = () => {
+  try {
+    const session = localStorage.getItem(SESSION_KEY);
+    if (session) {
+      localStorage.setItem(SESSION_BACKUP_KEY, session);
+    }
+  } catch (error) {
+    console.error('Failed to backup session:', error);
+  }
+};
+
+// Restore session from backup if main session is lost
+const restoreSessionFromBackup = (): boolean => {
+  try {
+    const mainSession = localStorage.getItem(SESSION_KEY);
+    const backupSession = localStorage.getItem(SESSION_BACKUP_KEY);
+    
+    if (!mainSession && backupSession) {
+      console.log('🔄 Restoring session from backup');
+      localStorage.setItem(SESSION_KEY, backupSession);
+      return true;
+    }
+  } catch (error) {
+    console.error('Failed to restore session from backup:', error);
+  }
+  return false;
+};
+
+// Backup session periodically (every 5 seconds)
+setInterval(backupSession, 5000);
 
 // Clean up corrupted outward data on load
 const cleanCorruptedOutwardData = () => {
@@ -526,9 +559,30 @@ export const mockLogin = (email: string, pass: string): Promise<User> => {
             console.log('✅ Login successful for:', foundUser.email);
             console.log('🔐 Setting session for user:', foundUser.email);
             currentUser = foundUser;
-            localStorage.setItem(SESSION_KEY, JSON.stringify(foundUser));
             
-            console.log('✅ Session established successfully for:', foundUser.email);
+            // Ensure session is stored with proper structure
+            const sessionData = JSON.stringify(foundUser);
+            localStorage.setItem(SESSION_KEY, sessionData);
+            
+            // Create session backup immediately
+            backupSession();
+            
+            // Verify session was saved correctly
+            const savedSession = localStorage.getItem(SESSION_KEY);
+            if (!savedSession || savedSession !== sessionData) {
+                console.error('❌ Failed to save session to localStorage');
+                reject(new Error('Failed to save login session. Please try again.'));
+                return;
+            }
+            
+            console.log('✅ Session established and verified for:', foundUser.email);
+            console.log('📦 Session data stored:', {
+                email: foundUser.email,
+                role: foundUser.role,
+                orgId: foundUser.orgId,
+                size: sessionData.length + ' bytes',
+                backupCreated: true
+            });
             resolve(foundUser);
         }
       } else {
@@ -553,18 +607,66 @@ export const mockLogout = (): Promise<void> => {
 export const mockFetchUser = (): Promise<User> => {
     return new Promise((resolve, reject) => {
         try {
-            const userJson = localStorage.getItem(SESSION_KEY);
-            if (userJson) {
-                const user = JSON.parse(userJson);
-                currentUser = user;
-                console.log('✅ Session recovered for:', user.email, 'role:', user.role);
-                resolve(currentUser as User);
-            } else {
-                console.log('ℹ️ No active session found');
-                reject(new Error('No active session'));
+            let userJson = localStorage.getItem(SESSION_KEY);
+            
+            // Try to restore from backup if main session is missing
+            if (!userJson) {
+                console.log('⚠️ Main session not found, attempting restore from backup...');
+                if (restoreSessionFromBackup()) {
+                    userJson = localStorage.getItem(SESSION_KEY);
+                    console.log('✅ Session restored from backup successfully');
+                }
             }
+            
+            console.log('🔍 Checking session... Key present:', !!userJson);
+            
+            if (!userJson) {
+                console.log('ℹ️ No active session found in localStorage');
+                reject(new Error('No active session'));
+                return;
+            }
+
+            // Try to parse the user data
+            let user;
+            try {
+                user = JSON.parse(userJson);
+            } catch (parseError) {
+                console.error('❌ Failed to parse user session data:', parseError);
+                // Clear corrupted session
+                localStorage.removeItem(SESSION_KEY);
+                reject(new Error('Invalid session data'));
+                return;
+            }
+
+            // Validate user object has required fields
+            if (!user || !user.email || !user.id || !user.role) {
+                console.error('❌ Invalid user session structure:', user);
+                localStorage.removeItem(SESSION_KEY);
+                reject(new Error('Invalid session structure'));
+                return;
+            }
+
+            // Validate user still exists and is enabled
+            const superAdminUsers = JSON.parse(localStorage.getItem('superadmin_users') || '[]');
+            const isUserValid = users.find(u => u.email === user.email && u.isEnabled !== false) ||
+                              superAdminUsers.find((u: any) => u.email === user.email && u.isEnabled !== false);
+            
+            if (!isUserValid && user.role !== 'SuperAdmin') {
+                console.error('❌ User no longer exists or is disabled:', user.email);
+                localStorage.removeItem(SESSION_KEY);
+                reject(new Error('User account not found or disabled'));
+                return;
+            }
+
+            // Session is valid, restore it and create backup
+            currentUser = user;
+            backupSession(); // Create/update backup
+            console.log('✅ Session restored successfully:', user.email, 'role:', user.role, 'orgId:', user.orgId);
+            resolve(currentUser as User);
+            
         } catch (error) {
-            console.error('❌ Error fetching user session:', error);
+            console.error('❌ Unexpected error fetching user session:', error);
+            // Don't clear session on unexpected errors - let user retry
             reject(error);
         }
     });

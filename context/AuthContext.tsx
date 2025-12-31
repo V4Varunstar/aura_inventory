@@ -19,12 +19,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const checkUserSession = useCallback(async () => {
     setLoading(true);
     try {
+      console.log('🔍 Checking user session on mount/refresh...');
       const loggedInUser = await mockFetchUser();
-      console.log('✅ Session check successful:', loggedInUser.email, loggedInUser.role);
+      console.log('✅ Session check successful:', {
+        email: loggedInUser.email,
+        role: loggedInUser.role,
+        orgId: loggedInUser.orgId,
+        timestamp: new Date().toISOString()
+      });
       setUser(loggedInUser);
-    } catch (error) {
-      console.log('ℹ️ No session found, user needs to login');
-      setUser(null);
+    } catch (error: any) {
+      console.log('⚠️ Session check failed:', error?.message || error);
+      
+      // Only set user to null if session is truly invalid
+      // Don't logout on network/temporary errors
+      if (error?.message?.includes('No active session') || 
+          error?.message?.includes('Invalid session') ||
+          error?.message?.includes('disabled')) {
+        console.log('🚪 Clearing user state - session invalid');
+        setUser(null);
+      } else {
+        // For unexpected errors, keep user logged in and retry
+        console.log('🔄 Temporary error, retrying session check...');
+        setTimeout(() => {
+          checkUserSession();
+        }, 1000);
+      }
     } finally {
       setLoading(false);
     }
