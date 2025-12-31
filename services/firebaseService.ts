@@ -631,26 +631,17 @@ export const updatePassword = (userId: string, currentPassword: string, newPassw
 
 // Products
 export const getProducts = () => {
-    // DIRECT localStorage read - bypassing all caching/complexity
-    try {
-        const rawData = localStorage.getItem('aura_inventory_products');
-        if (!rawData) {
-            return simulateApi([]);
-        }
-        
-        const storedProducts = JSON.parse(rawData);
-        
-        // Update memory array
-        products.length = 0;
-        products.push(...storedProducts);
-        
-        // Return ALL products without filtering (temporary fix)
-        // This ensures products are visible after import
-        return simulateApi(storedProducts);
-    } catch (error) {
-        console.error('Error loading products:', error);
-        return simulateApi([]);
-    }
+    // CRITICAL: Force reload from localStorage to get latest data
+    reloadDataFromStorage();
+    
+    // Filter by current user's orgId if not SuperAdmin
+    const filteredProducts = currentUser && currentUser.orgId && currentUser.role !== 'SuperAdmin'
+        ? products.filter(p => p.orgId === currentUser.orgId)
+        : products;
+    
+    console.log('📦 getProducts: Total in DB:', products.length, 'Filtered for user:', filteredProducts.length);
+    
+    return simulateApi([...filteredProducts]);
 };
 
 // Clear all products (utility function for fixing duplicate issues)
@@ -710,11 +701,17 @@ export const checkExistingSKUs = (skus: string[]): Promise<string[]> => {
 export const addProductsBatch = async (productsData: Partial<Product>[]): Promise<BulkUploadResult> => {
     return new Promise((resolve) => {
         setTimeout(() => {
-            // CRITICAL: Reload from localStorage first to get latest data
-            reloadDataFromStorage();
+            // STEP 1: Force reload from localStorage to get absolutely latest data
+            console.log('🔄 STEP 1: Force reloading from localStorage...');
+            const beforeCount = reloadDataFromStorage();
+            console.log('📊 Products in DB before import:', beforeCount);
             
-            console.log('🚀 Starting batch import...', productsData.length, 'products');
-            console.log('📦 Products in memory after reload:', products.length);
+            // STEP 2: Log all existing SKUs for debugging
+            const existingSKUs = products.map(p => ({ sku: p.sku, orgId: p.orgId }));
+            console.log('📝 Existing SKUs in DB:', existingSKUs.length);
+            console.log('📝 First 5 existing SKUs:', existingSKUs.slice(0, 5));
+            
+            console.log('🚀 STEP 2: Starting batch import...', productsData.length, 'products');
             
             const result: BulkUploadResult = {
                 imported: [],
@@ -728,15 +725,24 @@ export const addProductsBatch = async (productsData: Partial<Product>[]): Promis
                 },
             };
 
+            // STEP 3: Process each product
             productsData.forEach((productData, idx) => {
                 try {
-                    // Check for duplicate SKU within same orgId
+                    if (!productData.sku) {
+                        throw new Error('SKU is required');
+                    }
+                    
+                    // Normalize SKU for comparison (trim and lowercase)
+                    const normalizedSKU = productData.sku.trim().toLowerCase();
+                    
+                    // Check for duplicate: same SKU AND same orgId
                     const existingProduct = products.find(
-                        p => p.sku.toLowerCase() === productData.sku!.toLowerCase() && 
+                        p => p.sku.trim().toLowerCase() === normalizedSKU && 
                         p.orgId === productData.orgId
                     );
 
                     if (existingProduct) {
+                        console.log(`⚠️ Duplicate found: SKU=${productData.sku}, orgId=${productData.orgId}`);
                         result.duplicates.push({
                             product: productData,
                             existingSKU: existingProduct.sku,
@@ -745,7 +751,7 @@ export const addProductsBatch = async (productsData: Partial<Product>[]): Promis
                     } else {
                         // Add the product
                         const newProduct: Product = {
-                            id: `prod_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                            id: `prod_${Date.now()}_${idx}_${Math.random().toString(36).substr(2, 9)}`,
                             createdAt: new Date(),
                             updatedAt: new Date(),
                             ...productData,
@@ -754,8 +760,10 @@ export const addProductsBatch = async (productsData: Partial<Product>[]): Promis
                         products.push(newProduct);
                         result.imported.push(newProduct);
                         result.summary.successful++;
+                        console.log(`✅ Added: ${newProduct.sku} (ID: ${newProduct.id})`);
                     }
                 } catch (error) {
+                    console.error(`❌ Failed to import product:`, productData, error);
                     result.failed.push({
                         product: productData,
                         error: error instanceof Error ? error.message : 'Unknown error',
@@ -764,8 +772,23 @@ export const addProductsBatch = async (productsData: Partial<Product>[]): Promis
                 }
             });
             
-            // Save all products to localStorage after batch processing
+            // STEP 4: Force save to localStorage
+            console.log('💾 STEP 4: Saving', products.length, 'products to localStorage...');
             saveToStorage(STORAGE_KEYS.PRODUCTS, products);
+            
+            // STEP 5: Clear cache to force fresh reads
+            cache.clear();
+            console.log('🧹 STEP 5: Cache cleared');
+            
+            // STEP 6: Verify save
+            const verifyProducts = loadFromStorage<Product[]>(STORAGE_KEYS.PRODUCTS, []);
+            console.log('✅ STEP 6: Verified', verifyProducts.length, 'products in localStorage');
+            console.log('📊 Import Summary:', {
+                total: result.summary.total,
+                successful: result.summary.successful,
+                duplicates: result.summary.duplicates,
+                failed: result.summary.failed
+            });
 
             resolve(result);
         }, 1000); // Simulate API delay
@@ -823,10 +846,15 @@ let adjustmentRecords: Adjustment[] = [];
 
 // Function to reload all data from localStorage
 const reloadDataFromStorage = () => {
+  // Clear cache first to force fresh read
+  cache.clear();
+  
   const initProducts = loadFromStorage<Product[]>(STORAGE_KEYS.PRODUCTS, []);
   products.length = 0;
   products.push(...initProducts);
   console.log('🔄 Reloaded', initProducts.length, 'products from localStorage');
+  
+  return initProducts.length;
 };
 
 // Initialize products and warehouses from localStorage on app start
@@ -1491,6 +1519,46 @@ export const getFullStockReport = (format: 'csv' | 'xlsx') => {
     });
     
     return simulateApi(reportData);
+};
+
+// DEBUG UTILITIES - Helper functions to diagnose issues
+export const debugProductStorage = () => {
+    console.log('=== PRODUCT STORAGE DEBUG ===');
+    
+    // Check localStorage
+    const rawData = localStorage.getItem(STORAGE_KEYS.PRODUCTS);
+    console.log('1. Raw localStorage data:', rawData ? `${rawData.length} chars` : 'NULL');
+    
+    if (rawData) {
+        try {
+            const parsed = JSON.parse(rawData);
+            console.log('2. Parsed products:', parsed.length);
+            console.log('3. First 3 products:', parsed.slice(0, 3));
+            console.log('4. All SKUs:', parsed.map((p: any) => p.sku));
+        } catch (error) {
+            console.error('Failed to parse localStorage:', error);
+        }
+    }
+    
+    // Check memory
+    console.log('5. Products in memory:', products.length);
+    console.log('6. First 3 in memory:', products.slice(0, 3));
+    
+    // Check current user
+    console.log('7. Current user:', currentUser?.email, currentUser?.orgId);
+    
+    return {
+        localStorageSize: rawData?.length || 0,
+        localStorageCount: rawData ? JSON.parse(rawData).length : 0,
+        memoryCount: products.length,
+        currentUser: currentUser?.email
+    };
+};
+
+export const forceReloadProducts = () => {
+    console.log('🔄 Force reloading products...');
+    reloadDataFromStorage();
+    return simulateApi(products);
 };
 
 export const getInwardReport = (format: 'csv' | 'xlsx') => {

@@ -657,22 +657,41 @@ function DashboardPage() {
               )}
               {activeView === 'view-products' && (
                 <div style={{background:theme.cardBg,padding:'40px',borderRadius:'20px',border:`2px solid ${theme.border}`,boxShadow:darkMode?'0 8px 32px rgba(0,0,0,0.3)':'0 8px 32px rgba(0,0,0,0.1)'}}>
-                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'32px'}}>
+                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'24px'}}>
                     <h2 style={{fontSize:'28px',fontWeight:'900',color:theme.text}}>📋 All Products</h2>
-                    <button onClick={resetView} style={{padding:'10px 24px',background:theme.sidebarHover,color:theme.text,border:`2px solid ${theme.border}`,borderRadius:'10px',fontSize:'15px',fontWeight:'700',cursor:'pointer'}}>← Back</button>
+                    <div style={{display:'flex',gap:'12px'}}>
+                      <button onClick={async ()=>{
+                        addToast('🔄 Refreshing products...','info');
+                        const refreshed = await getProducts();
+                        setRealProducts(refreshed);
+                        addToast(`✅ Loaded ${refreshed.length} products`,'success');
+                      }} style={{padding:'10px 24px',background:'linear-gradient(135deg, #10b981, #059669)',color:'white',border:'none',borderRadius:'10px',fontSize:'15px',fontWeight:'700',cursor:'pointer'}}>🔄 Refresh</button>
+                      <button onClick={resetView} style={{padding:'10px 24px',background:theme.sidebarHover,color:theme.text,border:`2px solid ${theme.border}`,borderRadius:'10px',fontSize:'15px',fontWeight:'700',cursor:'pointer'}}>← Back</button>
+                    </div>
                   </div>
-                  {products.length === 0 ? (
+                  <div style={{marginBottom:'16px',padding:'12px 20px',background:theme.sidebarHover,borderRadius:'10px',border:`2px solid ${theme.border}`}}>
+                    <span style={{fontSize:'15px',fontWeight:'700',color:theme.text}}>📊 Total Products: {realProducts.length}</span>
+                  </div>
+                  {realProducts.length === 0 ? (
                     <div style={{textAlign:'center',padding:'60px'}}>
                       <div style={{fontSize:'64px',marginBottom:'16px'}}>📦</div>
-                      <p style={{fontSize:'18px',color:theme.textSecondary,marginBottom:'24px'}}>No products added yet</p>
-                      <button onClick={()=>setActiveView('add-product')} style={{padding:'14px 32px',background:'linear-gradient(135deg, #3b82f6, #2563eb)',color:'white',border:'none',borderRadius:'12px',fontSize:'16px',fontWeight:'700',cursor:'pointer'}}>➕ Add First Product</button>
+                      <p style={{fontSize:'18px',color:theme.textSecondary,marginBottom:'24px'}}>No products found. Try refreshing or add new products.</p>
+                      <div style={{display:'flex',gap:'12px',justifyContent:'center'}}>
+                        <button onClick={()=>setActiveView('add-product')} style={{padding:'14px 32px',background:'linear-gradient(135deg, #3b82f6, #2563eb)',color:'white',border:'none',borderRadius:'12px',fontSize:'16px',fontWeight:'700',cursor:'pointer'}}>➕ Add Product</button>
+                        <button onClick={async ()=>{
+                          addToast('🔄 Refreshing...','info');
+                          const refreshed = await getProducts();
+                          setRealProducts(refreshed);
+                          addToast(`✅ Loaded ${refreshed.length} products`,'success');
+                        }} style={{padding:'14px 32px',background:'linear-gradient(135deg, #10b981, #059669)',color:'white',border:'none',borderRadius:'12px',fontSize:'16px',fontWeight:'700',cursor:'pointer'}}>🔄 Refresh</button>
+                      </div>
                     </div>
                   ) : (
                     <div style={{overflowX:'auto'}}>
                       <table style={{width:'100%',borderCollapse:'collapse'}}>
                         <thead><tr style={{background:theme.sidebarHover,borderBottom:`2px solid ${theme.border}`}}><th style={{padding:'16px',textAlign:'left',color:theme.text,fontWeight:'700'}}>SKU</th><th style={{padding:'16px',textAlign:'left',color:theme.text,fontWeight:'700'}}>Product Name</th><th style={{padding:'16px',textAlign:'left',color:theme.text,fontWeight:'700'}}>Category</th><th style={{padding:'16px',textAlign:'left',color:theme.text,fontWeight:'700'}}>Stock</th><th style={{padding:'16px',textAlign:'left',color:theme.text,fontWeight:'700'}}>Price</th><th style={{padding:'16px',textAlign:'center',color:theme.text,fontWeight:'700'}}>Actions</th></tr></thead>
                         <tbody>
-                          {products.map((p,i)=>(
+                          {realProducts.map((p,i)=>(
                             <tr key={i} style={{borderBottom:`1px solid ${theme.border}`}} onMouseEnter={(e)=>e.currentTarget.style.background=theme.sidebarHover} onMouseLeave={(e)=>e.currentTarget.style.background='transparent'}>
                               <td style={{padding:'16px',color:theme.text,fontWeight:'600'}}>{p.sku}</td>
                               <td style={{padding:'16px',color:theme.text}}>{p.name}</td>
@@ -914,8 +933,13 @@ function DashboardPage() {
                                 // Show final summary alert
                                 alert(`Import Summary:\n\n✅ Successful: ${result.summary.successful}\n❌ Failed: ${result.summary.failed}\n⚠️ Duplicates: ${result.summary.duplicates}\n\nTotal: ${result.summary.total}\n\n${result.summary.duplicates > 0 ? 'Note: Duplicate SKUs were skipped (already exist in database)' : ''}`);
                                 
-                                // Reset and go back only if successful
+                                // CRITICAL: Force refresh products list after successful import
                                 if (result.summary.successful > 0) {
+                                  console.log('🔄 Refreshing products list after import...');
+                                  const refreshedProducts = await getProducts();
+                                  setRealProducts(refreshedProducts);
+                                  console.log('✅ Products list refreshed:', refreshedProducts.length);
+                                  
                                   setTimeout(() => {
                                     setFormData({});
                                     setIsImporting(false);
