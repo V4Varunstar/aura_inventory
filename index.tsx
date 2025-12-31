@@ -490,7 +490,7 @@ function DashboardPage() {
                       acc[platform].orders += 1;
                       acc[platform].totalQty += parseInt(entry.quantity) || 0;
                       return acc;
-                    }, {});
+                    }, {} as Record<string, {orders: number, totalQty: number}>);
                     const totalOrders = Object.values(platformData).reduce((sum, p) => sum + p.orders, 0) || 1;
                     const platforms = [
                       { platform: 'Meesho', color: '#FF006E' },
@@ -537,7 +537,7 @@ function DashboardPage() {
                       const product = products.find(p => p.sku === sku);
                       acc[sku].revenue += (parseInt(entry.quantity) || 0) * (parseFloat(product?.price) || 50);
                       return acc;
-                    }, {});
+                    }, {} as Record<string, {name: string, sku: string, units: number, revenue: number}>);
                     const colors = ['#FFD700', '#C0C0C0', '#CD7F32', '#6366f1'];
                     return Object.values(skuData)
                       .sort((a, b) => b.units - a.units)

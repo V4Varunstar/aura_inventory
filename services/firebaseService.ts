@@ -804,8 +804,17 @@ let adjustmentRecords: Adjustment[] = [];
 // Initialize products and warehouses from localStorage or use defaults
 const initProducts = loadFromStorage<Product[]>(STORAGE_KEYS.PRODUCTS, []);
 if (initProducts.length > 0) {
+  // Auto-cleanup: Remove products without orgId (old format data)
+  const validProducts = initProducts.filter(p => p.orgId);
+  
+  if (validProducts.length !== initProducts.length) {
+    console.log(`🧹 Cleaned up ${initProducts.length - validProducts.length} invalid products (missing orgId)`);
+    // Save cleaned data back to localStorage
+    saveToStorage(STORAGE_KEYS.PRODUCTS, validProducts);
+  }
+  
   products.length = 0;
-  products.push(...initProducts);
+  products.push(...validProducts);
 }
 
 const initWarehouses = loadFromStorage<Warehouse[]>(STORAGE_KEYS.WAREHOUSES, []);
