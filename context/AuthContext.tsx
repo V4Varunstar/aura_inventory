@@ -14,9 +14,10 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(false); // Changed to false initially
+  const [loading, setLoading] = useState(true); // TRUE initially to prevent redirect during session check
 
   const checkUserSession = useCallback(async () => {
+    setLoading(true);
     try {
       const loggedInUser = await mockFetchUser();
       console.log('✅ Session check successful:', loggedInUser.email, loggedInUser.role);
@@ -24,11 +25,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (error) {
       console.log('ℹ️ No session found, user needs to login');
       setUser(null);
+    } finally {
+      setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    // Only check session, don't block UI
+    // Check session on mount - loading state prevents premature redirect
     checkUserSession();
   }, [checkUserSession]);
 
