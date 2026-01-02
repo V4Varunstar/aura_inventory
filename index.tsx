@@ -118,6 +118,18 @@ function DashboardPage() {
   const SIMPLE_INWARD_KEY = 'aura_inventory_simple_inward_entries';
   const SIMPLE_OUTWARD_KEY = 'aura_inventory_simple_outward_entries';
 
+  const DEFAULT_SUPPLIERS: any[] = [
+    {id:1,name:'ABC Suppliers',contact:'Rajesh Kumar',phone:'+91 9876543210',email:'rajesh@abc.com'},
+    {id:2,name:'XYZ Distributors',contact:'Amit Shah',phone:'+91 9876543211',email:'amit@xyz.com'},
+    {id:3,name:'Global Imports',contact:'Priya Sharma',phone:'+91 9876543212',email:'priya@global.com'}
+  ];
+
+  const SIMPLE_SUPPLIERS_KEY = React.useMemo(() => {
+    const anyUser = user as any;
+    const scope = user?.orgId || anyUser?.companyId || user?.id || 'default';
+    return `aura_inventory_simple_suppliers_${scope}`;
+  }, [user]);
+
   const readArrayFromStorage = (key: string): any[] => {
     try {
       const raw = localStorage.getItem(key);
@@ -141,11 +153,10 @@ function DashboardPage() {
     {id:4,name:'Meesho',color:'#9C1AB1',enabled:true},
     {id:5,name:'Retail',color:'#10B981',enabled:true}
   ]);
-  const [suppliers, setSuppliers] = React.useState<any[]>([
-    {id:1,name:'ABC Suppliers',contact:'Rajesh Kumar',phone:'+91 9876543210',email:'rajesh@abc.com'},
-    {id:2,name:'XYZ Distributors',contact:'Amit Shah',phone:'+91 9876543211',email:'amit@xyz.com'},
-    {id:3,name:'Global Imports',contact:'Priya Sharma',phone:'+91 9876543212',email:'priya@global.com'}
-  ]);
+  const [suppliers, setSuppliers] = React.useState<any[]>(() => {
+    const stored = readArrayFromStorage(SIMPLE_SUPPLIERS_KEY);
+    return stored.length ? stored : DEFAULT_SUPPLIERS;
+  });
   const [lineItems, setLineItems] = React.useState<any[]>([{id: 1, ean: '', productName: '', sku: '', quantity: '', batch: ''}]);
   const [userProducts, setUserProducts] = React.useState<any>({});
   const [inwardEntries, setInwardEntries] = React.useState<any[]>(() => readArrayFromStorage(SIMPLE_INWARD_KEY));
@@ -190,6 +201,21 @@ function DashboardPage() {
       console.error('Failed to persist outward entries:', e);
     }
   }, [outwardEntries]);
+
+  // Load/persist suppliers so they survive logout/login (DashboardPage remount)
+  React.useEffect(() => {
+    const stored = readArrayFromStorage(SIMPLE_SUPPLIERS_KEY);
+    setSuppliers(stored.length ? stored : DEFAULT_SUPPLIERS);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [SIMPLE_SUPPLIERS_KEY]);
+
+  React.useEffect(() => {
+    try {
+      localStorage.setItem(SIMPLE_SUPPLIERS_KEY, JSON.stringify(suppliers));
+    } catch (e) {
+      console.error('Failed to persist suppliers:', e);
+    }
+  }, [SIMPLE_SUPPLIERS_KEY, suppliers]);
   
   // EAN to Product mapping database (empty initially - products added by user)
   const eanProducts: any = {};
@@ -2298,14 +2324,16 @@ function DashboardPage() {
                       <button 
                         onClick={()=>{
                           if(formData.newSupplierName && formData.newSupplierPhone){
-                            const newId = Math.max(...suppliers.map(s=>s.id),0)+1;
-                            setSuppliers([...suppliers,{
-                              id:newId,
-                              name:formData.newSupplierName,
-                              contact:formData.newSupplierContact||'',
-                              phone:formData.newSupplierPhone,
-                              email:formData.newSupplierEmail||''
-                            }]);
+                            setSuppliers(prev => {
+                              const newId = Math.max(...prev.map(s=>s.id),0)+1;
+                              return [...prev,{
+                                id:newId,
+                                name:formData.newSupplierName,
+                                contact:formData.newSupplierContact||'',
+                                phone:formData.newSupplierPhone,
+                                email:formData.newSupplierEmail||''
+                              }];
+                            });
                             addToast(`Supplier "${formData.newSupplierName}" added!`,'success');
                             setFormData({...formData,newSupplierName:'',newSupplierContact:'',newSupplierPhone:'',newSupplierEmail:''});
                           }else{
@@ -2381,7 +2409,7 @@ function DashboardPage() {
                             <button 
                               onClick={()=>{
                                 if(window.confirm(`Delete supplier "${supplier.name}"? This cannot be undone.`)){
-                                  setSuppliers(suppliers.filter(s=>s.id!==supplier.id));
+                                  setSuppliers(prev => prev.filter(s=>s.id!==supplier.id));
                                   addToast(`Supplier "${supplier.name}" deleted!`,'success');
                                 }
                               }} 
@@ -2457,7 +2485,7 @@ function DashboardPage() {
                     <button 
                       onClick={()=>{
                         if(formData.editSupplierName && formData.editSupplierPhone){
-                          setSuppliers(suppliers.map(s=>
+                          setSuppliers(prev => prev.map(s=>
                             s.id===formData.editSupplierId
                               ?{...s,name:formData.editSupplierName,contact:formData.editSupplierContact,phone:formData.editSupplierPhone,email:formData.editSupplierEmail}
                               :s
