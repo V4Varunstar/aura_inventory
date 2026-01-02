@@ -4,6 +4,7 @@ import { HashRouter, Routes, Route, Navigate, useNavigate } from 'react-router-d
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ToastProvider, useToast } from './context/ToastContext';
 import { getOutwardRecords, getProducts, getInwardRecords, addProductsBatch } from './services/firebaseService';
+import { getParties, addParty, updateParty, deleteParty } from './services/partyService';
 import * as XLSX from 'xlsx';
 import './index.css';
 
@@ -165,6 +166,8 @@ function DashboardPage() {
   const [realOutwardRecords, setRealOutwardRecords] = React.useState<any[]>([]);
   const [realProducts, setRealProducts] = React.useState<any[]>([]);
   const [realInwardRecords, setRealInwardRecords] = React.useState<any[]>([]);
+  const [parties, setParties] = React.useState<any[]>([]);
+  const [partiesLoading, setPartiesLoading] = React.useState(false);
   
   // Load real data from database
   React.useEffect(() => {
@@ -184,6 +187,26 @@ function DashboardPage() {
     };
     loadData();
   }, []);
+
+  const refreshParties = React.useCallback(async () => {
+    setPartiesLoading(true);
+    try {
+      const fetched = await getParties();
+      setParties(Array.isArray(fetched) ? fetched : []);
+    } catch (e) {
+      console.error('Failed to load parties:', e);
+      addToast('Failed to load parties', 'error');
+      setParties([]);
+    } finally {
+      setPartiesLoading(false);
+    }
+  }, [addToast]);
+
+  React.useEffect(() => {
+    if (loading) return;
+    if (!user) return;
+    refreshParties();
+  }, [loading, user, refreshParties]);
 
   // Persist simple (UI-only) inward/outward entries so they survive refresh
   React.useEffect(() => {
@@ -1584,16 +1607,136 @@ function DashboardPage() {
                     <button onClick={resetView} style={{padding:'10px 24px',background:theme.sidebarHover,color:theme.text,border:`2px solid ${theme.border}`,borderRadius:'10px',fontSize:'15px',fontWeight:'700',cursor:'pointer'}}>← Back</button>
                   </div>
                   <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'24px',maxWidth:'900px'}}>
-                    <div><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>Party Name</label><input type="text" placeholder="Enter name" style={{width:'100%',padding:'14px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px'}} /></div>
-                    <div><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>Party Type</label><select style={{width:'100%',padding:'14px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px'}}><option>Supplier</option><option>Customer</option><option>Both</option></select></div>
-                    <div><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>Contact Person</label><input type="text" placeholder="Contact name" style={{width:'100%',padding:'14px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px'}} /></div>
-                    <div><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>Phone</label><input type="tel" placeholder="+91 XXXXXXXXXX" style={{width:'100%',padding:'14px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px'}} /></div>
-                    <div><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>Email</label><input type="email" placeholder="email@example.com" style={{width:'100%',padding:'14px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px'}} /></div>
-                    <div><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>GSTIN</label><input type="text" placeholder="22AAAAA0000A1Z5" style={{width:'100%',padding:'14px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px'}} /></div>
+                    <div>
+                      <label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>Party Name</label>
+                      <input type="text" placeholder="Enter name" value={formData.partyName||''} onChange={(e)=>setFormData({...formData,partyName:e.target.value})} style={{width:'100%',padding:'14px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px'}} />
+                    </div>
+                    <div>
+                      <label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>Party Type</label>
+                      <select value={formData.partyType||'Supplier'} onChange={(e)=>setFormData({...formData,partyType:e.target.value})} style={{width:'100%',padding:'14px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px'}}>
+                        <option value="Supplier">Supplier</option>
+                        <option value="Customer">Customer</option>
+                        <option value="Both">Both</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>Contact Person</label>
+                      <input type="text" placeholder="Contact name" value={formData.partyContactPerson||''} onChange={(e)=>setFormData({...formData,partyContactPerson:e.target.value})} style={{width:'100%',padding:'14px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px'}} />
+                    </div>
+                    <div>
+                      <label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>Phone</label>
+                      <input type="tel" placeholder="+91 XXXXXXXXXX" value={formData.partyPhone||''} onChange={(e)=>setFormData({...formData,partyPhone:e.target.value})} style={{width:'100%',padding:'14px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px'}} />
+                    </div>
+                    <div>
+                      <label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>Email</label>
+                      <input type="email" placeholder="email@example.com" value={formData.partyEmail||''} onChange={(e)=>setFormData({...formData,partyEmail:e.target.value})} style={{width:'100%',padding:'14px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px'}} />
+                    </div>
+                    <div>
+                      <label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>GSTIN</label>
+                      <input type="text" placeholder="22AAAAA0000A1Z5" value={formData.partyGstNumber||''} onChange={(e)=>setFormData({...formData,partyGstNumber:e.target.value})} style={{width:'100%',padding:'14px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px'}} />
+                    </div>
                   </div>
                   <div style={{marginTop:'32px',display:'flex',gap:'16px'}}>
-                    <button onClick={()=>{addToast('Party added successfully!','success');resetView();}} style={{padding:'14px 40px',background:'linear-gradient(135deg, #8b5cf6, #7c3aed)',color:'white',border:'none',borderRadius:'12px',fontSize:'16px',fontWeight:'800',cursor:'pointer'}}>💾 Save Party</button>
+                    <button 
+                      onClick={async ()=>{
+                        if(!formData.partyName){
+                          addToast('Please enter party name', 'error');
+                          return;
+                        }
+                        try {
+                          await addParty({
+                            name: formData.partyName,
+                            type: formData.partyType || 'Supplier',
+                            contactPerson: formData.partyContactPerson,
+                            phone: formData.partyPhone,
+                            email: formData.partyEmail,
+                            gstNumber: formData.partyGstNumber,
+                          } as any);
+                          addToast('Party added successfully!', 'success');
+                          await refreshParties();
+                          resetView();
+                        } catch (e) {
+                          console.error('Failed to add party:', e);
+                          addToast('Failed to add party', 'error');
+                        }
+                      }}
+                      style={{padding:'14px 40px',background:'linear-gradient(135deg, #8b5cf6, #7c3aed)',color:'white',border:'none',borderRadius:'12px',fontSize:'16px',fontWeight:'800',cursor:'pointer'}}
+                    >
+                      💾 Save Party
+                    </button>
                     <button onClick={resetView} style={{padding:'14px 40px',background:theme.sidebarHover,color:theme.text,border:`2px solid ${theme.border}`,borderRadius:'12px',fontSize:'16px',fontWeight:'700',cursor:'pointer'}}>Cancel</button>
+                  </div>
+                </div>
+              )}
+              {activeView === 'edit-party' && (
+                <div style={{background:theme.cardBg,padding:'40px',borderRadius:'20px',border:`2px solid ${theme.border}` ,boxShadow:darkMode?'0 8px 32px rgba(0,0,0,0.3)':'0 8px 32px rgba(0,0,0,0.1)'}}>
+                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'32px'}}>
+                    <h2 style={{fontSize:'28px',fontWeight:'900',color:theme.text}}>✏️ Edit Party</h2>
+                    <button onClick={()=>setActiveView(formData.partyEditBackView || 'main')} style={{padding:'10px 24px',background:theme.sidebarHover,color:theme.text,border:`2px solid ${theme.border}`,borderRadius:'10px',fontSize:'15px',fontWeight:'700',cursor:'pointer'}}>← Back</button>
+                  </div>
+                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'24px',maxWidth:'900px'}}>
+                    <div>
+                      <label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>Party Name</label>
+                      <input type="text" placeholder="Enter name" value={formData.partyName||''} onChange={(e)=>setFormData({...formData,partyName:e.target.value})} style={{width:'100%',padding:'14px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px'}} />
+                    </div>
+                    <div>
+                      <label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>Party Type</label>
+                      <select value={formData.partyType||'Supplier'} onChange={(e)=>setFormData({...formData,partyType:e.target.value})} style={{width:'100%',padding:'14px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px'}}>
+                        <option value="Supplier">Supplier</option>
+                        <option value="Customer">Customer</option>
+                        <option value="Both">Both</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>Contact Person</label>
+                      <input type="text" placeholder="Contact name" value={formData.partyContactPerson||''} onChange={(e)=>setFormData({...formData,partyContactPerson:e.target.value})} style={{width:'100%',padding:'14px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px'}} />
+                    </div>
+                    <div>
+                      <label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>Phone</label>
+                      <input type="tel" placeholder="+91 XXXXXXXXXX" value={formData.partyPhone||''} onChange={(e)=>setFormData({...formData,partyPhone:e.target.value})} style={{width:'100%',padding:'14px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px'}} />
+                    </div>
+                    <div>
+                      <label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>Email</label>
+                      <input type="email" placeholder="email@example.com" value={formData.partyEmail||''} onChange={(e)=>setFormData({...formData,partyEmail:e.target.value})} style={{width:'100%',padding:'14px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px'}} />
+                    </div>
+                    <div>
+                      <label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>GSTIN</label>
+                      <input type="text" placeholder="22AAAAA0000A1Z5" value={formData.partyGstNumber||''} onChange={(e)=>setFormData({...formData,partyGstNumber:e.target.value})} style={{width:'100%',padding:'14px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px'}} />
+                    </div>
+                  </div>
+                  <div style={{marginTop:'32px',display:'flex',gap:'16px'}}>
+                    <button 
+                      onClick={async ()=>{
+                        if(!formData.partyEditId){
+                          addToast('Missing party id', 'error');
+                          return;
+                        }
+                        if(!formData.partyName){
+                          addToast('Please enter party name', 'error');
+                          return;
+                        }
+                        try {
+                          await updateParty(formData.partyEditId, {
+                            name: formData.partyName,
+                            type: formData.partyType || 'Supplier',
+                            contactPerson: formData.partyContactPerson,
+                            phone: formData.partyPhone,
+                            email: formData.partyEmail,
+                            gstNumber: formData.partyGstNumber,
+                          } as any);
+                          addToast('Party updated successfully!', 'success');
+                          await refreshParties();
+                          setActiveView(formData.partyEditBackView || 'main');
+                        } catch (e) {
+                          console.error('Failed to update party:', e);
+                          addToast('Failed to update party', 'error');
+                        }
+                      }}
+                      style={{padding:'14px 40px',background:'linear-gradient(135deg, #8b5cf6, #7c3aed)',color:'white',border:'none',borderRadius:'12px',fontSize:'16px',fontWeight:'800',cursor:'pointer'}}
+                    >
+                      💾 Save Changes
+                    </button>
+                    <button onClick={()=>setActiveView(formData.partyEditBackView || 'main')} style={{padding:'14px 40px',background:theme.sidebarHover,color:theme.text,border:`2px solid ${theme.border}`,borderRadius:'12px',fontSize:'16px',fontWeight:'700',cursor:'pointer'}}>Cancel</button>
                   </div>
                 </div>
               )}
@@ -1601,36 +1744,78 @@ function DashboardPage() {
                 <div style={{background:theme.cardBg,padding:'40px',borderRadius:'20px',border:`2px solid ${theme.border}`,boxShadow:darkMode?'0 8px 32px rgba(0,0,0,0.3)':'0 8px 32px rgba(0,0,0,0.1)'}}>
                   <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'32px'}}>
                     <h2 style={{fontSize:'28px',fontWeight:'900',color:theme.text}}>🏭 Suppliers</h2>
-                    <button onClick={resetView} style={{padding:'10px 24px',background:theme.sidebarHover,color:theme.text,border:`2px solid ${theme.border}`,borderRadius:'10px',fontSize:'15px',fontWeight:'700',cursor:'pointer'}}>← Back</button>
+                    <div style={{display:'flex',gap:'12px'}}>
+                      <button onClick={()=>{setFormData({...formData,partyType:'Supplier'});setActiveView('add-party');}} style={{padding:'10px 24px',background:'linear-gradient(135deg, #8b5cf6, #7c3aed)',color:'white',border:'none',borderRadius:'10px',fontSize:'14px',fontWeight:'800',cursor:'pointer'}}>➕ Add Supplier</button>
+                      <button onClick={resetView} style={{padding:'10px 24px',background:theme.sidebarHover,color:theme.text,border:`2px solid ${theme.border}`,borderRadius:'10px',fontSize:'15px',fontWeight:'700',cursor:'pointer'}}>← Back</button>
+                    </div>
                   </div>
-                  <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(300px,1fr))',gap:'20px'}}>
-                    {[{name:'ABC Suppliers',contact:'Rajesh Kumar',phone:'+91 9876543210',balance:'₹ 45,000'},{name:'XYZ Distributors',contact:'Amit Shah',phone:'+91 9876543211',balance:'₹ 32,000'},{name:'Fashion Hub',contact:'Priya Sharma',phone:'+91 9876543212',balance:'₹ 18,500'}].map((s,i)=>(
-                      <div key={i} style={{background:theme.sidebarHover,padding:'24px',borderRadius:'16px',border:`2px solid ${theme.border}`,cursor:'pointer'}} onMouseEnter={(e)=>e.currentTarget.style.borderColor='#8b5cf6'} onMouseLeave={(e)=>e.currentTarget.style.borderColor=theme.border}>
-                        <h3 style={{color:theme.text,fontSize:'20px',fontWeight:'800',marginBottom:'8px'}}>{s.name}</h3>
-                        <p style={{color:theme.textSecondary,fontSize:'14px',marginBottom:'4px'}}>👤 {s.contact}</p>
-                        <p style={{color:theme.textSecondary,fontSize:'14px',marginBottom:'12px'}}>📞 {s.phone}</p>
-                        <p style={{color:'#8b5cf6',fontSize:'18px',fontWeight:'800'}}>Balance: {s.balance}</p>
-                      </div>
-                    ))}
-                  </div>
+                  {partiesLoading ? (
+                    <div style={{textAlign:'center',padding:'60px',color:theme.textSecondary}}>Loading suppliers…</div>
+                  ) : (
+                    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(320px,1fr))',gap:'20px'}}>
+                      {parties.filter(p=>p.type==='Supplier' || p.type==='Both').length === 0 ? (
+                        <div style={{gridColumn:'1 / -1',textAlign:'center',padding:'60px',color:theme.textSecondary}}>
+                          <div style={{fontSize:'48px',marginBottom:'12px'}}>🏭</div>
+                          <p style={{fontSize:'16px'}}>No suppliers yet</p>
+                        </div>
+                      ) : parties.filter(p=>p.type==='Supplier' || p.type==='Both').map((p:any)=>(
+                        <div key={p.id} style={{background:theme.sidebarHover,padding:'24px',borderRadius:'16px',border:`2px solid ${theme.border}`}}>
+                          <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:'12px'}}>
+                            <div style={{flex:1}}>
+                              <h3 style={{color:theme.text,fontSize:'18px',fontWeight:'900',marginBottom:'8px'}}>{p.name}</h3>
+                              {p.contactPerson && <p style={{color:theme.textSecondary,fontSize:'13px',marginBottom:'4px'}}>👤 {p.contactPerson}</p>}
+                              {p.phone && <p style={{color:theme.textSecondary,fontSize:'13px',marginBottom:'4px'}}>📞 {p.phone}</p>}
+                              {p.email && <p style={{color:theme.textSecondary,fontSize:'13px',marginBottom:'4px'}}>✉️ {p.email}</p>}
+                              {p.gstNumber && <p style={{color:theme.textSecondary,fontSize:'13px'}}>🧾 {p.gstNumber}</p>}
+                            </div>
+                            <div style={{display:'flex',flexDirection:'column',gap:'8px'}}>
+                              <button onClick={()=>{setFormData({...formData,partyEditId:p.id,partyName:p.name,partyType:p.type,partyContactPerson:p.contactPerson||'',partyPhone:p.phone||'',partyEmail:p.email||'',partyGstNumber:p.gstNumber||'',partyEditBackView:'view-suppliers'});setActiveView('edit-party');}} style={{padding:'8px 14px',background:'linear-gradient(135deg, #3b82f6, #2563eb)',color:'white',border:'none',borderRadius:'10px',fontSize:'12px',fontWeight:'800',cursor:'pointer'}}>✏️ Edit</button>
+                              <button onClick={async ()=>{if(!window.confirm(`Delete "${p.name}"?`)) return; try { await deleteParty(p.id); addToast('Supplier deleted','success'); await refreshParties(); } catch(e){ console.error(e); addToast('Failed to delete','error'); }}} style={{padding:'8px 14px',background:'linear-gradient(135deg, #ef4444, #dc2626)',color:'white',border:'none',borderRadius:'10px',fontSize:'12px',fontWeight:'800',cursor:'pointer'}}>🗑️ Delete</button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
               {activeView === 'view-customers' && (
                 <div style={{background:theme.cardBg,padding:'40px',borderRadius:'20px',border:`2px solid ${theme.border}`,boxShadow:darkMode?'0 8px 32px rgba(0,0,0,0.3)':'0 8px 32px rgba(0,0,0,0.1)'}}>
                   <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'32px'}}>
                     <h2 style={{fontSize:'28px',fontWeight:'900',color:theme.text}}>👤 Customers</h2>
-                    <button onClick={resetView} style={{padding:'10px 24px',background:theme.sidebarHover,color:theme.text,border:`2px solid ${theme.border}`,borderRadius:'10px',fontSize:'15px',fontWeight:'700',cursor:'pointer'}}>← Back</button>
+                    <div style={{display:'flex',gap:'12px'}}>
+                      <button onClick={()=>{setFormData({...formData,partyType:'Customer'});setActiveView('add-party');}} style={{padding:'10px 24px',background:'linear-gradient(135deg, #8b5cf6, #7c3aed)',color:'white',border:'none',borderRadius:'10px',fontSize:'14px',fontWeight:'800',cursor:'pointer'}}>➕ Add Customer</button>
+                      <button onClick={resetView} style={{padding:'10px 24px',background:theme.sidebarHover,color:theme.text,border:`2px solid ${theme.border}`,borderRadius:'10px',fontSize:'15px',fontWeight:'700',cursor:'pointer'}}>← Back</button>
+                    </div>
                   </div>
-                  <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(300px,1fr))',gap:'20px'}}>
-                    {[{name:'Retail Store A',contact:'Suresh Mehta',phone:'+91 9876543220',orders:45},{name:'Wholesale B',contact:'Kiran Patel',phone:'+91 9876543221',orders:32},{name:'E-commerce C',contact:'Neha Gupta',phone:'+91 9876543222',orders:67}].map((c,i)=>(
-                      <div key={i} style={{background:theme.sidebarHover,padding:'24px',borderRadius:'16px',border:`2px solid ${theme.border}`,cursor:'pointer'}} onMouseEnter={(e)=>e.currentTarget.style.borderColor='#a78bfa'} onMouseLeave={(e)=>e.currentTarget.style.borderColor=theme.border}>
-                        <h3 style={{color:theme.text,fontSize:'20px',fontWeight:'800',marginBottom:'8px'}}>{c.name}</h3>
-                        <p style={{color:theme.textSecondary,fontSize:'14px',marginBottom:'4px'}}>👤 {c.contact}</p>
-                        <p style={{color:theme.textSecondary,fontSize:'14px',marginBottom:'12px'}}>📞 {c.phone}</p>
-                        <p style={{color:'#a78bfa',fontSize:'18px',fontWeight:'800'}}>Total Orders: {c.orders}</p>
-                      </div>
-                    ))}
-                  </div>
+                  {partiesLoading ? (
+                    <div style={{textAlign:'center',padding:'60px',color:theme.textSecondary}}>Loading customers…</div>
+                  ) : (
+                    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(320px,1fr))',gap:'20px'}}>
+                      {parties.filter(p=>p.type==='Customer' || p.type==='Both').length === 0 ? (
+                        <div style={{gridColumn:'1 / -1',textAlign:'center',padding:'60px',color:theme.textSecondary}}>
+                          <div style={{fontSize:'48px',marginBottom:'12px'}}>👤</div>
+                          <p style={{fontSize:'16px'}}>No customers yet</p>
+                        </div>
+                      ) : parties.filter(p=>p.type==='Customer' || p.type==='Both').map((p:any)=>(
+                        <div key={p.id} style={{background:theme.sidebarHover,padding:'24px',borderRadius:'16px',border:`2px solid ${theme.border}`}}>
+                          <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:'12px'}}>
+                            <div style={{flex:1}}>
+                              <h3 style={{color:theme.text,fontSize:'18px',fontWeight:'900',marginBottom:'8px'}}>{p.name}</h3>
+                              {p.contactPerson && <p style={{color:theme.textSecondary,fontSize:'13px',marginBottom:'4px'}}>👤 {p.contactPerson}</p>}
+                              {p.phone && <p style={{color:theme.textSecondary,fontSize:'13px',marginBottom:'4px'}}>📞 {p.phone}</p>}
+                              {p.email && <p style={{color:theme.textSecondary,fontSize:'13px',marginBottom:'4px'}}>✉️ {p.email}</p>}
+                              {p.gstNumber && <p style={{color:theme.textSecondary,fontSize:'13px'}}>🧾 {p.gstNumber}</p>}
+                            </div>
+                            <div style={{display:'flex',flexDirection:'column',gap:'8px'}}>
+                              <button onClick={()=>{setFormData({...formData,partyEditId:p.id,partyName:p.name,partyType:p.type,partyContactPerson:p.contactPerson||'',partyPhone:p.phone||'',partyEmail:p.email||'',partyGstNumber:p.gstNumber||'',partyEditBackView:'view-customers'});setActiveView('edit-party');}} style={{padding:'8px 14px',background:'linear-gradient(135deg, #3b82f6, #2563eb)',color:'white',border:'none',borderRadius:'10px',fontSize:'12px',fontWeight:'800',cursor:'pointer'}}>✏️ Edit</button>
+                              <button onClick={async ()=>{if(!window.confirm(`Delete "${p.name}"?`)) return; try { await deleteParty(p.id); addToast('Customer deleted','success'); await refreshParties(); } catch(e){ console.error(e); addToast('Failed to delete','error'); }}} style={{padding:'8px 14px',background:'linear-gradient(135deg, #ef4444, #dc2626)',color:'white',border:'none',borderRadius:'10px',fontSize:'12px',fontWeight:'800',cursor:'pointer'}}>🗑️ Delete</button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
