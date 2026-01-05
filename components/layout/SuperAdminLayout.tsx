@@ -41,7 +41,7 @@ const SuperAdminLayout: React.FC<SuperAdminLayoutProps> = ({ children }) => {
   }
 
   return (
-    <div className="min-h-screen bg-background-light dark:bg-background-dark">
+    <div className="min-h-screen bg-gradient-to-b from-background-light to-white dark:from-background-dark dark:to-surface-darker">
       {/* Top Navigation */}
       <nav className="sticky top-0 z-30 border-b border-gray-200/70 dark:border-gray-700/70 bg-white/70 dark:bg-surface-dark/70 backdrop-blur-md">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -81,7 +81,7 @@ const SuperAdminLayout: React.FC<SuperAdminLayoutProps> = ({ children }) => {
 
       <div className="flex">
         {/* Sidebar */}
-        <aside className="w-72 hidden lg:flex flex-col border-r border-gray-200/70 dark:border-gray-700/70 bg-white dark:bg-surface-darker h-[calc(100vh-64px)] sticky top-16">
+        <aside className="w-72 hidden lg:flex flex-col border-r border-gray-200/70 dark:border-gray-700/70 bg-white/80 dark:bg-surface-darker/80 backdrop-blur-md h-[calc(100vh-64px)] sticky top-16">
           <nav className="flex-1 px-4 py-6 flex flex-col gap-2 overflow-y-auto">
             <button
               onClick={() => navigate('/super-admin/dashboard')}
@@ -119,7 +119,9 @@ const SuperAdminLayout: React.FC<SuperAdminLayoutProps> = ({ children }) => {
         {/* Main Content */}
         <main className="flex-1 overflow-auto">
           <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-            {children}
+            <div className="rounded-3xl bg-white/80 dark:bg-surface-dark/80 backdrop-blur-md border border-gray-200/70 dark:border-gray-700/70 shadow-lg p-6 sm:p-8">
+              {children}
+            </div>
           </div>
         </main>
       </div>
