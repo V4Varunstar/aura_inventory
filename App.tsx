@@ -133,6 +133,10 @@ import SuperAdminRoute from './components/auth/SuperAdminRoute';
 const SuperAdminLayout = lazy(() => import('./components/layout/SuperAdminLayout'));
 const SuperAdminDashboard = lazy(() => import('./pages/super-admin/Dashboard'));
 const SuperAdminCompanies = lazy(() => import('./pages/super-admin/Companies'));
+const SuperAdminUsers = lazy(() => import('./pages/super-admin/Users'));
+const SuperAdminSubscriptions = lazy(() => import('./pages/super-admin/Subscriptions'));
+const SuperAdminActivityLogs = lazy(() => import('./pages/super-admin/ActivityLogs'));
+const SuperAdminSettings = lazy(() => import('./pages/super-admin/Settings'));
 
 // Optimized Loading Component
 const LoadingSpinner: React.FC = () => (
@@ -229,6 +233,10 @@ const AppRoutes: React.FC = () => {
                                 <Route index element={<Navigate to="dashboard" replace />} />
                                 <Route path="dashboard" element={<SuperAdminDashboard />} />
                                 <Route path="companies" element={<SuperAdminCompanies />} />
+                                <Route path="users" element={<SuperAdminUsers />} />
+                                <Route path="subscriptions" element={<SuperAdminSubscriptions />} />
+                                <Route path="activity-logs" element={<SuperAdminActivityLogs />} />
+                                <Route path="settings" element={<SuperAdminSettings />} />
                             </Routes>
                         </SuperAdminLayout>
                     </Suspense>

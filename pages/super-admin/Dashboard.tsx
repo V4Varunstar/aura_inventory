@@ -188,12 +188,12 @@ const SuperAdminDashboard: React.FC = () => {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search companies, users..."
-              className="w-80 max-w-[70vw] pl-9 pr-3 py-2 rounded-2xl border border-gray-200/70 dark:border-gray-700/70 bg-white dark:!bg-surface-dark text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-accent-green/30"
+              className="w-80 max-w-[70vw] pl-9 pr-3 py-2 rounded-2xl border border-gray-200/70 dark:border-gray-800 bg-white dark:bg-gray-900 text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-accent-green/30"
             />
           </div>
           <button
             type="button"
-            className="size-10 rounded-2xl border border-gray-200/70 dark:border-gray-700/70 bg-white dark:!bg-surface-dark flex items-center justify-center"
+            className="size-10 rounded-2xl border border-gray-200/70 dark:border-gray-800 bg-white dark:bg-gray-900 flex items-center justify-center"
             aria-label="Notifications"
           >
             <Bell className="h-5 w-5 text-gray-600 dark:text-gray-300" />

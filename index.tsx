@@ -18,6 +18,10 @@ import './index.css';
 const SuperAdminLayout = React.lazy(() => import('./components/layout/SuperAdminLayout'));
 const SuperAdminDashboard = React.lazy(() => import('./pages/super-admin/Dashboard'));
 const SuperAdminCompanies = React.lazy(() => import('./pages/super-admin/Companies'));
+const SuperAdminUsers = React.lazy(() => import('./pages/super-admin/Users'));
+const SuperAdminSubscriptions = React.lazy(() => import('./pages/super-admin/Subscriptions'));
+const SuperAdminActivityLogs = React.lazy(() => import('./pages/super-admin/ActivityLogs'));
+const SuperAdminSettings = React.lazy(() => import('./pages/super-admin/Settings'));
 
 // Error Boundary (prevents silent blank screens in production)
 class ErrorBoundary extends Component<
@@ -2790,6 +2794,54 @@ function App() {
                         <React.Suspense fallback={<div className="flex items-center justify-center h-screen">Loading…</div>}>
                           <SuperAdminLayout>
                             <SuperAdminCompanies />
+                          </SuperAdminLayout>
+                        </React.Suspense>
+                      </SuperAdminRoute>
+                    }
+                  />
+                  <Route
+                    path="/super-admin/users"
+                    element={
+                      <SuperAdminRoute>
+                        <React.Suspense fallback={<div className="flex items-center justify-center h-screen">Loading…</div>}>
+                          <SuperAdminLayout>
+                            <SuperAdminUsers />
+                          </SuperAdminLayout>
+                        </React.Suspense>
+                      </SuperAdminRoute>
+                    }
+                  />
+                  <Route
+                    path="/super-admin/subscriptions"
+                    element={
+                      <SuperAdminRoute>
+                        <React.Suspense fallback={<div className="flex items-center justify-center h-screen">Loading…</div>}>
+                          <SuperAdminLayout>
+                            <SuperAdminSubscriptions />
+                          </SuperAdminLayout>
+                        </React.Suspense>
+                      </SuperAdminRoute>
+                    }
+                  />
+                  <Route
+                    path="/super-admin/activity-logs"
+                    element={
+                      <SuperAdminRoute>
+                        <React.Suspense fallback={<div className="flex items-center justify-center h-screen">Loading…</div>}>
+                          <SuperAdminLayout>
+                            <SuperAdminActivityLogs />
+                          </SuperAdminLayout>
+                        </React.Suspense>
+                      </SuperAdminRoute>
+                    }
+                  />
+                  <Route
+                    path="/super-admin/settings"
+                    element={
+                      <SuperAdminRoute>
+                        <React.Suspense fallback={<div className="flex items-center justify-center h-screen">Loading…</div>}>
+                          <SuperAdminLayout>
+                            <SuperAdminSettings />
                           </SuperAdminLayout>
                         </React.Suspense>
                       </SuperAdminRoute>
