@@ -9,6 +9,8 @@ interface SuperAdminLayoutProps {
   children: React.ReactNode;
 }
 
+const SUPER_ADMIN_BUILD_TAG = 'e33bff7';
+
 const SuperAdminLayout: React.FC<SuperAdminLayoutProps> = ({ children }) => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
@@ -71,6 +73,13 @@ const SuperAdminLayout: React.FC<SuperAdminLayoutProps> = ({ children }) => {
                   <div className="text-xs text-gray-500 dark:text-gray-400 truncate">{user.email}</div>
                 </div>
               </div>
+
+              <div className="hidden sm:flex items-center">
+                <span className="text-[10px] leading-none px-2 py-1 rounded-full border border-gray-200/70 dark:border-gray-700/70 text-gray-500 dark:text-gray-400 bg-white/60 dark:!bg-surface-darker/60">
+                  Build: {SUPER_ADMIN_BUILD_TAG}
+                </span>
+              </div>
+
               <Button onClick={handleLogout} variant="ghost" size="sm" leftIcon={<LogOut />}>
                 Logout
               </Button>
