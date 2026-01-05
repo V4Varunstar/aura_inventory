@@ -430,34 +430,25 @@ const SuperAdminCompanies: React.FC = memo(() => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-200">
-          Companies Management
-        </h1>
-        <div className="flex space-x-2">
-          <Button
-            variant="outline"
-            onClick={fetchCompanies}
-            disabled={loading}
-          >
+      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white tracking-tight">Companies</h1>
+          <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
+            Create companies, assign users, and manage subscription limits.
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={fetchCompanies} disabled={loading}>
             {loading ? 'Refreshing...' : 'Refresh'}
           </Button>
-          <Button
-            onClick={() => setShowCreateModal(true)}
-            leftIcon={<Plus />}
-          >
+          <Button onClick={() => setShowCreateModal(true)} leftIcon={<Plus />}>
             Create Company
           </Button>
         </div>
       </div>
 
-      <Card>
-        <DataTable
-          columns={columns}
-          data={companies}
-          loading={loading}
-          emptyMessage="No companies found"
-        />
+      <Card title="All Companies" className="border border-gray-200/70 dark:border-gray-700/70">
+        <DataTable columns={columns} data={companies} loading={loading} emptyMessage="No companies found" />
       </Card>
 
       {/* Create Company Modal */}

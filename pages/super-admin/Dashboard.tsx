@@ -114,14 +114,16 @@ const SuperAdminDashboard: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-200">
-          Super Admin Dashboard
-        </h1>
-        <Button
-          onClick={() => setShowCreateModal(true)}
-          leftIcon={<Plus />}
-        >
+      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white tracking-tight">
+            Super Admin Dashboard
+          </h1>
+          <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
+            Overview of companies, users, and subscription health.
+          </p>
+        </div>
+        <Button onClick={() => setShowCreateModal(true)} leftIcon={<Plus />}>
           Create Company
         </Button>
       </div>
@@ -129,15 +131,15 @@ const SuperAdminDashboard: React.FC = () => {
       {/* Stats Cards - All Clickable */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <Card 
-          className="p-6 cursor-pointer hover:shadow-lg transition-shadow"
+          className="p-6 cursor-pointer hover:shadow-lg transition-shadow border border-gray-200/70 dark:border-gray-700/70"
           onClick={() => {
             console.log('Navigating to companies...');
             navigate('/super-admin/companies');
           }}
         >
           <div className="flex items-center">
-            <div className="p-2 bg-blue-100 rounded-lg">
-              <Building2 className="h-6 w-6 text-blue-600" />
+            <div className="p-2 bg-primary/10 rounded-xl border border-primary/20">
+              <Building2 className="h-6 w-6 text-primary" />
             </div>
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
@@ -151,15 +153,15 @@ const SuperAdminDashboard: React.FC = () => {
         </Card>
 
         <Card 
-          className="p-6 cursor-pointer hover:shadow-lg transition-shadow"
+          className="p-6 cursor-pointer hover:shadow-lg transition-shadow border border-gray-200/70 dark:border-gray-700/70"
           onClick={() => {
             console.log('Navigating to companies...');
             navigate('/super-admin/companies');
           }}
         >
           <div className="flex items-center">
-            <div className="p-2 bg-green-100 rounded-lg">
-              <Users className="h-6 w-6 text-green-600" />
+            <div className="p-2 bg-accent-green/10 rounded-xl border border-accent-green/20">
+              <Users className="h-6 w-6 text-accent-green" />
             </div>
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
@@ -173,15 +175,15 @@ const SuperAdminDashboard: React.FC = () => {
         </Card>
 
         <Card 
-          className="p-6 cursor-pointer hover:shadow-lg transition-shadow"
+          className="p-6 cursor-pointer hover:shadow-lg transition-shadow border border-gray-200/70 dark:border-gray-700/70"
           onClick={() => {
             console.log('Navigating to companies...');
             navigate('/super-admin/companies');
           }}
         >
           <div className="flex items-center">
-            <div className="p-2 bg-green-100 rounded-lg">
-              <CheckCircle className="h-6 w-6 text-green-600" />
+            <div className="p-2 bg-accent-green/10 rounded-xl border border-accent-green/20">
+              <CheckCircle className="h-6 w-6 text-accent-green" />
             </div>
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
@@ -195,15 +197,15 @@ const SuperAdminDashboard: React.FC = () => {
         </Card>
 
         <Card 
-          className="p-6 cursor-pointer hover:shadow-lg transition-shadow"
+          className="p-6 cursor-pointer hover:shadow-lg transition-shadow border border-gray-200/70 dark:border-gray-700/70"
           onClick={() => {
             console.log('Navigating to companies...');
             navigate('/super-admin/companies');
           }}
         >
           <div className="flex items-center">
-            <div className="p-2 bg-red-100 rounded-lg">
-              <XCircle className="h-6 w-6 text-red-600" />
+            <div className="p-2 bg-accent-red/10 rounded-xl border border-accent-red/20">
+              <XCircle className="h-6 w-6 text-accent-red" />
             </div>
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
@@ -218,7 +220,7 @@ const SuperAdminDashboard: React.FC = () => {
       </div>
 
       {/* Quick Actions */}
-      <Card title="Quick Actions" className="p-6">
+      <Card title="Quick Actions" className="p-6 border border-gray-200/70 dark:border-gray-700/70">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Button
             variant="outline"
@@ -268,9 +270,9 @@ const SuperAdminDashboard: React.FC = () => {
       </Card>
 
       {/* Plans */}
-      <Card title="Plans" className="p-6">
+      <Card title="Plans" className="p-6 border border-gray-200/70 dark:border-gray-700/70">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5">
+          <div className="rounded-2xl border border-gray-200/70 dark:border-gray-700/70 bg-gradient-to-br from-primary/5 to-transparent dark:from-primary/10 dark:to-transparent p-5">
             <div className="flex items-start justify-between">
               <div>
                 <div className="text-sm font-semibold text-gray-900 dark:text-white">Starter</div>
@@ -290,7 +292,7 @@ const SuperAdminDashboard: React.FC = () => {
             </div>
           </div>
 
-          <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5">
+          <div className="rounded-2xl border border-gray-200/70 dark:border-gray-700/70 bg-gradient-to-br from-accent-blue/5 to-transparent dark:from-accent-blue/10 dark:to-transparent p-5">
             <div className="flex items-start justify-between">
               <div>
                 <div className="text-sm font-semibold text-gray-900 dark:text-white">Medium</div>
@@ -310,7 +312,7 @@ const SuperAdminDashboard: React.FC = () => {
             </div>
           </div>
 
-          <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5">
+          <div className="rounded-2xl border border-gray-200/70 dark:border-gray-700/70 bg-gradient-to-br from-accent-purple/5 to-transparent dark:from-accent-purple/10 dark:to-transparent p-5">
             <div className="flex items-start justify-between">
               <div>
                 <div className="text-sm font-semibold text-gray-900 dark:text-white">Enterprise</div>
