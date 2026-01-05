@@ -38,6 +38,31 @@ class ErrorBoundary extends Component<
 
   componentDidCatch(error: Error, info: any) {
     console.error('❌ App crashed:', error, info);
+
+    // If a user has a stale cached bundle, dynamic imports can fail after a new deploy.
+    // Recover by forcing a one-time hard reload with a cache-busting query parameter.
+    try {
+      const msg = String((error as any)?.message || '');
+      const isChunkFailure =
+        msg.includes('Failed to fetch dynamically imported module') ||
+        msg.includes('ChunkLoadError') ||
+        msg.includes('Loading chunk');
+
+      if (isChunkFailure) {
+        const flag = '__AURA_CHUNK_RECOVERY_ATTEMPTED__';
+        if (!sessionStorage.getItem(flag)) {
+          sessionStorage.setItem(flag, '1');
+          const url =
+            window.location.origin +
+            window.location.pathname +
+            `?reload=${Date.now()}` +
+            window.location.hash;
+          window.location.replace(url);
+        }
+      }
+    } catch {
+      // ignore
+    }
   }
 
   render() {
@@ -138,19 +163,48 @@ const renderBootstrapError = (message: string) => {
   }
 };
 
+const tryChunkRecoveryReload = (message: string) => {
+  try {
+    const msg = String(message || '');
+    const isChunkFailure =
+      msg.includes('Failed to fetch dynamically imported module') ||
+      msg.includes('ChunkLoadError') ||
+      msg.includes('Loading chunk');
+    if (!isChunkFailure) return false;
+
+    const flag = '__AURA_CHUNK_RECOVERY_ATTEMPTED__';
+    if (sessionStorage.getItem(flag)) return false;
+    sessionStorage.setItem(flag, '1');
+
+    const url =
+      window.location.origin +
+      window.location.pathname +
+      `?reload=${Date.now()}` +
+      window.location.hash;
+    window.location.replace(url);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
 // Catch module-load / chunk-load failures that happen before React mounts
 window.addEventListener('error', (event) => {
   const anyEvent = event as any;
   const msg = anyEvent?.error?.message || anyEvent?.message || 'Unknown error';
   console.error('❌ Global error:', event);
-  renderBootstrapError(msg);
+  if (!tryChunkRecoveryReload(msg)) {
+    renderBootstrapError(msg);
+  }
 });
 
 window.addEventListener('unhandledrejection', (event) => {
   const anyEvent = event as any;
   const msg = anyEvent?.reason?.message || String(anyEvent?.reason || 'Unhandled promise rejection');
   console.error('❌ Unhandled rejection:', event);
-  renderBootstrapError(msg);
+  if (!tryChunkRecoveryReload(msg)) {
+    renderBootstrapError(msg);
+  }
 });
 
 // Add CSS animations
