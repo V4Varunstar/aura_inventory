@@ -175,20 +175,20 @@ const SuperAdminDashboard: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight">Dashboard Overview</h1>
           <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">Welcome back, here's what's happening today.</p>
         </div>
 
-        <div className="flex items-center gap-3">
-          <div className="relative">
+        <div className="flex items-center gap-3 lg:flex-1 lg:justify-end">
+          <div className="relative lg:w-[420px]">
             <Search className="h-4 w-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search companies, users..."
-              className="w-80 max-w-[70vw] pl-9 pr-3 py-2 rounded-2xl border border-gray-200/70 dark:border-gray-800 bg-white dark:bg-gray-900 text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-accent-green/30"
+              className="w-full max-w-[80vw] pl-9 pr-3 py-2.5 rounded-2xl border border-gray-200/70 dark:border-gray-800 bg-white dark:bg-gray-900 text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-accent-green/30"
             />
           </div>
           <button
@@ -205,7 +205,7 @@ const SuperAdminDashboard: React.FC = () => {
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         <Card
-          className="dark:!bg-surface-dark border border-gray-200/70 dark:border-gray-700/70 !p-5"
+          className="dark:bg-gray-900 border border-gray-200/70 dark:border-gray-800 cursor-pointer"
           onClick={() => navigate('/super-admin/companies')}
         >
           <div className="flex items-start justify-between">
@@ -219,7 +219,7 @@ const SuperAdminDashboard: React.FC = () => {
           </div>
         </Card>
 
-        <Card className="dark:!bg-surface-dark border border-gray-200/70 dark:border-gray-700/70 !p-5">
+        <Card className="dark:bg-gray-900 border border-gray-200/70 dark:border-gray-800">
           <div className="flex items-start justify-between">
             <div>
               <div className="text-xs text-gray-500 dark:text-gray-400">Active</div>
@@ -231,7 +231,7 @@ const SuperAdminDashboard: React.FC = () => {
           </div>
         </Card>
 
-        <Card className="dark:!bg-surface-dark border border-gray-200/70 dark:border-gray-700/70 !p-5">
+        <Card className="dark:bg-gray-900 border border-gray-200/70 dark:border-gray-800">
           <div className="flex items-start justify-between">
             <div>
               <div className="text-xs text-gray-500 dark:text-gray-400">Suspended</div>
@@ -243,7 +243,7 @@ const SuperAdminDashboard: React.FC = () => {
           </div>
         </Card>
 
-        <Card className="dark:!bg-surface-dark border border-gray-200/70 dark:border-gray-700/70 !p-5">
+        <Card className="dark:bg-gray-900 border border-gray-200/70 dark:border-gray-800">
           <div className="flex items-start justify-between">
             <div>
               <div className="text-xs text-gray-500 dark:text-gray-400">Expiring Soon</div>
@@ -255,7 +255,7 @@ const SuperAdminDashboard: React.FC = () => {
           </div>
         </Card>
 
-        <Card className="dark:!bg-surface-dark border border-gray-200/70 dark:border-gray-700/70 !p-5">
+        <Card className="dark:bg-gray-900 border border-gray-200/70 dark:border-gray-800">
           <div className="flex items-start justify-between">
             <div>
               <div className="text-xs text-gray-500 dark:text-gray-400">Total Users</div>
@@ -270,13 +270,13 @@ const SuperAdminDashboard: React.FC = () => {
 
       {/* Main grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card title="Companies by Plan" className="dark:!bg-surface-dark border border-gray-200/70 dark:border-gray-700/70">
+        <Card title="Companies by Plan" className="dark:bg-gray-900 border border-gray-200/70 dark:border-gray-800">
           <div className="flex items-end justify-between gap-4 pt-2">
             {planBars.map((b) => {
               const heightPct = Math.round((b.value / maxPlanCount) * 100);
               return (
                 <div key={b.plan} className="flex-1">
-                  <div className="h-44 rounded-2xl bg-gray-100 dark:!bg-surface-darker border border-gray-200/70 dark:border-gray-700/70 flex items-end p-3">
+                  <div className="h-44 rounded-2xl bg-gray-100 dark:bg-gray-950 border border-gray-200/70 dark:border-gray-800 flex items-end p-3">
                     <div className={`w-full rounded-xl ${b.color}`} style={{ height: `${Math.max(8, heightPct)}%` }} />
                   </div>
                   <div className="mt-3 text-xs text-gray-600 dark:text-gray-400 text-center">{b.label}</div>
@@ -295,7 +295,7 @@ const SuperAdminDashboard: React.FC = () => {
                 View All
               </Button>
             }
-            className="dark:!bg-surface-dark border border-gray-200/70 dark:border-gray-700/70"
+            className="dark:bg-gray-900 border border-gray-200/70 dark:border-gray-800"
           >
             <div className="overflow-x-auto">
               <table className="w-full text-left">
@@ -307,7 +307,7 @@ const SuperAdminDashboard: React.FC = () => {
                     <th className="py-2">Status</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-200/70 dark:divide-gray-700/70">
+                <tbody className="divide-y divide-gray-200/70 dark:divide-gray-800">
                   {filteredRecentCompanies.map((c) => (
                     <tr key={c.id} className="text-sm">
                       <td className="py-3">
@@ -315,7 +315,7 @@ const SuperAdminDashboard: React.FC = () => {
                         <div className="text-xs text-gray-500 dark:text-gray-400">{c.email}</div>
                       </td>
                       <td className="py-3">
-                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs border border-gray-200/70 dark:border-gray-700/70 bg-gray-100 dark:!bg-surface-darker text-gray-700 dark:text-gray-200">
+                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs border border-gray-200/70 dark:border-gray-800 bg-gray-100 dark:bg-gray-950 text-gray-700 dark:text-gray-200">
                           {SUPER_ADMIN_PLAN_LABEL[c.plan]}
                         </span>
                       </td>

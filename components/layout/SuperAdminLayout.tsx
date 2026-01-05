@@ -61,13 +61,13 @@ const SuperAdminLayout: React.FC<SuperAdminLayoutProps> = ({ children }) => {
             </div>
           </div>
 
-          <nav className="flex-1 px-4 pb-6 flex flex-col gap-2">
+          <nav className="flex-1 px-4 pb-6 flex flex-col gap-1.5">
             <button
               onClick={() => navigate('/super-admin/dashboard')}
               className={`flex items-center gap-3 px-4 py-3 rounded-2xl transition-colors w-full text-left ${
                 location.pathname === '/super-admin/dashboard' || location.pathname === '/super-admin'
-                  ? 'bg-accent-green/15 text-gray-900 dark:text-white'
-                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-900'
+                  ? 'bg-accent-green/20 text-gray-900 dark:text-white'
+                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-900/70'
               }`}
             >
               <LayoutDashboard className="h-5 w-5" />
@@ -78,8 +78,8 @@ const SuperAdminLayout: React.FC<SuperAdminLayoutProps> = ({ children }) => {
               onClick={() => navigate('/super-admin/companies')}
               className={`flex items-center gap-3 px-4 py-3 rounded-2xl transition-colors w-full text-left ${
                 location.pathname === '/super-admin/companies'
-                  ? 'bg-accent-green/15 text-gray-900 dark:text-white'
-                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-900'
+                  ? 'bg-accent-green/20 text-gray-900 dark:text-white'
+                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-900/70'
               }`}
             >
               <Building2 className="h-5 w-5" />
@@ -90,8 +90,8 @@ const SuperAdminLayout: React.FC<SuperAdminLayoutProps> = ({ children }) => {
               onClick={() => navigate('/super-admin/users')}
               className={`flex items-center gap-3 px-4 py-3 rounded-2xl transition-colors w-full text-left ${
                 location.pathname === '/super-admin/users'
-                  ? 'bg-accent-green/15 text-gray-900 dark:text-white'
-                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-900'
+                  ? 'bg-accent-green/20 text-gray-900 dark:text-white'
+                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-900/70'
               }`}
             >
               <Users className="h-5 w-5" />
@@ -102,8 +102,8 @@ const SuperAdminLayout: React.FC<SuperAdminLayoutProps> = ({ children }) => {
               onClick={() => navigate('/super-admin/subscriptions')}
               className={`flex items-center gap-3 px-4 py-3 rounded-2xl transition-colors w-full text-left ${
                 location.pathname === '/super-admin/subscriptions'
-                  ? 'bg-accent-green/15 text-gray-900 dark:text-white'
-                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-900'
+                  ? 'bg-accent-green/20 text-gray-900 dark:text-white'
+                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-900/70'
               }`}
             >
               <CreditCard className="h-5 w-5" />
@@ -114,8 +114,8 @@ const SuperAdminLayout: React.FC<SuperAdminLayoutProps> = ({ children }) => {
               onClick={() => navigate('/super-admin/activity-logs')}
               className={`flex items-center gap-3 px-4 py-3 rounded-2xl transition-colors w-full text-left ${
                 location.pathname === '/super-admin/activity-logs'
-                  ? 'bg-accent-green/15 text-gray-900 dark:text-white'
-                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-900'
+                  ? 'bg-accent-green/20 text-gray-900 dark:text-white'
+                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-900/70'
               }`}
             >
               <Activity className="h-5 w-5" />
@@ -126,8 +126,8 @@ const SuperAdminLayout: React.FC<SuperAdminLayoutProps> = ({ children }) => {
               onClick={() => navigate('/super-admin/settings')}
               className={`flex items-center gap-3 px-4 py-3 rounded-2xl transition-colors w-full text-left ${
                 location.pathname === '/super-admin/settings'
-                  ? 'bg-accent-green/15 text-gray-900 dark:text-white'
-                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-900'
+                  ? 'bg-accent-green/20 text-gray-900 dark:text-white'
+                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-900/70'
               }`}
             >
               <Settings className="h-5 w-5" />
@@ -160,7 +160,7 @@ const SuperAdminLayout: React.FC<SuperAdminLayoutProps> = ({ children }) => {
 
         {/* Main */}
         <main className="flex-1 overflow-auto">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
             {children}
           </div>
         </main>
