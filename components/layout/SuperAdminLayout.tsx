@@ -9,7 +9,7 @@ interface SuperAdminLayoutProps {
   children: React.ReactNode;
 }
 
-const SUPER_ADMIN_BUILD_TAG = 'e33bff7';
+const SUPER_ADMIN_BUILD_TAG = 'shell-solid-1';
 
 const SuperAdminLayout: React.FC<SuperAdminLayoutProps> = ({ children }) => {
   const { user, logout } = useAuth();
@@ -43,9 +43,9 @@ const SuperAdminLayout: React.FC<SuperAdminLayoutProps> = ({ children }) => {
   }
 
   return (
-    <div className="dark min-h-screen bg-gradient-to-b from-background-light to-white dark:!from-background-dark dark:!to-surface-darker">
+    <div className="dark min-h-screen bg-background-light dark:!bg-background-dark">
       {/* Top Navigation */}
-      <nav className="sticky top-0 z-30 border-b border-gray-200/70 dark:border-gray-700/70 bg-white/70 dark:!bg-surface-dark/80 backdrop-blur-md">
+      <nav className="sticky top-0 z-30 border-b border-gray-200/70 dark:border-gray-700/70 bg-white dark:!bg-surface-dark">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
             <div className="flex items-center gap-3">
@@ -64,7 +64,7 @@ const SuperAdminLayout: React.FC<SuperAdminLayoutProps> = ({ children }) => {
             </div>
 
             <div className="flex items-center gap-3">
-              <div className="hidden sm:flex items-center gap-3 rounded-full bg-gray-100/70 dark:!bg-surface-darker/70 border border-gray-200/70 dark:border-gray-700/70 px-4 py-2">
+              <div className="hidden sm:flex items-center gap-3 rounded-full bg-gray-100 dark:!bg-surface-darker border border-gray-200/70 dark:border-gray-700/70 px-4 py-2">
                 <div className="size-8 rounded-full bg-primary/10 text-primary flex items-center justify-center font-semibold">
                   {user.name?.slice(0, 1)?.toUpperCase()}
                 </div>
@@ -75,7 +75,7 @@ const SuperAdminLayout: React.FC<SuperAdminLayoutProps> = ({ children }) => {
               </div>
 
               <div className="hidden sm:flex items-center">
-                <span className="text-[10px] leading-none px-2 py-1 rounded-full border border-gray-200/70 dark:border-gray-700/70 text-gray-500 dark:text-gray-400 bg-white/60 dark:!bg-surface-darker/60">
+                <span className="text-[10px] leading-none px-2 py-1 rounded-full border border-gray-200/70 dark:border-gray-700/70 text-gray-500 dark:text-gray-400 bg-white dark:!bg-surface-darker">
                   Build: {SUPER_ADMIN_BUILD_TAG}
                 </span>
               </div>
@@ -90,7 +90,7 @@ const SuperAdminLayout: React.FC<SuperAdminLayoutProps> = ({ children }) => {
 
       <div className="flex">
         {/* Sidebar */}
-        <aside className="w-72 hidden lg:flex flex-col border-r border-gray-200/70 dark:border-gray-700/70 bg-white/80 dark:!bg-surface-darker/90 backdrop-blur-md h-[calc(100vh-64px)] sticky top-16">
+        <aside className="w-72 hidden lg:flex flex-col border-r border-gray-200/70 dark:border-gray-700/70 bg-white dark:!bg-surface-darker h-[calc(100vh-64px)] sticky top-16">
           <nav className="flex-1 px-4 py-6 flex flex-col gap-2 overflow-y-auto">
             <button
               onClick={() => navigate('/super-admin/dashboard')}
@@ -118,7 +118,7 @@ const SuperAdminLayout: React.FC<SuperAdminLayoutProps> = ({ children }) => {
           </nav>
 
           <div className="p-4 border-t border-gray-200/70 dark:border-gray-700/70">
-            <div className="rounded-2xl bg-gray-100/70 dark:!bg-surface-dark/70 border border-gray-200/70 dark:border-gray-700/70 px-4 py-3">
+            <div className="rounded-2xl bg-gray-100 dark:!bg-surface-dark border border-gray-200/70 dark:border-gray-700/70 px-4 py-3">
               <div className="text-xs text-gray-500 dark:text-gray-400">Logged in as</div>
               <div className="text-sm font-semibold text-gray-900 dark:text-white truncate">{user.email}</div>
             </div>
@@ -128,7 +128,7 @@ const SuperAdminLayout: React.FC<SuperAdminLayoutProps> = ({ children }) => {
         {/* Main Content */}
         <main className="flex-1 overflow-auto">
           <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-            <div className="rounded-3xl bg-white/80 dark:!bg-surface-dark/80 backdrop-blur-md border border-gray-200/70 dark:border-gray-700/70 shadow-lg p-6 sm:p-8">
+            <div className="rounded-3xl bg-white dark:!bg-surface-dark border border-gray-200/70 dark:border-gray-700/70 shadow-lg p-6 sm:p-8">
               {children}
             </div>
           </div>
