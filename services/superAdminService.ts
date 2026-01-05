@@ -214,6 +214,7 @@ export const createCompanyUser = async (
     email: newUser.email,
     role: newUser.role,
     orgId: newUser.orgId,
+    companyId: newUser.companyId,
     isEnabled: newUser.isEnabled,
     password: newUser.password
   });

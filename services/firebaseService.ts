@@ -210,6 +210,7 @@ export const addUserToGlobalRegistry = (userData: {
   email: string;
   role: Role;
   orgId: string;
+  companyId?: string;
   isEnabled: boolean;
   password: string;
 }) => {
@@ -222,6 +223,7 @@ export const addUserToGlobalRegistry = (userData: {
       email: userData.email,
       role: userData.role,
       orgId: userData.orgId,
+      companyId: userData.companyId,
       isEnabled: userData.isEnabled,
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -460,16 +462,120 @@ const loadFromStorage = <T>(key: string, defaultValue: T): T => {
   }
 };
 
+type SuperAdminStoredUser = {
+  id: string;
+  name: string;
+  email: string;
+  password?: string;
+  role: Role;
+  orgId: string;
+  companyId?: string;
+  isEnabled?: boolean;
+  active?: boolean;
+  createdAt?: string | Date;
+  updatedAt?: string | Date;
+};
+
+type SuperAdminStoredCompany = {
+  id: string;
+  name: string;
+  orgId: string;
+  isActive?: boolean;
+  loginAllowed?: boolean;
+  subscriptionStatus?: string;
+  validFrom?: string | Date;
+  validTo?: string | Date;
+};
+
+const parseDateLike = (value: unknown): Date | null => {
+  if (!value) return null;
+  if (value instanceof Date) return isNaN(value.getTime()) ? null : value;
+  if (typeof value === 'string') {
+    const dt = new Date(value);
+    return isNaN(dt.getTime()) ? null : dt;
+  }
+  return null;
+};
+
+const getStoredSuperAdminUsers = (): SuperAdminStoredUser[] => {
+  try {
+    return JSON.parse(localStorage.getItem('superadmin_users') || '[]');
+  } catch {
+    return [];
+  }
+};
+
+const getStoredSuperAdminCompanies = (): SuperAdminStoredCompany[] => {
+  try {
+    return JSON.parse(localStorage.getItem('superadmin_companies') || '[]');
+  } catch {
+    return [];
+  }
+};
+
+const findCompanyForUser = (
+  companies: SuperAdminStoredCompany[],
+  user: { companyId?: string; orgId?: string }
+): SuperAdminStoredCompany | null => {
+  if (user.companyId) {
+    const byId = companies.find(c => c.id === user.companyId);
+    if (byId) return byId;
+  }
+  if (user.orgId) {
+    const byOrg = companies.find(c => c.orgId === user.orgId);
+    if (byOrg) return byOrg;
+  }
+  return null;
+};
+
+const validateCompanyAccess = (
+  company: SuperAdminStoredCompany,
+  now: Date
+): { ok: true } | { ok: false; reason: string } => {
+  if (company.isActive === false) {
+    return { ok: false, reason: 'Your company account is disabled. Please contact support.' };
+  }
+
+  if (company.loginAllowed === false) {
+    return { ok: false, reason: 'Login is currently disabled for your company. Please contact support.' };
+  }
+
+  // Only treat explicitly expired/inactive as blocked; allow other values for backward compatibility.
+  const status = (company.subscriptionStatus || '').toLowerCase();
+  if (status === 'expired' || status === 'inactive' || status === 'suspended') {
+    return { ok: false, reason: 'Your company subscription is not active. Please contact support.' };
+  }
+
+  const validFrom = parseDateLike(company.validFrom);
+  const validTo = parseDateLike(company.validTo);
+
+  if (validFrom && now.getTime() < validFrom.getTime()) {
+    return { ok: false, reason: 'Your company access has not started yet. Please contact support.' };
+  }
+
+  if (validTo && now.getTime() > validTo.getTime()) {
+    return { ok: false, reason: 'Your company access has expired. Please contact support.' };
+  }
+
+  return { ok: true };
+};
+
 // --- MOCK AUTH FUNCTIONS ---
 export const mockLogin = (email: string, pass: string): Promise<User> => {
   return new Promise((resolve, reject) => {
     setTimeout(() => {
       console.log('🔐 mockLogin called for:', email);
+
+      const now = new Date();
+      const isDevHost =
+        window.location.hostname === 'localhost' ||
+        window.location.hostname === '127.0.0.1' ||
+        window.location.hostname.endsWith('.local');
       
       // ALWAYS sync users from localStorage first (critical for incognito mode)
       let foundUser = null;
       try {
-        const superAdminUsers = JSON.parse(localStorage.getItem('superadmin_users') || '[]');
+        const superAdminUsers = getStoredSuperAdminUsers();
         console.log('📋 Found SuperAdmin users in localStorage:', superAdminUsers.length);
         
         // Sync each user to global registry
@@ -483,6 +589,7 @@ export const mockLogin = (email: string, pass: string): Promise<User> => {
               email: userData.email,
               role: userData.role,
               orgId: userData.orgId,
+              companyId: userData.companyId,
               isEnabled: userData.isEnabled,
               password: userData.password
             });
@@ -499,6 +606,7 @@ export const mockLogin = (email: string, pass: string): Promise<User> => {
             email: superAdminUser.email,
             role: superAdminUser.role,
             orgId: superAdminUser.orgId,
+            companyId: superAdminUser.companyId,
             isEnabled: superAdminUser.isEnabled,
             createdAt: new Date(superAdminUser.createdAt),
             updatedAt: new Date(superAdminUser.updatedAt)
@@ -508,10 +616,22 @@ export const mockLogin = (email: string, pass: string): Promise<User> => {
         console.error('❌ Error syncing users:', error);
       }
 
-      // If not found in SuperAdmin users, check global registry
+      // If not found in SuperAdmin users, only allow a tiny set of dev/test accounts.
       if (!foundUser) {
-        foundUser = users.find(u => u.email === email);
-        console.log('🔍 Checked global registry for user:', email, foundUser ? 'FOUND' : 'NOT FOUND');
+        const allowList = new Set<string>(['superadmin@aura.com']);
+        if (isDevHost) {
+          allowList.add('admin@test.com');
+          allowList.add('Test@orgatre.com');
+        }
+
+        if (allowList.has(email)) {
+          foundUser = users.find(u => u.email === email) || null;
+          console.log('🧪 Allowlisted dev user:', email, foundUser ? 'FOUND' : 'NOT FOUND');
+        } else {
+          console.log('❌ Login blocked: user not created by Super Admin:', email);
+          reject(new Error('User not found. Please contact Super Admin to create your account.'));
+          return;
+        }
       }
       
       // Password validation
@@ -524,14 +644,12 @@ export const mockLogin = (email: string, pass: string): Promise<User> => {
         validPassword = true;
       } else if (email === 'admin@test.com' && pass === 'Admin@123') {
         validPassword = true;
-      } else if (pass === 'password123') {
-        validPassword = true;
       } else {
         // Check SuperAdmin created users password
         try {
-          const superAdminUsers = JSON.parse(localStorage.getItem('superadmin_users') || '[]');
+          const superAdminUsers = getStoredSuperAdminUsers();
           const superAdminUser = superAdminUsers.find((u: any) => u.email === email);
-          if (superAdminUser && superAdminUser.password === pass) {
+          if (superAdminUser && superAdminUser.password && superAdminUser.password === pass) {
             validPassword = true;
             console.log('✅ Password validated against SuperAdmin user');
           }
@@ -550,40 +668,30 @@ export const mockLogin = (email: string, pass: string): Promise<User> => {
       }
 
       // Company validation for SuperAdmin created users
-      if (foundUser && foundUser.orgId && validPassword) {
+      if (foundUser && foundUser.role !== ('SuperAdmin' as any) && validPassword) {
         try {
-          const superAdminCompanies = JSON.parse(localStorage.getItem('superadmin_companies') || '[]');
-          const userCompany = superAdminCompanies.find((comp: any) => comp.orgId === foundUser.orgId);
-          
-          if (userCompany) {
-            console.log('🏢 Found user company:', userCompany.name);
-            
-            // Check company status
-            if (!userCompany.isActive) {
-              console.log('❌ Company is disabled');
-              reject(new Error('Your company account is disabled. Please contact support.'));
-              return;
-            }
-            
-            // Check subscription status
-            if (userCompany.subscriptionStatus !== 'active') {
-              console.log('❌ Company subscription expired');
-              reject(new Error('Your company subscription has expired. Please contact support.'));
-              return;
-            }
-            
-            // Check if login is allowed for the company
-            if (userCompany.loginAllowed === false) {
-              console.log('❌ Company login disabled');
-              reject(new Error('Login is currently disabled for your company. Please contact support.'));
-              return;
-            }
-            
-            console.log('✅ Company validation passed');
+          const superAdminCompanies = getStoredSuperAdminCompanies();
+          const userCompany = findCompanyForUser(superAdminCompanies, foundUser as any);
+
+          if (!userCompany) {
+            console.log('❌ Company not found for user:', foundUser.email);
+            reject(new Error('Company not found for this user. Please contact Super Admin.'));
+            return;
           }
+
+          console.log('🏢 Found user company:', userCompany.name);
+          const companyAccess = validateCompanyAccess(userCompany, now);
+          if (companyAccess.ok === false) {
+            console.log('❌ Company access blocked:', companyAccess.reason);
+            reject(new Error(companyAccess.reason));
+            return;
+          }
+
+          console.log('✅ Company validation passed (status + validity window)');
         } catch (error) {
           console.error('❌ Error validating company status:', error);
-          // Continue with login if company check fails (for backward compatibility)
+          reject(new Error('Unable to validate company access. Please try again.'));
+          return;
         }
       }
       
@@ -687,35 +795,60 @@ export const mockFetchUser = (): Promise<User> => {
             // Validate user/company status (be tolerant on refresh).
             // NOTE: This app is localStorage-backed; the in-memory registry can be out of sync during reload.
             // Only force-logout if we can prove the user/company is disabled.
-            const superAdminUsers = JSON.parse(localStorage.getItem('superadmin_users') || '[]');
-            const superAdminCompanies = JSON.parse(localStorage.getItem('superadmin_companies') || '[]');
+            const superAdminUsers = getStoredSuperAdminUsers();
+            const superAdminCompanies = getStoredSuperAdminCompanies();
+
+            // SuperAdmin session bypasses tenant checks
+            if (user.role === 'SuperAdmin') {
+              currentUser = user;
+              backupSession();
+              console.log('✅ SuperAdmin session restored successfully:', user.email);
+              resolve(currentUser as User);
+              return;
+            }
 
             const registryUser = users.find(u => u.email === user.email) as any;
-            const storedUser = superAdminUsers.find((u: any) => u.email === user.email);
+            const storedUser = superAdminUsers.find((u: any) => u.email === user.email) as SuperAdminStoredUser | undefined;
+
+            // Enforce: user must exist in SuperAdmin-created users
+            if (!storedUser) {
+              console.error('❌ Session user not present in SuperAdmin users:', user.email);
+              localStorage.removeItem(SESSION_KEY);
+              reject(new Error('User not found. Please login again.'));
+              return;
+            }
 
             const isExplicitlyDisabled =
               (registryUser && registryUser.isEnabled === false) ||
-              (storedUser && storedUser.isEnabled === false);
+              (storedUser && storedUser.isEnabled === false) ||
+              (storedUser && storedUser.active === false);
 
-            if (isExplicitlyDisabled && user.role !== 'SuperAdmin') {
+            if (isExplicitlyDisabled) {
                 console.error('❌ User is disabled:', user.email);
                 localStorage.removeItem(SESSION_KEY);
                 reject(new Error('Your account is disabled. Please contact an administrator.'));
                 return;
             }
 
-            if (user.orgId) {
-              const company = superAdminCompanies.find((c: any) => c.orgId === user.orgId);
-              if (company) {
-                const companyDisabled = company.isActive === false || company.loginAllowed === false || company.subscriptionStatus === 'expired';
-                if (companyDisabled && user.role !== 'SuperAdmin') {
-                  console.error('❌ Company is disabled or subscription expired for:', user.email);
-                  localStorage.removeItem(SESSION_KEY);
-                  reject(new Error('Your company account is disabled or subscription expired. Please contact support.'));
-                  return;
-                }
-              }
+            const company = findCompanyForUser(superAdminCompanies, storedUser);
+            if (!company) {
+              console.error('❌ Company not found for session user:', user.email);
+              localStorage.removeItem(SESSION_KEY);
+              reject(new Error('Company not found for this user. Please contact Super Admin.'));
+              return;
             }
+
+            const access = validateCompanyAccess(company, new Date());
+            if (access.ok === false) {
+              console.error('❌ Company access blocked for session user:', user.email, access.reason);
+              localStorage.removeItem(SESSION_KEY);
+              reject(new Error(access.reason));
+              return;
+            }
+
+            // Normalize session org/company scope from authoritative stored user
+            user.orgId = storedUser.orgId;
+            user.companyId = storedUser.companyId;
 
             // Session is valid, restore it and create backup
             currentUser = user;

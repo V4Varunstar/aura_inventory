@@ -5,6 +5,10 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { ToastProvider, useToast } from './context/ToastContext';
 import { getOutwardRecords, getProducts, getInwardRecords, addProductsBatch } from './services/firebaseService';
 import { getParties, addParty, updateParty, deleteParty } from './services/partyService';
+import SuperAdminRoute from './components/auth/SuperAdminRoute';
+import SuperAdminLayout from './components/layout/SuperAdminLayout';
+import SuperAdminDashboard from './pages/super-admin/Dashboard';
+import SuperAdminCompanies from './pages/super-admin/Companies';
 import * as XLSX from 'xlsx';
 import './index.css';
 
@@ -32,7 +36,13 @@ function Landing() {
 
   React.useEffect(() => {
     if (loading) return;
-    if (user) navigate('/dashboard', { replace: true });
+    if (user) {
+      if (user.role === 'SuperAdmin') {
+        navigate('/super-admin/dashboard', { replace: true });
+      } else {
+        navigate('/dashboard', { replace: true });
+      }
+    }
   }, [loading, user, navigate]);
 
   if (loading) {
@@ -69,16 +79,26 @@ function Login() {
 
   React.useEffect(() => {
     if (authLoading) return;
-    if (user) navigate('/dashboard', { replace: true });
+    if (user) {
+      if (user.role === 'SuperAdmin') {
+        navigate('/super-admin/dashboard', { replace: true });
+      } else {
+        navigate('/dashboard', { replace: true });
+      }
+    }
   }, [authLoading, user, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
-      await login(email, password);
+      const loggedInUser = await login(email, password);
       addToast('Login successful!', 'success');
-      navigate('/dashboard');
+      if (loggedInUser.role === 'SuperAdmin') {
+        navigate('/super-admin/dashboard');
+      } else {
+        navigate('/dashboard');
+      }
     } catch (error) {
       addToast(error instanceof Error ? error.message : 'Login failed', 'error');
     } finally {
@@ -2535,6 +2555,7 @@ const ProtectedRoute: React.FC<{children: React.ReactElement}> = ({children}) =>
     );
   }
   if (!user) return <Navigate to="/login" replace />;
+  if (user.role === 'SuperAdmin') return <Navigate to="/super-admin/dashboard" replace />;
   return children;
 };
 
@@ -2547,6 +2568,27 @@ function App() {
             <Route path="/" element={<Landing />} />
             <Route path="/login" element={<Login />} />
             <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
+            <Route path="/super-admin" element={<Navigate to="/super-admin/dashboard" replace />} />
+            <Route
+              path="/super-admin/dashboard"
+              element={
+                <SuperAdminRoute>
+                  <SuperAdminLayout>
+                    <SuperAdminDashboard />
+                  </SuperAdminLayout>
+                </SuperAdminRoute>
+              }
+            />
+            <Route
+              path="/super-admin/companies"
+              element={
+                <SuperAdminRoute>
+                  <SuperAdminLayout>
+                    <SuperAdminCompanies />
+                  </SuperAdminLayout>
+                </SuperAdminRoute>
+              }
+            />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </HashRouter>
