@@ -2698,6 +2698,10 @@ const ProtectedRoute: React.FC<{children: React.ReactElement}> = ({children}) =>
 };
 
 function App() {
+  React.useEffect(() => {
+    (window as any).__AURA_APP_MOUNTED__ = true;
+  }, []);
+
   return (
     <ErrorBoundary>
       <ToastProvider>
@@ -2746,6 +2750,28 @@ function App() {
 }
 
 const root = ReactDOM.createRoot(document.getElementById('root')!);
+
+// Show immediate bootstrap UI to avoid a blank screen while JS loads/mounts
+(window as any).__AURA_APP_MOUNTED__ = false;
+const rootEl = document.getElementById('root');
+if (rootEl) {
+  rootEl.innerHTML = `
+    <div style="min-height:100vh;background:#0b1220;color:#e2e8f0;font-family:system-ui;display:flex;align-items:center;justify-content:center;padding:24px">
+      <div style="text-align:center">
+        <div style="width:36px;height:36px;border:3px solid rgba(226,232,240,0.25);border-top-color:#e2e8f0;border-radius:999px;margin:0 auto 12px;animation:spin 1s linear infinite"></div>
+        <div style="font-size:14px;font-weight:800">Loading Aura Inventory…</div>
+      </div>
+    </div>
+  `;
+}
+
+// If React never mounts (blocked JS / runtime stall), show a clear error
+setTimeout(() => {
+  if (!(window as any).__AURA_APP_MOUNTED__) {
+    renderBootstrapError('App did not mount. Check Console/Network for blocked JS or a runtime error.');
+  }
+}, 5000);
+
 root.render(<App />);
 
 // Add spin animation for loading
