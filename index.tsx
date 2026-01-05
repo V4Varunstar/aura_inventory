@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { Component } from 'react';
 import ReactDOM from 'react-dom/client';
 import { HashRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -8,17 +8,22 @@ import { ToastProvider, useToast } from './context/ToastContext';
 import { getOutwardRecords, getProducts, getInwardRecords, addProductsBatch } from './services/firebaseService';
 import { getParties, addParty, updateParty, deleteParty } from './services/partyService';
 import SuperAdminRoute from './components/auth/SuperAdminRoute';
-import SuperAdminLayout from './components/layout/SuperAdminLayout';
-import SuperAdminDashboard from './pages/super-admin/Dashboard';
-import SuperAdminCompanies from './pages/super-admin/Companies';
 import * as XLSX from 'xlsx';
 import './index.css';
 
+// Lazy-load Super Admin UI to avoid blocking /login if any SA chunk fails
+const SuperAdminLayout = React.lazy(() => import('./components/layout/SuperAdminLayout'));
+const SuperAdminDashboard = React.lazy(() => import('./pages/super-admin/Dashboard'));
+const SuperAdminCompanies = React.lazy(() => import('./pages/super-admin/Companies'));
+
 // Error Boundary (prevents silent blank screens in production)
-class ErrorBoundary extends React.Component<
+class ErrorBoundary extends Component<
   { children: React.ReactNode },
   { hasError: boolean; error: Error | null }
 > {
+  declare state: { hasError: boolean; error: Error | null };
+  declare props: { children: React.ReactNode };
+
   constructor(props: { children: React.ReactNode }) {
     super(props);
     this.state = { hasError: false, error: null };
@@ -105,6 +110,45 @@ class ErrorBoundary extends React.Component<
     return this.props.children;
   }
 }
+
+const renderBootstrapError = (message: string) => {
+  try {
+    const rootEl = document.getElementById('root');
+    if (!rootEl) return;
+    rootEl.innerHTML = `
+      <div style="min-height:100vh;background:#0b1220;color:#e2e8f0;font-family:system-ui;display:flex;align-items:center;justify-content:center;padding:24px">
+        <div style="max-width:760px;width:100%">
+          <div style="font-size:20px;font-weight:800;margin-bottom:8px">App failed to start</div>
+          <div style="opacity:0.85;margin-bottom:16px">A startup error occurred (often a failed JS chunk load). Please reload.</div>
+          <pre style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:12px;padding:16px;white-space:pre-wrap;overflow-x:auto">${String(
+            message || 'Unknown error'
+          )}</pre>
+          <div style="display:flex;gap:12px;margin-top:16px">
+            <button onclick="window.location.reload()" style="padding:10px 16px;border-radius:10px;border:none;background:#6366f1;color:white;font-weight:800;cursor:pointer">Reload</button>
+            <button onclick="localStorage.removeItem('aura_inventory_user');localStorage.removeItem('aura_inventory_user_backup');window.location.reload()" style="padding:10px 16px;border-radius:10px;border:1px solid rgba(255,255,255,0.18);background:transparent;color:#e2e8f0;font-weight:800;cursor:pointer">Clear Session</button>
+          </div>
+        </div>
+      </div>
+    `;
+  } catch {
+    // ignore
+  }
+};
+
+// Catch module-load / chunk-load failures that happen before React mounts
+window.addEventListener('error', (event) => {
+  const anyEvent = event as any;
+  const msg = anyEvent?.error?.message || anyEvent?.message || 'Unknown error';
+  console.error('❌ Global error:', event);
+  renderBootstrapError(msg);
+});
+
+window.addEventListener('unhandledrejection', (event) => {
+  const anyEvent = event as any;
+  const msg = anyEvent?.reason?.message || String(anyEvent?.reason || 'Unhandled promise rejection');
+  console.error('❌ Unhandled rejection:', event);
+  renderBootstrapError(msg);
+});
 
 // Add CSS animations
 const style = document.createElement('style');
@@ -2670,9 +2714,11 @@ function App() {
                     path="/super-admin/dashboard"
                     element={
                       <SuperAdminRoute>
-                        <SuperAdminLayout>
-                          <SuperAdminDashboard />
-                        </SuperAdminLayout>
+                        <React.Suspense fallback={<div className="flex items-center justify-center h-screen">Loading…</div>}>
+                          <SuperAdminLayout>
+                            <SuperAdminDashboard />
+                          </SuperAdminLayout>
+                        </React.Suspense>
                       </SuperAdminRoute>
                     }
                   />
@@ -2680,9 +2726,11 @@ function App() {
                     path="/super-admin/companies"
                     element={
                       <SuperAdminRoute>
-                        <SuperAdminLayout>
-                          <SuperAdminCompanies />
-                        </SuperAdminLayout>
+                        <React.Suspense fallback={<div className="flex items-center justify-center h-screen">Loading…</div>}>
+                          <SuperAdminLayout>
+                            <SuperAdminCompanies />
+                          </SuperAdminLayout>
+                        </React.Suspense>
                       </SuperAdminRoute>
                     }
                   />
