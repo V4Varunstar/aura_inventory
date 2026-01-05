@@ -2,6 +2,8 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { HashRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { CompanyProvider } from './context/CompanyContext';
+import { WarehouseProvider } from './context/WarehouseContext';
 import { ToastProvider, useToast } from './context/ToastContext';
 import { getOutwardRecords, getProducts, getInwardRecords, addProductsBatch } from './services/firebaseService';
 import { getParties, addParty, updateParty, deleteParty } from './services/partyService';
@@ -11,6 +13,98 @@ import SuperAdminDashboard from './pages/super-admin/Dashboard';
 import SuperAdminCompanies from './pages/super-admin/Companies';
 import * as XLSX from 'xlsx';
 import './index.css';
+
+// Error Boundary (prevents silent blank screens in production)
+class ErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean; error: Error | null }
+> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, info: any) {
+    console.error('❌ App crashed:', error, info);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{
+          minHeight: '100vh',
+          background: '#0b1220',
+          color: '#e2e8f0',
+          fontFamily: 'system-ui',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: 24
+        }}>
+          <div style={{ maxWidth: 720, width: '100%' }}>
+            <div style={{ fontSize: 20, fontWeight: 800, marginBottom: 8 }}>Something went wrong</div>
+            <div style={{ opacity: 0.85, marginBottom: 16 }}>
+              The app hit an unexpected error. Please reload.
+            </div>
+            <pre style={{
+              background: 'rgba(255,255,255,0.06)',
+              border: '1px solid rgba(255,255,255,0.12)',
+              borderRadius: 12,
+              padding: 16,
+              overflowX: 'auto',
+              whiteSpace: 'pre-wrap'
+            }}>
+              {this.state.error?.message || 'Unknown error'}
+            </pre>
+            <div style={{ display: 'flex', gap: 12, marginTop: 16 }}>
+              <button
+                onClick={() => window.location.reload()}
+                style={{
+                  padding: '10px 16px',
+                  borderRadius: 10,
+                  border: 'none',
+                  background: '#6366f1',
+                  color: 'white',
+                  fontWeight: 800,
+                  cursor: 'pointer'
+                }}
+              >
+                Reload
+              </button>
+              <button
+                onClick={() => {
+                  try {
+                    localStorage.removeItem('aura_inventory_user');
+                    localStorage.removeItem('aura_inventory_user_backup');
+                  } finally {
+                    window.location.href = window.location.origin + '/';
+                  }
+                }}
+                style={{
+                  padding: '10px 16px',
+                  borderRadius: 10,
+                  border: '1px solid rgba(255,255,255,0.18)',
+                  background: 'transparent',
+                  color: '#e2e8f0',
+                  fontWeight: 800,
+                  cursor: 'pointer'
+                }}
+              >
+                Clear Session
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
 
 // Add CSS animations
 const style = document.createElement('style');
@@ -2561,39 +2655,45 @@ const ProtectedRoute: React.FC<{children: React.ReactElement}> = ({children}) =>
 
 function App() {
   return (
-    <ToastProvider>
-      <AuthProvider>
-        <HashRouter>
-          <Routes>
-            <Route path="/" element={<Landing />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
-            <Route path="/super-admin" element={<Navigate to="/super-admin/dashboard" replace />} />
-            <Route
-              path="/super-admin/dashboard"
-              element={
-                <SuperAdminRoute>
-                  <SuperAdminLayout>
-                    <SuperAdminDashboard />
-                  </SuperAdminLayout>
-                </SuperAdminRoute>
-              }
-            />
-            <Route
-              path="/super-admin/companies"
-              element={
-                <SuperAdminRoute>
-                  <SuperAdminLayout>
-                    <SuperAdminCompanies />
-                  </SuperAdminLayout>
-                </SuperAdminRoute>
-              }
-            />
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </HashRouter>
-      </AuthProvider>
-    </ToastProvider>
+    <ErrorBoundary>
+      <ToastProvider>
+        <AuthProvider>
+          <CompanyProvider>
+            <WarehouseProvider>
+              <HashRouter>
+                <Routes>
+                  <Route path="/" element={<Landing />} />
+                  <Route path="/login" element={<Login />} />
+                  <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
+                  <Route path="/super-admin" element={<Navigate to="/super-admin/dashboard" replace />} />
+                  <Route
+                    path="/super-admin/dashboard"
+                    element={
+                      <SuperAdminRoute>
+                        <SuperAdminLayout>
+                          <SuperAdminDashboard />
+                        </SuperAdminLayout>
+                      </SuperAdminRoute>
+                    }
+                  />
+                  <Route
+                    path="/super-admin/companies"
+                    element={
+                      <SuperAdminRoute>
+                        <SuperAdminLayout>
+                          <SuperAdminCompanies />
+                        </SuperAdminLayout>
+                      </SuperAdminRoute>
+                    }
+                  />
+                  <Route path="*" element={<Navigate to="/" replace />} />
+                </Routes>
+              </HashRouter>
+            </WarehouseProvider>
+          </CompanyProvider>
+        </AuthProvider>
+      </ToastProvider>
+    </ErrorBoundary>
   );
 }
 
