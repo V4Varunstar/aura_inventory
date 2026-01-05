@@ -28,7 +28,7 @@ const SuperAdminLayout: React.FC<SuperAdminLayoutProps> = ({ children }) => {
 
   if (!user || user.role !== Role.SuperAdmin) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background-light dark:bg-background-dark px-4">
+      <div className="dark min-h-screen flex items-center justify-center bg-background-light dark:bg-background-dark px-4">
         <div className="text-center max-w-md w-full rounded-2xl bg-white dark:bg-surface-dark border border-gray-200/70 dark:border-gray-700/70 shadow-md p-8">
           <div className="mx-auto mb-4 size-12 rounded-full bg-primary/10 flex items-center justify-center text-primary">
             <Shield className="h-6 w-6" />
@@ -41,7 +41,7 @@ const SuperAdminLayout: React.FC<SuperAdminLayoutProps> = ({ children }) => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background-light to-white dark:from-background-dark dark:to-surface-darker">
+    <div className="dark min-h-screen bg-gradient-to-b from-background-light to-white dark:from-background-dark dark:to-surface-darker">
       {/* Top Navigation */}
       <nav className="sticky top-0 z-30 border-b border-gray-200/70 dark:border-gray-700/70 bg-white/70 dark:bg-surface-dark/70 backdrop-blur-md">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
