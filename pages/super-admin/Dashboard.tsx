@@ -7,7 +7,7 @@ import Input from '../../components/ui/Input';
 import Select from '../../components/ui/Select';
 import { useToast } from '../../context/ToastContext';
 import { useAuth } from '../../context/AuthContext';
-import { Building2, Users, CheckCircle, XCircle, Plus, UserPlus, Settings } from 'lucide-react';
+import { Building2, Users, CheckCircle, XCircle, Plus, UserPlus, Check } from 'lucide-react';
 import { SuperAdminStats, SubscriptionPlan, Role } from '../../types';
 import { getSuperAdminStats, getAllCompanies, createCompany } from '../../services/superAdminService';
 
@@ -26,14 +26,24 @@ const SuperAdminDashboard: React.FC = () => {
     name: '',
     email: '',
     phone: '',
-    plan: SubscriptionPlan.Free,
+    plan: SubscriptionPlan.Starter,
     ownerName: '',
     ownerEmail: '',
-    maxUsers: 5,
-    maxWarehouses: 2,
-    maxProducts: 50
+    maxUsers: 25,
+    maxWarehouses: 5,
+    maxProducts: 500
   });
   const { addToast } = useToast();
+
+  const applyPlanPreset = (plan: SubscriptionPlan) => {
+    setCreateForm((prev) => ({
+      ...prev,
+      plan,
+      maxUsers: plan === SubscriptionPlan.Starter ? 25 : plan === SubscriptionPlan.Pro ? 100 : 999,
+      maxWarehouses: plan === SubscriptionPlan.Starter ? 5 : plan === SubscriptionPlan.Pro ? 20 : 999,
+      maxProducts: plan === SubscriptionPlan.Starter ? 500 : plan === SubscriptionPlan.Pro ? 5000 : 99999,
+    }));
+  };
 
   useEffect(() => {
     console.log('SuperAdminDashboard mounted, user:', user);
@@ -76,12 +86,12 @@ const SuperAdminDashboard: React.FC = () => {
         name: '',
         email: '',
         phone: '',
-        plan: SubscriptionPlan.Free,
+        plan: SubscriptionPlan.Starter,
         ownerName: '',
         ownerEmail: '',
-        maxUsers: 5,
-        maxWarehouses: 2,
-        maxProducts: 50
+        maxUsers: 25,
+        maxWarehouses: 5,
+        maxProducts: 500
       });
       addToast('Company created successfully', 'success');
     } catch (error) {
@@ -257,6 +267,72 @@ const SuperAdminDashboard: React.FC = () => {
         </div>
       </Card>
 
+      {/* Plans */}
+      <Card title="Plans" className="p-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5">
+            <div className="flex items-start justify-between">
+              <div>
+                <div className="text-sm font-semibold text-gray-900 dark:text-white">Starter</div>
+                <div className="text-xs text-gray-500">For small teams getting started</div>
+              </div>
+              <span className="text-xs px-2 py-1 rounded-full bg-green-100 text-green-800">Popular</span>
+            </div>
+            <div className="mt-4 space-y-2 text-sm text-gray-700 dark:text-gray-300">
+              <div className="flex items-center"><Check className="w-4 h-4 mr-2" />Up to 25 users</div>
+              <div className="flex items-center"><Check className="w-4 h-4 mr-2" />Up to 5 warehouses</div>
+              <div className="flex items-center"><Check className="w-4 h-4 mr-2" />Up to 500 products</div>
+            </div>
+            <div className="mt-4">
+              <Button variant="outline" onClick={() => { applyPlanPreset(SubscriptionPlan.Starter); setShowCreateModal(true); }}>
+                Create company on Starter
+              </Button>
+            </div>
+          </div>
+
+          <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5">
+            <div className="flex items-start justify-between">
+              <div>
+                <div className="text-sm font-semibold text-gray-900 dark:text-white">Medium</div>
+                <div className="text-xs text-gray-500">For growing companies</div>
+              </div>
+              <span className="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-800">Scale</span>
+            </div>
+            <div className="mt-4 space-y-2 text-sm text-gray-700 dark:text-gray-300">
+              <div className="flex items-center"><Check className="w-4 h-4 mr-2" />Up to 100 users</div>
+              <div className="flex items-center"><Check className="w-4 h-4 mr-2" />Up to 20 warehouses</div>
+              <div className="flex items-center"><Check className="w-4 h-4 mr-2" />Up to 5,000 products</div>
+            </div>
+            <div className="mt-4">
+              <Button variant="outline" onClick={() => { applyPlanPreset(SubscriptionPlan.Pro); setShowCreateModal(true); }}>
+                Create company on Medium
+              </Button>
+            </div>
+          </div>
+
+          <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5">
+            <div className="flex items-start justify-between">
+              <div>
+                <div className="text-sm font-semibold text-gray-900 dark:text-white">Enterprise</div>
+                <div className="text-xs text-gray-500">For large orgs and multi-warehouse ops</div>
+              </div>
+              <span className="text-xs px-2 py-1 rounded-full bg-purple-100 text-purple-800">Advanced</span>
+            </div>
+            <div className="mt-4 space-y-2 text-sm text-gray-700 dark:text-gray-300">
+              <div className="flex items-center"><Check className="w-4 h-4 mr-2" />Unlimited users*</div>
+              <div className="flex items-center"><Check className="w-4 h-4 mr-2" />Unlimited warehouses*</div>
+              <div className="flex items-center"><Check className="w-4 h-4 mr-2" />Unlimited products*</div>
+              <div className="text-xs text-gray-500">*Implemented as very high limits (no payments)</div>
+            </div>
+            <div className="mt-4">
+              <Button variant="outline" onClick={() => { applyPlanPreset(SubscriptionPlan.Business); setShowCreateModal(true); }}>
+                Create company on Enterprise
+              </Button>
+            </div>
+          </div>
+        </div>
+      </Card>
+
       {/* Create Company Modal */}
       <Modal
         isOpen={showCreateModal}
@@ -289,26 +365,13 @@ const SuperAdminDashboard: React.FC = () => {
               value={createForm.plan}
               onChange={(e) => {
                 const plan = e.target.value as SubscriptionPlan;
-                setCreateForm({ 
-                  ...createForm, 
-                  plan,
-                  maxUsers: plan === SubscriptionPlan.Free ? 5 : 
-                           plan === SubscriptionPlan.Starter ? 25 : 
-                           plan === SubscriptionPlan.Pro ? 100 : 999,
-                  maxWarehouses: plan === SubscriptionPlan.Free ? 2 : 
-                                plan === SubscriptionPlan.Starter ? 5 : 
-                                plan === SubscriptionPlan.Pro ? 20 : 999,
-                  maxProducts: plan === SubscriptionPlan.Free ? 50 : 
-                              plan === SubscriptionPlan.Starter ? 500 : 
-                              plan === SubscriptionPlan.Pro ? 5000 : 99999
-                });
+                applyPlanPreset(plan);
               }}
               required
             >
-              <option value={SubscriptionPlan.Free}>Free</option>
               <option value={SubscriptionPlan.Starter}>Starter</option>
-              <option value={SubscriptionPlan.Pro}>Pro</option>
-              <option value={SubscriptionPlan.Business}>Business</option>
+              <option value={SubscriptionPlan.Pro}>Medium</option>
+              <option value={SubscriptionPlan.Business}>Enterprise</option>
             </Select>
           </div>
 

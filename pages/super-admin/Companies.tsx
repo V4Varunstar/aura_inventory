@@ -18,7 +18,8 @@ import {
   getAllCompanies, 
   createCompany, 
   toggleCompanyStatus,
-  createCompanyUser
+  createCompanyUser,
+  updateCompanySubscription
 } from '../../services/superAdminService';
 
 const SuperAdminCompanies: React.FC = memo(() => {
@@ -51,7 +52,7 @@ const SuperAdminCompanies: React.FC = memo(() => {
   });
 
   const [subscriptionForm, setSubscriptionForm] = useState({
-    plan: SubscriptionPlan.Free,
+    plan: SubscriptionPlan.Starter,
     validFrom: '',
     validTo: '',
     maxUsers: 5,
@@ -329,16 +330,20 @@ const SuperAdminCompanies: React.FC = memo(() => {
     {
       key: 'plan',
       label: 'Plan',
-      render: (value: SubscriptionPlan) => (
-        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-          value === SubscriptionPlan.Enterprise ? 'bg-purple-100 text-purple-800' :
-          value === SubscriptionPlan.Professional ? 'bg-blue-100 text-blue-800' :
-          value === SubscriptionPlan.Standard ? 'bg-green-100 text-green-800' :
-          'bg-gray-100 text-gray-800'
-        }`}>
-          {value}
-        </span>
-      )
+      render: (value: SubscriptionPlan) => {
+        const label = value === SubscriptionPlan.Pro ? 'Medium' :
+                      value === SubscriptionPlan.Business ? 'Enterprise' :
+                      value;
+        const klass = value === SubscriptionPlan.Business ? 'bg-purple-100 text-purple-800' :
+                      value === SubscriptionPlan.Pro ? 'bg-blue-100 text-blue-800' :
+                      value === SubscriptionPlan.Starter ? 'bg-green-100 text-green-800' :
+                      'bg-gray-100 text-gray-800';
+        return (
+          <span className={`px-2 py-1 rounded-full text-xs font-medium ${klass}`}>
+            {label}
+          </span>
+        );
+      }
     },
     {
       key: 'isActive',
@@ -359,7 +364,20 @@ const SuperAdminCompanies: React.FC = memo(() => {
           <Button
             size="sm"
             variant="ghost"
-            onClick={() => {/* View subscription details */}}
+            onClick={() => {
+              setSelectedCompany(company);
+              const vf = company.validFrom ? new Date(company.validFrom).toISOString().slice(0, 10) : '';
+              const vt = company.validTo ? new Date(company.validTo).toISOString().slice(0, 10) : '';
+              setSubscriptionForm({
+                plan: company.plan || SubscriptionPlan.Starter,
+                validFrom: vf,
+                validTo: vt,
+                maxUsers: company.limits?.maxUsers ?? 25,
+                maxWarehouses: company.limits?.maxWarehouses ?? 5,
+                maxProducts: company.limits?.maxProducts ?? 500,
+              });
+              setShowSubscriptionModal(true);
+            }}
             className="text-purple-600 hover:text-purple-700"
             title="Manage Subscription"
           >
@@ -475,10 +493,9 @@ const SuperAdminCompanies: React.FC = memo(() => {
               onChange={(e) => setCreateForm({ ...createForm, plan: e.target.value as SubscriptionPlan })}
               required
             >
-              <option value={SubscriptionPlan.Free}>Free</option>
-              <option value={SubscriptionPlan.Standard}>Standard</option>
-              <option value={SubscriptionPlan.Professional}>Professional</option>
-              <option value={SubscriptionPlan.Enterprise}>Enterprise</option>
+              <option value={SubscriptionPlan.Starter}>Starter</option>
+              <option value={SubscriptionPlan.Pro}>Medium</option>
+              <option value={SubscriptionPlan.Business}>Enterprise</option>
             </Select>
             <Input
               label="Owner Name"
@@ -502,7 +519,7 @@ const SuperAdminCompanies: React.FC = memo(() => {
                   name: '',
                   email: '',
                   phone: '',
-                  plan: SubscriptionPlan.Free,
+                  plan: SubscriptionPlan.Starter,
                   ownerName: '',
                   ownerEmail: ''
                 });
@@ -515,6 +532,142 @@ const SuperAdminCompanies: React.FC = memo(() => {
               isLoading={creating}
             >
               Create Company
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Manage Subscription Modal */}
+      <Modal
+        isOpen={showSubscriptionModal}
+        onClose={() => setShowSubscriptionModal(false)}
+        title={`Manage Subscription${selectedCompany ? `: ${selectedCompany.name}` : ''}`}
+        size="large"
+      >
+        <form
+          onSubmit={async (e) => {
+            e.preventDefault();
+            if (!selectedCompany) {
+              addToast('No company selected', 'error');
+              return;
+            }
+
+            try {
+              setCreating(true);
+              await updateCompanySubscription(selectedCompany.id, {
+                plan: subscriptionForm.plan,
+                subscriptionStatus: selectedCompany.subscriptionStatus,
+                validFrom: subscriptionForm.validFrom ? new Date(subscriptionForm.validFrom) : undefined,
+                validTo: subscriptionForm.validTo ? new Date(subscriptionForm.validTo) : undefined,
+                maxUsers: subscriptionForm.maxUsers,
+                maxWarehouses: subscriptionForm.maxWarehouses,
+                maxProducts: subscriptionForm.maxProducts,
+              });
+              addToast('Subscription updated successfully', 'success');
+              setShowSubscriptionModal(false);
+              setSelectedCompany(null);
+              await fetchCompanies();
+            } catch (error: any) {
+              console.error('❌ Error updating subscription:', error);
+              addToast(error?.message || 'Failed to update subscription', 'error');
+            } finally {
+              setCreating(false);
+            }
+          }}
+          className="space-y-4"
+        >
+          <div className="bg-purple-50 p-4 rounded-lg">
+            <div className="text-sm text-purple-900 font-medium">Plan presets</div>
+            <div className="text-xs text-purple-700">No payment system — this only controls access limits.</div>
+            <div className="mt-3 grid grid-cols-1 md:grid-cols-3 gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setSubscriptionForm((p) => ({ ...p, plan: SubscriptionPlan.Starter, maxUsers: 25, maxWarehouses: 5, maxProducts: 500 }))}
+              >
+                Starter
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setSubscriptionForm((p) => ({ ...p, plan: SubscriptionPlan.Pro, maxUsers: 100, maxWarehouses: 20, maxProducts: 5000 }))}
+              >
+                Medium
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setSubscriptionForm((p) => ({ ...p, plan: SubscriptionPlan.Business, maxUsers: 999, maxWarehouses: 999, maxProducts: 99999 }))}
+              >
+                Enterprise
+              </Button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Select
+              label="Plan"
+              value={subscriptionForm.plan}
+              onChange={(e) => setSubscriptionForm((p) => ({ ...p, plan: e.target.value as SubscriptionPlan }))}
+              required
+            >
+              <option value={SubscriptionPlan.Starter}>Starter</option>
+              <option value={SubscriptionPlan.Pro}>Medium</option>
+              <option value={SubscriptionPlan.Business}>Enterprise</option>
+            </Select>
+
+            <div className="grid grid-cols-2 gap-4">
+              <Input
+                label="Valid From"
+                type="date"
+                value={subscriptionForm.validFrom}
+                onChange={(e) => setSubscriptionForm((p) => ({ ...p, validFrom: e.target.value }))}
+              />
+              <Input
+                label="Valid To"
+                type="date"
+                value={subscriptionForm.validTo}
+                onChange={(e) => setSubscriptionForm((p) => ({ ...p, validTo: e.target.value }))}
+              />
+            </div>
+          </div>
+
+          <div className="bg-blue-50 p-4 rounded-lg">
+            <div className="font-medium text-blue-900">Limits</div>
+            <div className="mt-3 grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Input
+                label="Max Users"
+                type="number"
+                min="1"
+                value={subscriptionForm.maxUsers.toString()}
+                onChange={(e) => setSubscriptionForm((p) => ({ ...p, maxUsers: parseInt(e.target.value) || 1 }))}
+                required
+              />
+              <Input
+                label="Max Warehouses"
+                type="number"
+                min="1"
+                value={subscriptionForm.maxWarehouses.toString()}
+                onChange={(e) => setSubscriptionForm((p) => ({ ...p, maxWarehouses: parseInt(e.target.value) || 1 }))}
+                required
+              />
+              <Input
+                label="Max Products"
+                type="number"
+                min="1"
+                value={subscriptionForm.maxProducts.toString()}
+                onChange={(e) => setSubscriptionForm((p) => ({ ...p, maxProducts: parseInt(e.target.value) || 1 }))}
+                required
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-end space-x-3 pt-2">
+            <Button type="button" variant="secondary" onClick={() => setShowSubscriptionModal(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" isLoading={creating}>
+              Save
             </Button>
           </div>
         </form>

@@ -47,6 +47,22 @@ let superAdminUsers: any[] = loadFromStorage(SUPER_ADMIN_STORAGE_KEYS.USERS, [])
 
 // Start with clean slate - no demo data
 
+const getDefaultLimitsForPlan = (plan: SubscriptionPlan) => {
+  // NOTE: Business is treated as effectively unlimited in this app.
+  // We keep large numeric limits to avoid breaking older limit checks.
+  return {
+    maxUsers: plan === SubscriptionPlan.Free ? 5 :
+             plan === SubscriptionPlan.Starter ? 25 :
+             plan === SubscriptionPlan.Pro ? 100 : 999,
+    maxWarehouses: plan === SubscriptionPlan.Free ? 2 :
+                  plan === SubscriptionPlan.Starter ? 5 :
+                  plan === SubscriptionPlan.Pro ? 20 : 999,
+    maxProducts: plan === SubscriptionPlan.Free ? 50 :
+               plan === SubscriptionPlan.Starter ? 500 :
+               plan === SubscriptionPlan.Pro ? 5000 : 99999,
+  };
+};
+
 export const getSuperAdminStats = async (): Promise<SuperAdminStats> => {
   const activeCompanies = companies.filter(c => c.isActive).length;
   const inactiveCompanies = companies.filter(c => !c.isActive).length;
@@ -101,15 +117,10 @@ export const createCompany = async (request: CreateCompanyRequest): Promise<Comp
     orgId: orgId,
     isActive: true,
     limits: {
-      maxUsers: request.maxUsers || (request.plan === SubscriptionPlan.Free ? 5 : 
-                request.plan === SubscriptionPlan.Starter ? 25 : 
-                request.plan === SubscriptionPlan.Pro ? 100 : 999),
-      maxWarehouses: request.maxWarehouses || (request.plan === SubscriptionPlan.Free ? 2 : 
-                     request.plan === SubscriptionPlan.Starter ? 5 : 
-                     request.plan === SubscriptionPlan.Pro ? 20 : 999),
-      maxProducts: request.maxProducts || (request.plan === SubscriptionPlan.Free ? 50 : 
-                   request.plan === SubscriptionPlan.Starter ? 500 : 
-                   request.plan === SubscriptionPlan.Pro ? 5000 : 99999)
+      ...getDefaultLimitsForPlan(request.plan),
+      ...(request.maxUsers ? { maxUsers: request.maxUsers } : {}),
+      ...(request.maxWarehouses ? { maxWarehouses: request.maxWarehouses } : {}),
+      ...(request.maxProducts ? { maxProducts: request.maxProducts } : {})
     },
     usage: {
       users: 0, // Will be incremented when owner user is created
@@ -173,7 +184,7 @@ export const createCompanyUser = async (
   }
 
   // Check user limit
-  if (company.usage.users >= company.limits.maxUsers) {
+  if (company.limits.maxUsers !== -1 && company.usage.users >= company.limits.maxUsers) {
     throw new Error(`User limit exceeded. Maximum ${company.limits.maxUsers} users allowed.`);
   }
 
@@ -245,4 +256,46 @@ export const createCompanyUser = async (
 export const getCompanyById = async (companyId: string): Promise<Company | null> => {
   const company = companies.find(c => c.id === companyId);
   return simulateApi(company || null);
+};
+
+export const updateCompanySubscription = async (
+  companyId: string,
+  updates: {
+    plan: SubscriptionPlan;
+    subscriptionStatus?: SubscriptionStatus;
+    validFrom?: Date;
+    validTo?: Date;
+    maxUsers?: number;
+    maxWarehouses?: number;
+    maxProducts?: number;
+  }
+): Promise<Company> => {
+  companies = loadFromStorage(SUPER_ADMIN_STORAGE_KEYS.COMPANIES, []);
+  const companyIndex = companies.findIndex(c => c.id === companyId);
+  if (companyIndex === -1) {
+    throw new Error('Company not found');
+  }
+
+  const current = companies[companyIndex];
+  const defaultLimits = getDefaultLimitsForPlan(updates.plan);
+
+  const next: Company = {
+    ...current,
+    plan: updates.plan,
+    subscriptionStatus: updates.subscriptionStatus ?? current.subscriptionStatus,
+    validFrom: updates.validFrom ?? current.validFrom,
+    validTo: updates.validTo ?? current.validTo,
+    limits: {
+      ...current.limits,
+      ...defaultLimits,
+      ...(typeof updates.maxUsers === 'number' ? { maxUsers: updates.maxUsers } : {}),
+      ...(typeof updates.maxWarehouses === 'number' ? { maxWarehouses: updates.maxWarehouses } : {}),
+      ...(typeof updates.maxProducts === 'number' ? { maxProducts: updates.maxProducts } : {}),
+    },
+    updatedAt: new Date(),
+  };
+
+  companies[companyIndex] = next;
+  saveToStorage(SUPER_ADMIN_STORAGE_KEYS.COMPANIES, companies);
+  return simulateApi(next);
 };
