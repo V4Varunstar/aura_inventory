@@ -1253,8 +1253,48 @@ const generateMockOrders = () => {
 let ordersCache: any[] = [];
 
 // Custom Sources and Destinations
-let customInwardSources: string[] = [...Object.values(InwardSource)];
-let customOutwardDestinations: string[] = [...Object.values(OutwardDestination)];
+const DEFAULT_INWARD_SOURCES: string[] = [
+  'Factory',
+  'Amazon Return',
+  'Flipkart Return',
+  'Meesho Return',
+  'Customer Return',
+  'Supplier',
+  'Transfer',
+  'Other',
+];
+
+const DEFAULT_OUTWARD_DESTINATIONS: string[] = [
+  'Amazon FBA',
+  'Flipkart',
+  'Flipkart FBF',
+  'Meesho',
+  'Myntra',
+  'Myntra SJIT',
+  'Zepto',
+  'Zepto PO',
+  'Nykaa',
+  'Nykaa PO',
+  'Offline Store',
+  'Customer',
+  'Transfer',
+  'Other',
+];
+
+const safeEnumValues = (maybeEnum: unknown, fallback: string[]): string[] => {
+  if (!maybeEnum || (typeof maybeEnum !== 'object' && typeof maybeEnum !== 'function')) return fallback;
+  try {
+    const values = Object.values(maybeEnum as any)
+      .map(v => String(v))
+      .filter(Boolean);
+    return values.length > 0 ? values : fallback;
+  } catch {
+    return fallback;
+  }
+};
+
+let customInwardSources: string[] = [...safeEnumValues(InwardSource as any, DEFAULT_INWARD_SOURCES)];
+let customOutwardDestinations: string[] = [...safeEnumValues(OutwardDestination as any, DEFAULT_OUTWARD_DESTINATIONS)];
 
 export const getInwardSources = () => simulateApi(customInwardSources);
 export const addInwardSource = (source: string) => {
