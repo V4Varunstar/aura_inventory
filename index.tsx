@@ -11,6 +11,9 @@ import SuperAdminRoute from './components/auth/SuperAdminRoute';
 import * as XLSX from 'xlsx';
 import './index.css';
 
+// Used by index.html bootstrap to detect whether the entry module executed
+(window as any).__AURA_ENTRY_EXECUTED__ = true;
+
 // Lazy-load Super Admin UI to avoid blocking /login if any SA chunk fails
 const SuperAdminLayout = React.lazy(() => import('./components/layout/SuperAdminLayout'));
 const SuperAdminDashboard = React.lazy(() => import('./pages/super-admin/Dashboard'));

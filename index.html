@@ -108,6 +108,26 @@
                   .catch(function (e) {
                     addDebug('Module fetch error: ' + String(e && e.message ? e.message : e));
                   });
+
+                // If the script tag is blocked from executing, try a dynamic import fallback
+                setTimeout(function () {
+                  try {
+                    if (!window.__AURA_ENTRY_EXECUTED__) {
+                      addDebug('Entry executed: false (attempting dynamic import)');
+                      import(abs)
+                        .then(function () {
+                          addDebug('Dynamic import: success');
+                        })
+                        .catch(function (e) {
+                          addDebug('Dynamic import error: ' + String(e && e.message ? e.message : e));
+                        });
+                    } else {
+                      addDebug('Entry executed: true');
+                    }
+                  } catch (e) {
+                    addDebug('Dynamic import probe error: ' + String(e && e.message ? e.message : e));
+                  }
+                }, 1200);
               } else {
                 addDebug('Module: NOT FOUND');
               }
@@ -127,12 +147,16 @@
             renderError(msg);
           });
 
-          // Watchdog: if app never mounts, show error
+          // Watchdog: if app never mounts, show a more accurate message
           setTimeout(function () {
             if (!window.__AURA_APP_MOUNTED__) {
-              renderError('App did not mount. If you see this, the main JS module likely did not execute. Check DevTools Console/Network for blocked scripts.');
+              if (window.__AURA_ENTRY_EXECUTED__) {
+                renderError('App entry executed but did not mount yet. This usually means a runtime hang or very slow initialization. Check DevTools Console for errors/warnings.');
+              } else {
+                renderError('App did not mount. The main JS module likely did not execute (often blocked by an extension/security software). Try Incognito or disable ad-block extensions.');
+              }
             }
-          }, 5000);
+          }, 15000);
         } catch (e) {
           // ignore
         }
