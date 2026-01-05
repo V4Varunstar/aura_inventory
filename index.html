@@ -28,6 +28,74 @@
   </head>
   <body>
     <div id="root"></div>
+    <script>
+      (function () {
+        try {
+          // Immediate fallback UI (works even if module script fails)
+          window.__AURA_APP_MOUNTED__ = false;
+          var root = document.getElementById('root');
+          if (root) {
+            root.innerHTML =
+              '<div style="min-height:100vh;background:#0b1220;color:#e2e8f0;font-family:system-ui;display:flex;align-items:center;justify-content:center;padding:24px">' +
+              '  <div style="text-align:center">' +
+              '    <div style="width:36px;height:36px;border:3px solid rgba(226,232,240,0.25);border-top-color:#e2e8f0;border-radius:999px;margin:0 auto 12px;animation:spin 1s linear infinite"></div>' +
+              '    <div style="font-size:14px;font-weight:800">Loading Aura Inventory…</div>' +
+              '  </div>' +
+              '</div>';
+          }
+
+          if (!document.getElementById('aura_spin_style')) {
+            var st = document.createElement('style');
+            st.id = 'aura_spin_style';
+            st.textContent = '@keyframes spin { to { transform: rotate(360deg); } }';
+            document.head.appendChild(st);
+          }
+
+          var renderError = function (message) {
+            try {
+              var el = document.getElementById('root');
+              if (!el) return;
+              el.innerHTML =
+                '<div style="min-height:100vh;background:#0b1220;color:#e2e8f0;font-family:system-ui;display:flex;align-items:center;justify-content:center;padding:24px">' +
+                '  <div style="max-width:760px;width:100%">' +
+                '    <div style="font-size:20px;font-weight:800;margin-bottom:8px">App failed to start</div>' +
+                '    <div style="opacity:0.85;margin-bottom:16px">A startup error occurred (often a blocked JS file, network issue, or extension). Please check Console/Network.</div>' +
+                '    <pre style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:12px;padding:16px;white-space:pre-wrap;overflow-x:auto">' +
+                String(message || 'Unknown error') +
+                '</pre>' +
+                '    <div style="display:flex;gap:12px;margin-top:16px">' +
+                '      <button onclick="window.location.reload()" style="padding:10px 16px;border-radius:10px;border:none;background:#6366f1;color:white;font-weight:800;cursor:pointer">Reload</button>' +
+                '      <button onclick="try{localStorage.removeItem(\'aura_inventory_user\');localStorage.removeItem(\'aura_inventory_user_backup\');}finally{window.location.reload()}" style="padding:10px 16px;border-radius:10px;border:1px solid rgba(255,255,255,0.18);background:transparent;color:#e2e8f0;font-weight:800;cursor:pointer">Clear Session</button>' +
+                '    </div>' +
+                '  </div>' +
+                '</div>';
+            } catch (e) {
+              // ignore
+            }
+          };
+
+          window.addEventListener('error', function (ev) {
+            var msg = (ev && ev.error && ev.error.message) || (ev && ev.message) || 'Unknown error';
+            renderError(msg);
+          });
+
+          window.addEventListener('unhandledrejection', function (ev) {
+            var reason = ev && ev.reason;
+            var msg = (reason && reason.message) || String(reason || 'Unhandled promise rejection');
+            renderError(msg);
+          });
+
+          // Watchdog: if app never mounts, show error
+          setTimeout(function () {
+            if (!window.__AURA_APP_MOUNTED__) {
+              renderError('App did not mount. If you see this, the main JS module likely did not execute. Check DevTools Console/Network for blocked scripts.');
+            }
+          }, 5000);
+        } catch (e) {
+          // ignore
+        }
+      })();
+    </script>
     <script type="module" src="/index.tsx"></script>
   </body>
 </html>
