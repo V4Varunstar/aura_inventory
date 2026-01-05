@@ -149,51 +149,63 @@ const initializeVercelProduction = () => {
       console.log('🔧 Added SuperAdmin for Vercel production');
     }
 
-    // Initialize test data if in debug mode or if no data exists
-    const hasCompanies = storage.read('superadmin_companies', []).length > 0;
-    const hasUsers = storage.read('superadmin_users', []).length > 0;
-    
-    if (!hasCompanies && !hasUsers && window.location.hostname.includes('vercel.app')) {
-      console.log('🚀 Initializing default test data for Vercel production...');
-      
-      // Create a test company
+    // Seed demo data for Vercel if storage is missing/partial.
+    // This avoids a common failure mode where companies exist but users (or vice versa) were cleared.
+    const isVercelHost = window.location.hostname.includes('vercel.app');
+    const existingCompanies = storage.read<any[]>('superadmin_companies', []);
+    const existingUsers = storage.read<any[]>('superadmin_users', []);
+    const hasCompanies = existingCompanies.length > 0;
+    const hasUsers = existingUsers.length > 0;
+
+    if (isVercelHost && (!hasCompanies || !hasUsers)) {
+      console.log('🚀 Ensuring default demo data for Vercel production...');
+
+      // Demo company/user
+      const demoCompanyId = 'company_vercel_default';
+      const demoOrgId = 'org_demo';
+      const demoEmail = 'demo@aura.com';
+
       const testCompany = {
-        id: 'company_vercel_default',
+        id: demoCompanyId,
         name: 'Demo Company',
-        email: 'demo@aura.com',
+        email: demoEmail,
         phone: '1234567890',
         plan: 'Pro',
         subscriptionStatus: 'active',
         validFrom: new Date().toISOString(),
-        validTo: new Date(Date.now() + 365*24*60*60*1000).toISOString(),
+        validTo: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
         loginAllowed: true,
-        orgId: 'org_demo',
+        orgId: demoOrgId,
         isActive: true,
         limits: { maxUsers: 100, maxWarehouses: 20, maxProducts: 5000 },
         usage: { users: 1, warehouses: 0, products: 0 },
         ownerId: 'user_demo',
         createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
+        updatedAt: new Date().toISOString(),
       };
-      
-      // Create a test user
+
       const testUser = {
         id: 'user_demo',
         name: 'Demo Admin',
-        email: 'demo@aura.com',
+        email: demoEmail,
         password: 'demo123',
         role: 'Admin',
-        orgId: 'org_demo',
-        companyId: 'company_vercel_default',
+        orgId: demoOrgId,
+        companyId: demoCompanyId,
         isEnabled: true,
         createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
+        updatedAt: new Date().toISOString(),
       };
-      
-      storage.write('superadmin_companies', [testCompany]);
-      storage.write('superadmin_users', [testUser]);
-      
-      console.log('✅ Default test data initialized for Vercel');
+
+      if (!existingCompanies.some((c: any) => c && (c.id === demoCompanyId || c.orgId === demoOrgId))) {
+        storage.write('superadmin_companies', [...existingCompanies, testCompany]);
+        console.log('✅ Seeded demo company for Vercel');
+      }
+
+      if (!existingUsers.some((u: any) => u && u.email === demoEmail)) {
+        storage.write('superadmin_users', [...existingUsers, testUser]);
+        console.log('✅ Seeded demo user for Vercel');
+      }
     }
   } catch (error) {
     console.error('Error initializing Vercel production data:', error);
