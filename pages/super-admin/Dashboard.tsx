@@ -7,9 +7,16 @@ import Input from '../../components/ui/Input';
 import Select from '../../components/ui/Select';
 import { useToast } from '../../context/ToastContext';
 import { useAuth } from '../../context/AuthContext';
-import { Building2, Users, CheckCircle, XCircle, Plus, UserPlus, Check } from 'lucide-react';
-import { SuperAdminStats, SubscriptionPlan, Role } from '../../types';
-import { getSuperAdminStats, getAllCompanies, createCompany } from '../../services/superAdminService';
+import { Bell, Building2, Check, CheckCircle, Clock, Plus, Search, Users, XCircle } from 'lucide-react';
+import { Company, SubscriptionPlan, SuperAdminStats } from '../../types';
+import { createCompany, getAllCompanies, getSuperAdminStats } from '../../services/superAdminService';
+
+const SUPER_ADMIN_PLAN_LABEL: Record<SubscriptionPlan, string> = {
+  [SubscriptionPlan.Free]: 'Free',
+  [SubscriptionPlan.Starter]: 'Starter',
+  [SubscriptionPlan.Pro]: 'Medium',
+  [SubscriptionPlan.Business]: 'Enterprise',
+};
 
 const SuperAdminDashboard: React.FC = () => {
   const { user } = useAuth();
@@ -20,6 +27,8 @@ const SuperAdminDashboard: React.FC = () => {
     inactiveCompanies: 0,
     totalUsers: 0
   });
+  const [companies, setCompanies] = useState<Company[]>([]);
+  const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [createForm, setCreateForm] = useState({
@@ -55,8 +64,10 @@ const SuperAdminDashboard: React.FC = () => {
       setLoading(true);
       console.log('Loading Super Admin dashboard data...');
       const statsData = await getSuperAdminStats();
+      const companiesData = await getAllCompanies();
       console.log('Stats loaded:', statsData);
       setStats(statsData);
+      setCompanies(companiesData);
     } catch (error) {
       console.error('Error fetching Super Admin stats:', error);
       addToast('Error loading dashboard data', 'error');
@@ -67,6 +78,7 @@ const SuperAdminDashboard: React.FC = () => {
         inactiveCompanies: 0,
         totalUsers: 0
       });
+      setCompanies([]);
     } finally {
       setLoading(false);
     }
@@ -102,9 +114,7 @@ const SuperAdminDashboard: React.FC = () => {
   if (loading) {
     return (
       <div className="space-y-6">
-        <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-200">
-          Super Admin Dashboard
-        </h1>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white tracking-tight">Dashboard Overview</h1>
         <div className="flex items-center justify-center h-64">
           <div className="text-gray-500">Loading dashboard data...</div>
         </div>
@@ -112,115 +122,235 @@ const SuperAdminDashboard: React.FC = () => {
     );
   }
 
+  const now = Date.now();
+  const expiringSoonCount = companies.filter((c) => {
+    const validTo = c.validTo ? new Date(c.validTo).getTime() : 0;
+    if (!validTo) return false;
+    const days = (validTo - now) / (1000 * 60 * 60 * 24);
+    return days >= 0 && days <= 30;
+  }).length;
+
+  const planCounts = companies.reduce(
+    (acc, c) => {
+      acc[c.plan] = (acc[c.plan] ?? 0) + 1;
+      return acc;
+    },
+    {} as Record<SubscriptionPlan, number>
+  );
+
+  const planBars: Array<{ label: string; plan: SubscriptionPlan; value: number; color: string }> = [
+    { label: 'Starter', plan: SubscriptionPlan.Starter, value: planCounts[SubscriptionPlan.Starter] ?? 0, color: 'bg-accent-green' },
+    { label: 'Medium', plan: SubscriptionPlan.Pro, value: planCounts[SubscriptionPlan.Pro] ?? 0, color: 'bg-primary' },
+    { label: 'Enterprise', plan: SubscriptionPlan.Business, value: planCounts[SubscriptionPlan.Business] ?? 0, color: 'bg-accent-purple' },
+  ];
+  const maxPlanCount = Math.max(1, ...planBars.map((b) => b.value));
+
+  const recentCompanies = [...companies]
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    .slice(0, 6);
+
+  const filteredRecentCompanies = search.trim()
+    ? recentCompanies.filter((c) => {
+        const q = search.toLowerCase();
+        return (
+          c.name.toLowerCase().includes(q) ||
+          c.email.toLowerCase().includes(q) ||
+          SUPER_ADMIN_PLAN_LABEL[c.plan].toLowerCase().includes(q)
+        );
+      })
+    : recentCompanies;
+
+  const formatDate = (d?: Date) => {
+    if (!d) return '-';
+    const dt = new Date(d);
+    if (Number.isNaN(dt.getTime())) return '-';
+    return dt.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+  };
+
+  const statusText = (c: Company) => {
+    if (!c.isActive) return 'Suspended';
+    return 'Active';
+  };
+
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+      {/* Header */}
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white tracking-tight">
-            Super Admin Dashboard
-          </h1>
-          <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
-            Overview of companies, users, and subscription health.
-          </p>
+          <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight">Dashboard Overview</h1>
+          <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">Welcome back, here's what's happening today.</p>
         </div>
-        <Button onClick={() => setShowCreateModal(true)} leftIcon={<Plus />}>
-          Create Company
-        </Button>
+
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            <Search className="h-4 w-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search companies, users..."
+              className="w-80 max-w-[70vw] pl-9 pr-3 py-2 rounded-2xl border border-gray-200/70 dark:border-gray-700/70 bg-white dark:!bg-surface-dark text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-accent-green/30"
+            />
+          </div>
+          <button
+            type="button"
+            className="size-10 rounded-2xl border border-gray-200/70 dark:border-gray-700/70 bg-white dark:!bg-surface-dark flex items-center justify-center"
+            aria-label="Notifications"
+          >
+            <Bell className="h-5 w-5 text-gray-600 dark:text-gray-300" />
+          </button>
+          <Button onClick={() => setShowCreateModal(true)} leftIcon={<Plus />}>Create Company</Button>
+        </div>
       </div>
 
-      {/* Stats Cards - All Clickable */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card 
-          className="p-6 cursor-pointer hover:shadow-lg transition-shadow border border-gray-200/70 dark:border-gray-700/70"
-          onClick={() => {
-            console.log('Navigating to companies...');
-            navigate('/super-admin/companies');
-          }}
+      {/* Stats */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+        <Card
+          className="dark:!bg-surface-dark border border-gray-200/70 dark:border-gray-700/70 !p-5"
+          onClick={() => navigate('/super-admin/companies')}
         >
-          <div className="flex items-center">
-            <div className="p-2 bg-primary/10 rounded-xl border border-primary/20">
-              <Building2 className="h-6 w-6 text-primary" />
+          <div className="flex items-start justify-between">
+            <div>
+              <div className="text-xs text-gray-500 dark:text-gray-400">Total Companies</div>
+              <div className="text-2xl font-extrabold text-gray-900 dark:text-white mt-1">{stats.totalCompanies}</div>
             </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                Companies
-              </p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                {stats.totalCompanies}
-              </p>
+            <div className="size-9 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center">
+              <Building2 className="h-5 w-5 text-primary" />
             </div>
           </div>
         </Card>
 
-        <Card 
-          className="p-6 cursor-pointer hover:shadow-lg transition-shadow border border-gray-200/70 dark:border-gray-700/70"
-          onClick={() => {
-            console.log('Navigating to companies...');
-            navigate('/super-admin/companies');
-          }}
-        >
-          <div className="flex items-center">
-            <div className="p-2 bg-accent-green/10 rounded-xl border border-accent-green/20">
-              <Users className="h-6 w-6 text-accent-green" />
+        <Card className="dark:!bg-surface-dark border border-gray-200/70 dark:border-gray-700/70 !p-5">
+          <div className="flex items-start justify-between">
+            <div>
+              <div className="text-xs text-gray-500 dark:text-gray-400">Active</div>
+              <div className="text-2xl font-extrabold text-gray-900 dark:text-white mt-1">{stats.activeCompanies}</div>
             </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                Users
-              </p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                {stats.totalUsers}
-              </p>
+            <div className="size-9 rounded-2xl bg-accent-green/10 border border-accent-green/20 flex items-center justify-center">
+              <CheckCircle className="h-5 w-5 text-accent-green" />
             </div>
           </div>
         </Card>
 
-        <Card 
-          className="p-6 cursor-pointer hover:shadow-lg transition-shadow border border-gray-200/70 dark:border-gray-700/70"
-          onClick={() => {
-            console.log('Navigating to companies...');
-            navigate('/super-admin/companies');
-          }}
-        >
-          <div className="flex items-center">
-            <div className="p-2 bg-accent-green/10 rounded-xl border border-accent-green/20">
-              <CheckCircle className="h-6 w-6 text-accent-green" />
+        <Card className="dark:!bg-surface-dark border border-gray-200/70 dark:border-gray-700/70 !p-5">
+          <div className="flex items-start justify-between">
+            <div>
+              <div className="text-xs text-gray-500 dark:text-gray-400">Suspended</div>
+              <div className="text-2xl font-extrabold text-gray-900 dark:text-white mt-1">{stats.inactiveCompanies}</div>
             </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                Active
-              </p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                {stats.activeCompanies}
-              </p>
+            <div className="size-9 rounded-2xl bg-accent-red/10 border border-accent-red/20 flex items-center justify-center">
+              <XCircle className="h-5 w-5 text-accent-red" />
             </div>
           </div>
         </Card>
 
-        <Card 
-          className="p-6 cursor-pointer hover:shadow-lg transition-shadow border border-gray-200/70 dark:border-gray-700/70"
-          onClick={() => {
-            console.log('Navigating to companies...');
-            navigate('/super-admin/companies');
-          }}
-        >
-          <div className="flex items-center">
-            <div className="p-2 bg-accent-red/10 rounded-xl border border-accent-red/20">
-              <XCircle className="h-6 w-6 text-accent-red" />
+        <Card className="dark:!bg-surface-dark border border-gray-200/70 dark:border-gray-700/70 !p-5">
+          <div className="flex items-start justify-between">
+            <div>
+              <div className="text-xs text-gray-500 dark:text-gray-400">Expiring Soon</div>
+              <div className="text-2xl font-extrabold text-gray-900 dark:text-white mt-1">{expiringSoonCount}</div>
             </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                Inactive
-              </p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                {stats.inactiveCompanies}
-              </p>
+            <div className="size-9 rounded-2xl bg-accent-purple/10 border border-accent-purple/20 flex items-center justify-center">
+              <Clock className="h-5 w-5 text-accent-purple" />
             </div>
           </div>
         </Card>
+
+        <Card className="dark:!bg-surface-dark border border-gray-200/70 dark:border-gray-700/70 !p-5">
+          <div className="flex items-start justify-between">
+            <div>
+              <div className="text-xs text-gray-500 dark:text-gray-400">Total Users</div>
+              <div className="text-2xl font-extrabold text-gray-900 dark:text-white mt-1">{stats.totalUsers}</div>
+            </div>
+            <div className="size-9 rounded-2xl bg-accent-blue/10 border border-accent-blue/20 flex items-center justify-center">
+              <Users className="h-5 w-5 text-accent-blue" />
+            </div>
+          </div>
+        </Card>
+      </div>
+
+      {/* Main grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <Card title="Companies by Plan" className="dark:!bg-surface-dark border border-gray-200/70 dark:border-gray-700/70">
+          <div className="flex items-end justify-between gap-4 pt-2">
+            {planBars.map((b) => {
+              const heightPct = Math.round((b.value / maxPlanCount) * 100);
+              return (
+                <div key={b.plan} className="flex-1">
+                  <div className="h-44 rounded-2xl bg-gray-100 dark:!bg-surface-darker border border-gray-200/70 dark:border-gray-700/70 flex items-end p-3">
+                    <div className={`w-full rounded-xl ${b.color}`} style={{ height: `${Math.max(8, heightPct)}%` }} />
+                  </div>
+                  <div className="mt-3 text-xs text-gray-600 dark:text-gray-400 text-center">{b.label}</div>
+                  <div className="text-sm font-semibold text-gray-900 dark:text-white text-center">{b.value}</div>
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+
+        <div className="lg:col-span-2">
+          <Card
+            title="Recent Companies"
+            actions={
+              <Button variant="ghost" size="sm" onClick={() => navigate('/super-admin/companies')}>
+                View All
+              </Button>
+            }
+            className="dark:!bg-surface-dark border border-gray-200/70 dark:border-gray-700/70"
+          >
+            <div className="overflow-x-auto">
+              <table className="w-full text-left">
+                <thead>
+                  <tr className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                    <th className="py-2">Company</th>
+                    <th className="py-2">Plan</th>
+                    <th className="py-2">Validity</th>
+                    <th className="py-2">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200/70 dark:divide-gray-700/70">
+                  {filteredRecentCompanies.map((c) => (
+                    <tr key={c.id} className="text-sm">
+                      <td className="py-3">
+                        <div className="font-semibold text-gray-900 dark:text-white">{c.name}</div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400">{c.email}</div>
+                      </td>
+                      <td className="py-3">
+                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs border border-gray-200/70 dark:border-gray-700/70 bg-gray-100 dark:!bg-surface-darker text-gray-700 dark:text-gray-200">
+                          {SUPER_ADMIN_PLAN_LABEL[c.plan]}
+                        </span>
+                      </td>
+                      <td className="py-3 text-gray-700 dark:text-gray-200">
+                        {formatDate(c.validTo)}
+                      </td>
+                      <td className="py-3">
+                        <span
+                          className={`inline-flex items-center gap-2 px-2 py-1 rounded-full text-xs border ${
+                            statusText(c) === 'Active'
+                              ? 'border-accent-green/30 bg-accent-green/10 text-accent-green'
+                              : 'border-accent-red/30 bg-accent-red/10 text-accent-red'
+                          }`}
+                        >
+                          <span className="size-1.5 rounded-full bg-current" />
+                          {statusText(c)}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+              {filteredRecentCompanies.length === 0 && (
+                <div className="text-sm text-gray-500 dark:text-gray-400 py-10 text-center">
+                  No companies found.
+                </div>
+              )}
+            </div>
+          </Card>
+        </div>
       </div>
 
       {/* Quick Actions */}
-      <Card title="Quick Actions" className="p-6 border border-gray-200/70 dark:border-gray-700/70">
+      <Card title="Quick Actions" className="dark:!bg-surface-dark border border-gray-200/70 dark:border-gray-700/70">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Button
             variant="outline"
@@ -258,7 +388,7 @@ const SuperAdminDashboard: React.FC = () => {
               console.log('Navigate to companies for user management');
               navigate('/super-admin/companies');
             }}
-            leftIcon={<UserPlus />}
+            leftIcon={<Users />}
             className="justify-start text-left"
           >
             <div className="flex flex-col items-start">
@@ -270,7 +400,7 @@ const SuperAdminDashboard: React.FC = () => {
       </Card>
 
       {/* Plans */}
-      <Card title="Plans" className="p-6 border border-gray-200/70 dark:border-gray-700/70">
+      <Card title="Plans" className="dark:!bg-surface-dark border border-gray-200/70 dark:border-gray-700/70">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="rounded-2xl border border-gray-200/70 dark:border-gray-700/70 bg-gradient-to-br from-primary/5 to-transparent dark:from-primary/10 dark:to-transparent p-5">
             <div className="flex items-start justify-between">
