@@ -51,6 +51,20 @@
             document.head.appendChild(st);
           }
 
+          var debugLines = [];
+
+          var addDebug = function (line) {
+            try {
+              debugLines.push(String(line));
+            } catch (e) {
+              // ignore
+            }
+          };
+
+          addDebug('URL: ' + String(window.location.href));
+          addDebug('Online: ' + String(navigator.onLine));
+          addDebug('UA: ' + String(navigator.userAgent));
+
           var renderError = function (message) {
             try {
               var el = document.getElementById('root');
@@ -63,16 +77,44 @@
                 '    <pre style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:12px;padding:16px;white-space:pre-wrap;overflow-x:auto">' +
                 String(message || 'Unknown error') +
                 '</pre>' +
+                '    <div style="margin-top:14px;opacity:0.9;font-size:12px;font-weight:700">Diagnostics</div>' +
+                '    <pre style="margin-top:8px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.10);border-radius:12px;padding:12px;white-space:pre-wrap;overflow-x:auto;font-size:12px;line-height:1.4">' +
+                debugLines.join('\n') +
+                '</pre>' +
                 '    <div style="display:flex;gap:12px;margin-top:16px">' +
                 '      <button onclick="window.location.reload()" style="padding:10px 16px;border-radius:10px;border:none;background:#6366f1;color:white;font-weight:800;cursor:pointer">Reload</button>' +
                 '      <button onclick="try{localStorage.removeItem(\'aura_inventory_user\');localStorage.removeItem(\'aura_inventory_user_backup\');}finally{window.location.reload()}" style="padding:10px 16px;border-radius:10px;border:1px solid rgba(255,255,255,0.18);background:transparent;color:#e2e8f0;font-weight:800;cursor:pointer">Clear Session</button>' +
                 '    </div>' +
+                '    <div style="margin-top:10px;opacity:0.7;font-size:12px">Tip: Try Incognito / disable ad-block extensions / allow JavaScript.</div>' +
                 '  </div>' +
                 '</div>';
             } catch (e) {
               // ignore
             }
           };
+
+          // After the page parses, detect the module script URL and probe it
+          setTimeout(function () {
+            try {
+              var mod = document.querySelector('script[type="module"][src]');
+              var src = mod && mod.getAttribute('src');
+              if (src) {
+                var abs = new URL(src, window.location.href).toString();
+                addDebug('Module: ' + abs);
+                fetch(abs, { cache: 'no-store' })
+                  .then(function (r) {
+                    addDebug('Module fetch: ' + r.status + ' ' + r.statusText);
+                  })
+                  .catch(function (e) {
+                    addDebug('Module fetch error: ' + String(e && e.message ? e.message : e));
+                  });
+              } else {
+                addDebug('Module: NOT FOUND');
+              }
+            } catch (e) {
+              addDebug('Module probe error: ' + String(e && e.message ? e.message : e));
+            }
+          }, 0);
 
           window.addEventListener('error', function (ev) {
             var msg = (ev && ev.error && ev.error.message) || (ev && ev.message) || 'Unknown error';
