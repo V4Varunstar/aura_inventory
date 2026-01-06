@@ -43,18 +43,18 @@ const SuperAdminLayout: React.FC<SuperAdminLayoutProps> = ({ children }) => {
   }
 
   return (
-    <div className="dark min-h-screen bg-gray-50 dark:bg-gray-950">
+    <div className="dark min-h-screen bg-gray-50 dark:bg-[#0d1812]">
       <div className="flex min-h-screen">
         {/* Sidebar */}
-        <aside className="hidden md:flex w-72 flex-col bg-white dark:bg-gray-950 border-r border-gray-200/70 dark:border-gray-800">
+        <aside className="hidden md:flex w-72 flex-col bg-white dark:bg-[#0d1812] border-r border-gray-200/70 dark:border-white/10">
           <div className="px-6 py-6">
             <div className="flex items-center gap-3">
-              <div className="size-10 rounded-2xl bg-gradient-to-br from-primary to-accent-green flex items-center justify-center text-white font-bold">
-                A
+              <div className="size-10 rounded-full bg-gradient-to-br from-accent-green to-emerald-800 flex items-center justify-center text-[#0d1812] font-bold">
+                I
               </div>
               <div className="min-w-0">
                 <div className="text-base font-bold text-gray-900 dark:text-white leading-tight truncate">
-                  Aura Inventory
+                  Inventory SaaS
                 </div>
                 <div className="text-xs text-gray-500 dark:text-gray-400">Super Admin Panel</div>
               </div>
@@ -64,10 +64,10 @@ const SuperAdminLayout: React.FC<SuperAdminLayoutProps> = ({ children }) => {
           <nav className="flex-1 px-4 pb-6 flex flex-col gap-1.5">
             <button
               onClick={() => navigate('/super-admin/dashboard')}
-              className={`flex items-center gap-3 px-4 py-3 rounded-2xl transition-colors w-full text-left ${
+              className={`flex items-center gap-3 px-4 py-3 rounded-full transition-colors w-full text-left ${
                 location.pathname === '/super-admin/dashboard' || location.pathname === '/super-admin'
-                  ? 'bg-accent-green/20 text-gray-900 dark:text-white'
-                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-900/70'
+                  ? 'bg-accent-green/10 text-gray-900 dark:text-accent-green'
+                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/5'
               }`}
             >
               <LayoutDashboard className="h-5 w-5" />
@@ -76,10 +76,10 @@ const SuperAdminLayout: React.FC<SuperAdminLayoutProps> = ({ children }) => {
 
             <button
               onClick={() => navigate('/super-admin/companies')}
-              className={`flex items-center gap-3 px-4 py-3 rounded-2xl transition-colors w-full text-left ${
+              className={`flex items-center gap-3 px-4 py-3 rounded-full transition-colors w-full text-left ${
                 location.pathname === '/super-admin/companies'
-                  ? 'bg-accent-green/20 text-gray-900 dark:text-white'
-                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-900/70'
+                  ? 'bg-accent-green/10 text-gray-900 dark:text-accent-green'
+                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/5'
               }`}
             >
               <Building2 className="h-5 w-5" />
@@ -88,10 +88,10 @@ const SuperAdminLayout: React.FC<SuperAdminLayoutProps> = ({ children }) => {
 
             <button
               onClick={() => navigate('/super-admin/users')}
-              className={`flex items-center gap-3 px-4 py-3 rounded-2xl transition-colors w-full text-left ${
+              className={`flex items-center gap-3 px-4 py-3 rounded-full transition-colors w-full text-left ${
                 location.pathname === '/super-admin/users'
-                  ? 'bg-accent-green/20 text-gray-900 dark:text-white'
-                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-900/70'
+                  ? 'bg-accent-green/10 text-gray-900 dark:text-accent-green'
+                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/5'
               }`}
             >
               <Users className="h-5 w-5" />
@@ -100,10 +100,10 @@ const SuperAdminLayout: React.FC<SuperAdminLayoutProps> = ({ children }) => {
 
             <button
               onClick={() => navigate('/super-admin/subscriptions')}
-              className={`flex items-center gap-3 px-4 py-3 rounded-2xl transition-colors w-full text-left ${
+              className={`flex items-center gap-3 px-4 py-3 rounded-full transition-colors w-full text-left ${
                 location.pathname === '/super-admin/subscriptions'
-                  ? 'bg-accent-green/20 text-gray-900 dark:text-white'
-                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-900/70'
+                  ? 'bg-accent-green/10 text-gray-900 dark:text-accent-green'
+                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/5'
               }`}
             >
               <CreditCard className="h-5 w-5" />
@@ -112,10 +112,10 @@ const SuperAdminLayout: React.FC<SuperAdminLayoutProps> = ({ children }) => {
 
             <button
               onClick={() => navigate('/super-admin/activity-logs')}
-              className={`flex items-center gap-3 px-4 py-3 rounded-2xl transition-colors w-full text-left ${
+              className={`flex items-center gap-3 px-4 py-3 rounded-full transition-colors w-full text-left ${
                 location.pathname === '/super-admin/activity-logs'
-                  ? 'bg-accent-green/20 text-gray-900 dark:text-white'
-                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-900/70'
+                  ? 'bg-accent-green/10 text-gray-900 dark:text-accent-green'
+                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/5'
               }`}
             >
               <Activity className="h-5 w-5" />
@@ -124,10 +124,10 @@ const SuperAdminLayout: React.FC<SuperAdminLayoutProps> = ({ children }) => {
 
             <button
               onClick={() => navigate('/super-admin/settings')}
-              className={`flex items-center gap-3 px-4 py-3 rounded-2xl transition-colors w-full text-left ${
+              className={`flex items-center gap-3 px-4 py-3 rounded-full transition-colors w-full text-left ${
                 location.pathname === '/super-admin/settings'
-                  ? 'bg-accent-green/20 text-gray-900 dark:text-white'
-                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-900/70'
+                  ? 'bg-accent-green/10 text-gray-900 dark:text-accent-green'
+                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/5'
               }`}
             >
               <Settings className="h-5 w-5" />
@@ -136,9 +136,9 @@ const SuperAdminLayout: React.FC<SuperAdminLayoutProps> = ({ children }) => {
           </nav>
 
           <div className="px-4 pb-6">
-            <div className="rounded-2xl bg-gray-100 dark:bg-gray-900 border border-gray-200/70 dark:border-gray-800 p-4">
+            <div className="rounded-2xl bg-gray-100 dark:bg-[#112117] border border-gray-200/70 dark:border-white/10 p-4">
               <div className="flex items-center gap-3">
-                <div className="size-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-semibold">
+                <div className="size-10 rounded-full bg-accent-green/10 text-accent-green flex items-center justify-center font-semibold">
                   {user.name?.slice(0, 1)?.toUpperCase()}
                 </div>
                 <div className="min-w-0 flex-1">
@@ -150,7 +150,7 @@ const SuperAdminLayout: React.FC<SuperAdminLayoutProps> = ({ children }) => {
                 </Button>
               </div>
               <div className="mt-3">
-                <span className="text-[10px] leading-none px-2 py-1 rounded-full border border-gray-200/70 dark:border-gray-800 text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-950">
+                <span className="text-[10px] leading-none px-2 py-1 rounded-full border border-gray-200/70 dark:border-white/10 text-gray-500 dark:text-gray-400 bg-white dark:bg-[#0d1812]">
                   Build: {SUPER_ADMIN_BUILD_TAG}
                 </span>
               </div>
