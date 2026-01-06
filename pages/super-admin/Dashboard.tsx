@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Card from '../../components/ui/Card';
+import KPICard from '../../components/KPICard';
 import Button from '../../components/ui/Button';
 import Modal from '../../components/ui/Modal';
 import Input from '../../components/ui/Input';
 import Select from '../../components/ui/Select';
 import { useToast } from '../../context/ToastContext';
 import { useAuth } from '../../context/AuthContext';
-import { Bell, Building2, Check, CheckCircle, Clock, Plus, Search, Users, XCircle } from 'lucide-react';
-import { Company, SubscriptionPlan, SuperAdminStats } from '../../types';
+import { Bell, Building2, Check, Plus, Search, Users } from 'lucide-react';
+import { Company, KPIData, SubscriptionPlan, SuperAdminStats } from '../../types';
 import { createCompany, getAllCompanies, getSuperAdminStats } from '../../services/superAdminService';
 
 const SUPER_ADMIN_PLAN_LABEL: Record<SubscriptionPlan, string> = {
@@ -204,73 +205,73 @@ const SuperAdminDashboard: React.FC = () => {
 
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-        <Card
-          className="dark:bg-gray-900 border border-gray-200/70 dark:border-gray-800 cursor-pointer"
-          onClick={() => navigate('/super-admin/companies')}
-        >
-          <div className="flex items-start justify-between">
-            <div>
-              <div className="text-xs text-gray-500 dark:text-gray-400">Total Companies</div>
-              <div className="text-2xl font-extrabold text-gray-900 dark:text-white mt-1">{stats.totalCompanies}</div>
-            </div>
-            <div className="size-9 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center">
-              <Building2 className="h-5 w-5 text-primary" />
-            </div>
-          </div>
-        </Card>
-
-        <Card className="dark:bg-gray-900 border border-gray-200/70 dark:border-gray-800">
-          <div className="flex items-start justify-between">
-            <div>
-              <div className="text-xs text-gray-500 dark:text-gray-400">Active</div>
-              <div className="text-2xl font-extrabold text-gray-900 dark:text-white mt-1">{stats.activeCompanies}</div>
-            </div>
-            <div className="size-9 rounded-2xl bg-accent-green/10 border border-accent-green/20 flex items-center justify-center">
-              <CheckCircle className="h-5 w-5 text-accent-green" />
-            </div>
-          </div>
-        </Card>
-
-        <Card className="dark:bg-gray-900 border border-gray-200/70 dark:border-gray-800">
-          <div className="flex items-start justify-between">
-            <div>
-              <div className="text-xs text-gray-500 dark:text-gray-400">Suspended</div>
-              <div className="text-2xl font-extrabold text-gray-900 dark:text-white mt-1">{stats.inactiveCompanies}</div>
-            </div>
-            <div className="size-9 rounded-2xl bg-accent-red/10 border border-accent-red/20 flex items-center justify-center">
-              <XCircle className="h-5 w-5 text-accent-red" />
-            </div>
-          </div>
-        </Card>
-
-        <Card className="dark:bg-gray-900 border border-gray-200/70 dark:border-gray-800">
-          <div className="flex items-start justify-between">
-            <div>
-              <div className="text-xs text-gray-500 dark:text-gray-400">Expiring Soon</div>
-              <div className="text-2xl font-extrabold text-gray-900 dark:text-white mt-1">{expiringSoonCount}</div>
-            </div>
-            <div className="size-9 rounded-2xl bg-accent-purple/10 border border-accent-purple/20 flex items-center justify-center">
-              <Clock className="h-5 w-5 text-accent-purple" />
-            </div>
-          </div>
-        </Card>
-
-        <Card className="dark:bg-gray-900 border border-gray-200/70 dark:border-gray-800">
-          <div className="flex items-start justify-between">
-            <div>
-              <div className="text-xs text-gray-500 dark:text-gray-400">Total Users</div>
-              <div className="text-2xl font-extrabold text-gray-900 dark:text-white mt-1">{stats.totalUsers}</div>
-            </div>
-            <div className="size-9 rounded-2xl bg-accent-blue/10 border border-accent-blue/20 flex items-center justify-center">
-              <Users className="h-5 w-5 text-accent-blue" />
-            </div>
-          </div>
-        </Card>
+        {(
+          [
+            {
+              title: 'Total Companies',
+              value: String(stats.totalCompanies),
+              change: '',
+              changeType: 'neutral' as const,
+              icon: 'apartment',
+              iconColorClass: 'text-primary/80',
+              iconBgClass: 'bg-primary/10',
+              changeLabel: '',
+              onClick: () => navigate('/super-admin/companies'),
+            },
+            {
+              title: 'Active',
+              value: String(stats.activeCompanies),
+              change: '',
+              changeType: 'positive' as const,
+              icon: 'check_circle',
+              iconColorClass: 'text-accent-green',
+              iconBgClass: 'bg-accent-green/10',
+              changeLabel: '',
+            },
+            {
+              title: 'Suspended',
+              value: String(stats.inactiveCompanies),
+              change: '',
+              changeType: 'negative' as const,
+              icon: 'block',
+              iconColorClass: 'text-accent-red',
+              iconBgClass: 'bg-accent-red/10',
+              changeLabel: '',
+            },
+            {
+              title: 'Expiring Soon',
+              value: String(expiringSoonCount),
+              change: '',
+              changeType: 'neutral' as const,
+              icon: 'schedule',
+              iconColorClass: 'text-accent-purple',
+              iconBgClass: 'bg-accent-purple/10',
+              changeLabel: '',
+            },
+            {
+              title: 'Total Users',
+              value: String(stats.totalUsers),
+              change: '',
+              changeType: 'neutral' as const,
+              icon: 'group',
+              iconColorClass: 'text-accent-blue',
+              iconBgClass: 'bg-accent-blue/10',
+              changeLabel: '',
+            },
+          ] satisfies Array<KPIData & { onClick?: () => void }>
+        ).map((kpi) => (
+          <KPICard
+            key={kpi.title}
+            data={kpi}
+            onClick={kpi.onClick}
+            className="hover:border-accent-green/40"
+          />
+        ))}
       </div>
 
       {/* Main grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card title="Companies by Plan" className="dark:bg-gray-900 border border-gray-200/70 dark:border-gray-800">
+        <Card title="Companies by Plan" className="rounded-2xl shadow-sm dark:bg-gray-900 border border-gray-200/70 dark:border-gray-800">
           <div className="flex items-end justify-between gap-4 pt-2">
             {planBars.map((b) => {
               const heightPct = Math.round((b.value / maxPlanCount) * 100);
@@ -295,7 +296,7 @@ const SuperAdminDashboard: React.FC = () => {
                 View All
               </Button>
             }
-            className="dark:bg-gray-900 border border-gray-200/70 dark:border-gray-800"
+            className="rounded-2xl shadow-sm dark:bg-gray-900 border border-gray-200/70 dark:border-gray-800"
           >
             <div className="overflow-x-auto">
               <table className="w-full text-left">
@@ -350,7 +351,7 @@ const SuperAdminDashboard: React.FC = () => {
       </div>
 
       {/* Quick Actions */}
-      <Card title="Quick Actions" className="dark:!bg-surface-dark border border-gray-200/70 dark:border-gray-700/70">
+      <Card title="Quick Actions" className="rounded-2xl shadow-sm dark:bg-gray-900 border border-gray-200/70 dark:border-gray-800">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Button
             variant="outline"
@@ -400,15 +401,15 @@ const SuperAdminDashboard: React.FC = () => {
       </Card>
 
       {/* Plans */}
-      <Card title="Plans" className="dark:!bg-surface-dark border border-gray-200/70 dark:border-gray-700/70">
+      <Card title="Plans" className="rounded-2xl shadow-sm dark:bg-gray-900 border border-gray-200/70 dark:border-gray-800">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="rounded-2xl border border-gray-200/70 dark:border-gray-700/70 bg-gradient-to-br from-primary/5 to-transparent dark:from-primary/10 dark:to-transparent p-5">
+          <div className="rounded-2xl border border-gray-200/70 dark:border-gray-800 bg-white dark:bg-gray-950 p-5">
             <div className="flex items-start justify-between">
               <div>
                 <div className="text-sm font-semibold text-gray-900 dark:text-white">Starter</div>
                 <div className="text-xs text-gray-500">For small teams getting started</div>
               </div>
-              <span className="text-xs px-2 py-1 rounded-full bg-green-100 text-green-800">Popular</span>
+              <span className="text-xs px-2 py-1 rounded-full border border-accent-green/30 bg-accent-green/10 text-accent-green">Popular</span>
             </div>
             <div className="mt-4 space-y-2 text-sm text-gray-700 dark:text-gray-300">
               <div className="flex items-center"><Check className="w-4 h-4 mr-2" />Up to 25 users</div>
@@ -422,13 +423,13 @@ const SuperAdminDashboard: React.FC = () => {
             </div>
           </div>
 
-          <div className="rounded-2xl border border-gray-200/70 dark:border-gray-700/70 bg-gradient-to-br from-accent-blue/5 to-transparent dark:from-accent-blue/10 dark:to-transparent p-5">
+          <div className="rounded-2xl border border-gray-200/70 dark:border-gray-800 bg-white dark:bg-gray-950 p-5">
             <div className="flex items-start justify-between">
               <div>
                 <div className="text-sm font-semibold text-gray-900 dark:text-white">Medium</div>
                 <div className="text-xs text-gray-500">For growing companies</div>
               </div>
-              <span className="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-800">Scale</span>
+              <span className="text-xs px-2 py-1 rounded-full border border-accent-blue/30 bg-accent-blue/10 text-accent-blue">Scale</span>
             </div>
             <div className="mt-4 space-y-2 text-sm text-gray-700 dark:text-gray-300">
               <div className="flex items-center"><Check className="w-4 h-4 mr-2" />Up to 100 users</div>
@@ -442,13 +443,13 @@ const SuperAdminDashboard: React.FC = () => {
             </div>
           </div>
 
-          <div className="rounded-2xl border border-gray-200/70 dark:border-gray-700/70 bg-gradient-to-br from-accent-purple/5 to-transparent dark:from-accent-purple/10 dark:to-transparent p-5">
+          <div className="rounded-2xl border border-gray-200/70 dark:border-gray-800 bg-white dark:bg-gray-950 p-5">
             <div className="flex items-start justify-between">
               <div>
                 <div className="text-sm font-semibold text-gray-900 dark:text-white">Enterprise</div>
                 <div className="text-xs text-gray-500">For large orgs and multi-warehouse ops</div>
               </div>
-              <span className="text-xs px-2 py-1 rounded-full bg-purple-100 text-purple-800">Advanced</span>
+              <span className="text-xs px-2 py-1 rounded-full border border-accent-purple/30 bg-accent-purple/10 text-accent-purple">Advanced</span>
             </div>
             <div className="mt-4 space-y-2 text-sm text-gray-700 dark:text-gray-300">
               <div className="flex items-center"><Check className="w-4 h-4 mr-2" />Unlimited users*</div>

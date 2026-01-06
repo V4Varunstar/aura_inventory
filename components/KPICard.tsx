@@ -3,9 +3,11 @@ import { KPIData } from '../types';
 
 interface KPICardProps {
   data: KPIData;
+  className?: string;
+  onClick?: () => void;
 }
 
-const KPICard: React.FC<KPICardProps> = ({ data }) => {
+const KPICard: React.FC<KPICardProps> = ({ data, className = '', onClick }) => {
   const { title, value, change, changeType, icon, iconColorClass, iconBgClass, changeLabel } = data;
 
   const changeColorClass = changeType === 'positive' ? 'text-emerald-500' 
@@ -17,7 +19,16 @@ const KPICard: React.FC<KPICardProps> = ({ data }) => {
                          : 'hover:border-orange-500/50';
 
   return (
-    <div className={`p-5 rounded-2xl bg-white dark:bg-surface-dark border border-gray-100 dark:border-border-dark shadow-sm flex flex-col justify-between h-32 ${hoverBorderClass} transition-colors cursor-default group`}>
+    <div
+      onClick={onClick}
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onKeyDown={(e) => {
+        if (!onClick) return;
+        if (e.key === 'Enter' || e.key === ' ') onClick();
+      }}
+      className={`p-5 rounded-2xl bg-white dark:bg-gray-900 border border-gray-200/70 dark:border-gray-800 shadow-sm flex flex-col justify-between h-32 ${hoverBorderClass} transition-colors ${onClick ? 'cursor-pointer' : 'cursor-default'} group ${className}`}
+    >
       <div className="flex items-center justify-between">
         <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{title}</p>
         <span className={`material-symbols-outlined ${iconColorClass} ${iconBgClass} p-1 rounded-lg text-[20px]`}>
