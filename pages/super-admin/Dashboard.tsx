@@ -6,6 +6,7 @@ import Button from '../../components/ui/Button';
 import Modal from '../../components/ui/Modal';
 import Input from '../../components/ui/Input';
 import Select from '../../components/ui/Select';
+import Panel from '../../components/ui/Panel';
 import { useToast } from '../../context/ToastContext';
 import { useAuth } from '../../context/AuthContext';
 import { Bell, Building2, Check, Plus, Search, Users } from 'lucide-react';
@@ -174,7 +175,7 @@ const SuperAdminDashboard: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Header */}
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
@@ -271,8 +272,8 @@ const SuperAdminDashboard: React.FC = () => {
 
       {/* Main grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card title="Companies by Plan" className="rounded-2xl shadow-sm dark:bg-gray-900 border border-gray-200/70 dark:border-gray-800">
-          <div className="flex items-end justify-between gap-4 pt-2">
+        <Panel title="Companies by Plan">
+          <div className="flex items-end justify-between gap-4">
             {planBars.map((b) => {
               const heightPct = Math.round((b.value / maxPlanCount) * 100);
               return (
@@ -286,17 +287,16 @@ const SuperAdminDashboard: React.FC = () => {
               );
             })}
           </div>
-        </Card>
+        </Panel>
 
         <div className="lg:col-span-2">
-          <Card
+          <Panel
             title="Recent Companies"
             actions={
               <Button variant="ghost" size="sm" onClick={() => navigate('/super-admin/companies')}>
                 View All
               </Button>
             }
-            className="rounded-2xl shadow-sm dark:bg-gray-900 border border-gray-200/70 dark:border-gray-800"
           >
             <div className="overflow-x-auto">
               <table className="w-full text-left">
@@ -346,12 +346,12 @@ const SuperAdminDashboard: React.FC = () => {
                 </div>
               )}
             </div>
-          </Card>
+          </Panel>
         </div>
       </div>
 
       {/* Quick Actions */}
-      <Card title="Quick Actions" className="rounded-2xl shadow-sm dark:bg-gray-900 border border-gray-200/70 dark:border-gray-800">
+      <Panel title="Quick Actions">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Button
             variant="outline"
@@ -398,10 +398,10 @@ const SuperAdminDashboard: React.FC = () => {
             </div>
           </Button>
         </div>
-      </Card>
+      </Panel>
 
       {/* Plans */}
-      <Card title="Plans" className="rounded-2xl shadow-sm dark:bg-gray-900 border border-gray-200/70 dark:border-gray-800">
+      <Panel title="Plans">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="rounded-2xl border border-gray-200/70 dark:border-gray-800 bg-white dark:bg-gray-950 p-5">
             <div className="flex items-start justify-between">
@@ -464,7 +464,7 @@ const SuperAdminDashboard: React.FC = () => {
             </div>
           </div>
         </div>
-      </Card>
+      </Panel>
 
       {/* Create Company Modal */}
       <Modal
