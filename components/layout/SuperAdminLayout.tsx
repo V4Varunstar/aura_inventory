@@ -2,14 +2,13 @@ import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { Role } from '../../types';
-import Button from '../ui/Button';
 import { Activity, Building2, CreditCard, LayoutDashboard, LogOut, Settings, Shield, Users } from 'lucide-react';
 
 interface SuperAdminLayoutProps {
   children: React.ReactNode;
 }
 
-const SUPER_ADMIN_BUILD_TAG = 'sa-ui-3';
+const SUPER_ADMIN_BUILD_TAG = 'sa-ui-4';
 
 const SuperAdminLayout: React.FC<SuperAdminLayoutProps> = ({ children }) => {
   const { user, logout } = useAuth();
@@ -138,16 +137,21 @@ const SuperAdminLayout: React.FC<SuperAdminLayoutProps> = ({ children }) => {
           <div className="px-4 pb-6">
             <div className="rounded-2xl bg-gray-100 dark:bg-[#112117] border border-gray-200/70 dark:border-white/10 p-4">
               <div className="flex items-center gap-3">
-                <div className="size-10 rounded-full bg-accent-green/10 text-accent-green flex items-center justify-center font-semibold">
+                <div className="size-10 rounded-full bg-white/5 border border-white/10 text-gray-100 flex items-center justify-center font-semibold">
                   {user.name?.slice(0, 1)?.toUpperCase()}
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="text-sm font-semibold text-gray-900 dark:text-white truncate">{user.name}</div>
                   <div className="text-xs text-gray-500 dark:text-gray-400 truncate">{user.email}</div>
                 </div>
-                <Button onClick={handleLogout} variant="ghost" size="sm" leftIcon={<LogOut />}>
-                  Logout
-                </Button>
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="inline-flex items-center justify-center size-10 rounded-full border border-white/10 bg-white/5 text-gray-200 hover:bg-white/10"
+                  aria-label="Logout"
+                >
+                  <LogOut className="h-4 w-4" />
+                </button>
               </div>
               <div className="mt-3">
                 <span className="text-[10px] leading-none px-2 py-1 rounded-full border border-gray-200/70 dark:border-white/10 text-gray-500 dark:text-gray-400 bg-white dark:bg-[#0d1812]">

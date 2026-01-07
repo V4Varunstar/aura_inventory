@@ -4,14 +4,14 @@ import KPICard from '../../components/KPICard';
 import Panel from '../../components/ui/Panel';
 import { useToast } from '../../context/ToastContext';
 import { useAuth } from '../../context/AuthContext';
-import { Bell, Search } from 'lucide-react';
+import { Bell, ChevronDown, MoreHorizontal, Search } from 'lucide-react';
 import { Company, KPIData, SubscriptionPlan, SuperAdminStats } from '../../types';
 import { getAllCompanies, getSuperAdminStats } from '../../services/superAdminService';
 
 const SUPER_ADMIN_PLAN_LABEL: Record<SubscriptionPlan, string> = {
-  [SubscriptionPlan.Free]: 'Free',
-  [SubscriptionPlan.Starter]: 'Starter',
-  [SubscriptionPlan.Pro]: 'Medium',
+  [SubscriptionPlan.Free]: 'Trial',
+  [SubscriptionPlan.Starter]: 'Basic',
+  [SubscriptionPlan.Pro]: 'Pro (Yearly)',
   [SubscriptionPlan.Business]: 'Enterprise',
 };
 
@@ -115,11 +115,22 @@ const SuperAdminDashboard: React.FC = () => {
       })
     : recentCompanies;
 
-  const formatDate = (d?: Date) => {
-    if (!d) return '-';
+  const fmtNumber = (n: number) => new Intl.NumberFormat('en-IN').format(n);
+
+  const formatValidity = (d?: Date) => {
+    if (!d) return { top: '-', bottom: '' };
     const dt = new Date(d);
-    if (Number.isNaN(dt.getTime())) return '-';
-    return dt.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+    if (Number.isNaN(dt.getTime())) return { top: '-', bottom: '' };
+    const top = dt.toLocaleDateString('en-US', { month: 'short', day: '2-digit' });
+    const bottom = dt.toLocaleDateString('en-US', { year: 'numeric' });
+    return { top: `${top},`, bottom };
+  };
+
+  const getInitials = (name: string) => {
+    const parts = name.trim().split(/\s+/).filter(Boolean);
+    const a = parts[0]?.[0] ?? '';
+    const b = parts.length > 1 ? parts[parts.length - 1]?.[0] ?? '' : '';
+    return (a + b).toUpperCase() || 'C';
   };
 
   const statusText = (c: Company) => {
@@ -180,7 +191,7 @@ const SuperAdminDashboard: React.FC = () => {
           [
             {
               title: 'Total Companies',
-              value: String(stats.totalCompanies),
+              value: fmtNumber(stats.totalCompanies),
               change: '+12%',
               changeType: 'positive' as const,
               icon: 'apartment',
@@ -191,7 +202,7 @@ const SuperAdminDashboard: React.FC = () => {
             },
             {
               title: 'Active',
-              value: String(stats.activeCompanies),
+              value: fmtNumber(stats.activeCompanies),
               change: '+5.5%',
               changeType: 'positive' as const,
               icon: 'check_circle',
@@ -201,7 +212,7 @@ const SuperAdminDashboard: React.FC = () => {
             },
             {
               title: 'Suspended',
-              value: String(stats.inactiveCompanies),
+              value: fmtNumber(stats.inactiveCompanies),
               change: '+2%',
               changeType: 'negative' as const,
               icon: 'block',
@@ -211,7 +222,7 @@ const SuperAdminDashboard: React.FC = () => {
             },
             {
               title: 'Expiring Soon',
-              value: String(expiringSoonCount),
+              value: fmtNumber(expiringSoonCount),
               change: '-5%',
               changeType: 'neutral' as const,
               icon: 'schedule',
@@ -221,7 +232,7 @@ const SuperAdminDashboard: React.FC = () => {
             },
             {
               title: 'Total Users',
-              value: String(stats.totalUsers),
+              value: fmtNumber(stats.totalUsers),
               change: '+8%',
               changeType: 'positive' as const,
               icon: 'group',
@@ -242,7 +253,19 @@ const SuperAdminDashboard: React.FC = () => {
 
       {/* Main grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Panel title="Companies by Plan" className={surfaceClass}>
+        <Panel
+          title="Companies by Plan"
+          actions={
+            <button
+              type="button"
+              className="inline-flex items-center justify-center size-9 rounded-full border border-white/10 bg-white/5 text-gray-200 hover:bg-white/10"
+              aria-label="More"
+            >
+              <MoreHorizontal className="h-4 w-4" />
+            </button>
+          }
+          className={surfaceClass}
+        >
           <div className="flex items-end justify-between gap-4">
             {planBars.map((b) => {
               const heightPct = Math.round((b.value / maxPlanCount) * 100);
@@ -250,7 +273,7 @@ const SuperAdminDashboard: React.FC = () => {
                 <div key={b.label} className="flex-1">
                   <div className="h-44 rounded-3xl bg-gray-100 dark:bg-[#0d1812]/40 border border-gray-200/70 dark:border-white/10 flex items-end p-3">
                     <div
-                      className={`w-full rounded-2xl ${b.color}`}
+                      className={`w-full rounded-2xl ${b.color} ${b.emphasis ? '' : 'opacity-85'}`}
                       style={{ height: `${Math.max(8, heightPct)}%` }}
                     />
                   </div>
@@ -263,15 +286,15 @@ const SuperAdminDashboard: React.FC = () => {
           <div className="mt-6 grid grid-cols-3 gap-4">
             <div className="text-center">
               <div className="text-[11px] text-gray-500 dark:text-gray-400">Total Yearly</div>
-              <div className="text-lg font-bold text-gray-900 dark:text-white">{yearlyCount}</div>
+              <div className="text-lg font-bold text-gray-900 dark:text-white">{fmtNumber(yearlyCount)}</div>
             </div>
             <div className="text-center">
               <div className="text-[11px] text-gray-500 dark:text-gray-400">Total Monthly</div>
-              <div className="text-lg font-bold text-gray-900 dark:text-white">{monthlyCount}</div>
+              <div className="text-lg font-bold text-gray-900 dark:text-white">{fmtNumber(monthlyCount)}</div>
             </div>
             <div className="text-center">
               <div className="text-[11px] text-gray-500 dark:text-gray-400">Active Trials</div>
-              <div className="text-lg font-bold text-gray-900 dark:text-white">{trialCount}</div>
+              <div className="text-lg font-bold text-gray-900 dark:text-white">{fmtNumber(trialCount)}</div>
             </div>
           </div>
         </Panel>
@@ -294,8 +317,8 @@ const SuperAdminDashboard: React.FC = () => {
               <table className="w-full text-left">
                 <thead>
                   <tr className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">
-                    <th className="py-2">Company</th>
-                    <th className="py-2">Plan</th>
+                    <th className="py-2">Company Name</th>
+                    <th className="py-2">Plan Type</th>
                     <th className="py-2">Validity</th>
                     <th className="py-2">Status</th>
                     <th className="py-2 text-right">Action</th>
@@ -305,8 +328,15 @@ const SuperAdminDashboard: React.FC = () => {
                   {filteredRecentCompanies.map((c) => (
                     <tr key={c.id} className="text-sm">
                       <td className="py-3">
-                        <div className="font-semibold text-gray-900 dark:text-white">{c.name}</div>
-                        <div className="text-xs text-gray-500 dark:text-gray-400">{c.email}</div>
+                        <div className="flex items-center gap-3">
+                          <div className="size-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-xs font-semibold text-gray-200">
+                            {getInitials(c.name)}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="font-semibold text-gray-900 dark:text-white truncate">{c.name}</div>
+                            <div className="text-xs text-gray-500 dark:text-gray-400 truncate">{c.email}</div>
+                          </div>
+                        </div>
                       </td>
                       <td className="py-3">
                         <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs border ${planBadgeClass(c.plan)}`}>
@@ -314,7 +344,15 @@ const SuperAdminDashboard: React.FC = () => {
                         </span>
                       </td>
                       <td className="py-3 text-gray-700 dark:text-gray-200">
-                        {formatDate(c.validTo)}
+                        {(() => {
+                          const v = formatValidity(c.validTo);
+                          return (
+                            <div className="leading-tight">
+                              <div className="text-sm text-gray-900 dark:text-white">{v.top}</div>
+                              <div className="text-xs text-gray-500 dark:text-gray-400">{v.bottom}</div>
+                            </div>
+                          );
+                        })()}
                       </td>
                       <td className="py-3">
                         <span
@@ -347,6 +385,18 @@ const SuperAdminDashboard: React.FC = () => {
               {filteredRecentCompanies.length === 0 && (
                 <div className="text-sm text-gray-500 dark:text-gray-400 py-10 text-center">
                   No companies found.
+                </div>
+              )}
+
+              {filteredRecentCompanies.length > 0 && (
+                <div className="pt-4 flex items-center justify-center">
+                  <button
+                    type="button"
+                    className="text-xs text-gray-400 hover:text-gray-200 inline-flex items-center gap-2"
+                    onClick={() => navigate('/super-admin/companies')}
+                  >
+                    Show more <ChevronDown className="h-4 w-4" />
+                  </button>
                 </div>
               )}
             </div>

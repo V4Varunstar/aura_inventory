@@ -13,6 +13,10 @@ const KPICard: React.FC<KPICardProps> = ({ data, className = '', onClick }) => {
   const changeColorClass = changeType === 'positive' ? 'text-emerald-500' 
                          : changeType === 'negative' ? 'text-red-500' 
                          : 'text-orange-500';
+
+  const trendIcon = changeType === 'positive' ? 'trending_up'
+                  : changeType === 'negative' ? 'trending_down'
+                  : 'trending_flat';
   
   const hoverBorderClass = changeType === 'positive' ? 'hover:border-primary/50' 
                          : changeType === 'negative' ? 'hover:border-red-500/50' 
@@ -31,16 +35,16 @@ const KPICard: React.FC<KPICardProps> = ({ data, className = '', onClick }) => {
     >
       <div className="flex items-center justify-between">
         <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{title}</p>
-        <span className={`material-symbols-outlined ${iconColorClass} ${iconBgClass} p-1 rounded-lg text-[20px]`}>
+        <span
+          className={`material-symbols-outlined ${iconColorClass} ${iconBgClass} p-2 rounded-full text-[20px] border border-gray-200/70 dark:border-white/10`}
+        >
           {icon}
         </span>
       </div>
       <div>
         <p className="text-2xl font-bold text-gray-900 dark:text-white">{value}</p>
         <p className={`text-xs font-medium ${changeColorClass} flex items-center gap-1 mt-1`}>
-          {changeType !== 'neutral' && (
-             <span className="material-symbols-outlined text-[16px]">trending_up</span>
-          )}
+          <span className="material-symbols-outlined text-[16px]">{trendIcon}</span>
           {change} {changeLabel}
         </p>
       </div>
