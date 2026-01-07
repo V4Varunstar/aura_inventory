@@ -94,7 +94,7 @@ const SuperAdminLayout: React.FC<SuperAdminLayoutProps> = ({ children }) => {
               }`}
             >
               <Users className="h-5 w-5" />
-              <span className="font-semibold text-sm">Users</span>
+              <span className="font-semibold text-sm">Company Users</span>
             </button>
 
             <button
