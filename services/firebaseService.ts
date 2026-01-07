@@ -576,7 +576,9 @@ const validateCompanyAccess = (
 export const mockLogin = (email: string, pass: string): Promise<User> => {
   return new Promise((resolve, reject) => {
     setTimeout(() => {
-      console.log('🔐 mockLogin called for:', email);
+      const rawEmail = String(email ?? '');
+      const emailNorm = rawEmail.trim().toLowerCase();
+      console.log('🔐 mockLogin called for:', rawEmail, '->', emailNorm);
 
       const now = new Date();
       const isDevHost =
@@ -609,9 +611,9 @@ export const mockLogin = (email: string, pass: string): Promise<User> => {
         });
         
         // Check if the login email is a SuperAdmin user
-        const superAdminUser = superAdminUsers.find((u: any) => u.email === email);
+        const superAdminUser = superAdminUsers.find((u: any) => String(u?.email ?? '').trim().toLowerCase() === emailNorm);
         if (superAdminUser) {
-          console.log('🎯 Found user in SuperAdmin users:', email);
+          console.log('🎯 Found user in SuperAdmin users:', emailNorm);
           foundUser = {
             id: superAdminUser.id,
             name: superAdminUser.name,
@@ -636,11 +638,13 @@ export const mockLogin = (email: string, pass: string): Promise<User> => {
           allowList.add('Test@orgatre.com');
         }
 
-        if (allowList.has(email)) {
-          foundUser = users.find(u => u.email === email) || null;
-          console.log('🧪 Allowlisted dev user:', email, foundUser ? 'FOUND' : 'NOT FOUND');
+        const allowListNorm = new Set(Array.from(allowList).map((e) => String(e).trim().toLowerCase()));
+
+        if (allowListNorm.has(emailNorm)) {
+          foundUser = users.find(u => String(u.email ?? '').trim().toLowerCase() === emailNorm) || null;
+          console.log('🧪 Allowlisted dev user:', emailNorm, foundUser ? 'FOUND' : 'NOT FOUND');
         } else {
-          console.log('❌ Login blocked: user not created by Super Admin:', email);
+          console.log('❌ Login blocked: user not created by Super Admin:', emailNorm);
           reject(new Error('User not found. Please contact Super Admin to create your account.'));
           return;
         }
@@ -650,17 +654,17 @@ export const mockLogin = (email: string, pass: string): Promise<User> => {
       let validPassword = false;
       
       // Check built-in test users first
-      if (email === 'Test@orgatre.com' && pass === 'Test@1234') {
+      if (emailNorm === 'test@orgatre.com' && pass === 'Test@1234') {
         validPassword = true;
-      } else if (email === 'superadmin@aura.com' && pass === 'SuperAdmin@123') {
+      } else if (emailNorm === 'superadmin@aura.com' && pass === 'SuperAdmin@123') {
         validPassword = true;
-      } else if (email === 'admin@test.com' && pass === 'Admin@123') {
+      } else if (emailNorm === 'admin@test.com' && pass === 'Admin@123') {
         validPassword = true;
       } else {
         // Check SuperAdmin created users password
         try {
           const superAdminUsers = getStoredSuperAdminUsers();
-          const superAdminUser = superAdminUsers.find((u: any) => u.email === email);
+          const superAdminUser = superAdminUsers.find((u: any) => String(u?.email ?? '').trim().toLowerCase() === emailNorm);
           if (superAdminUser && superAdminUser.password && superAdminUser.password === pass) {
             validPassword = true;
             console.log('✅ Password validated against SuperAdmin user');
@@ -671,7 +675,7 @@ export const mockLogin = (email: string, pass: string): Promise<User> => {
         
         // Also check global registry users
         if (!validPassword) {
-          const registryUser = users.find(u => u.email === email) as any;
+          const registryUser = users.find(u => String(u.email ?? '').trim().toLowerCase() === emailNorm) as any;
           if (registryUser && registryUser.password === pass) {
             validPassword = true;
             console.log('✅ Password validated against global registry');
