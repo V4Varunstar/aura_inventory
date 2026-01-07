@@ -93,10 +93,22 @@ const SuperAdminDashboard: React.FC = () => {
   const monthlyCount = planCounts[SubscriptionPlan.Starter] ?? 0;
   const yearlyCount = (planCounts[SubscriptionPlan.Pro] ?? 0) + (planCounts[SubscriptionPlan.Business] ?? 0);
   const trialCount = planCounts[SubscriptionPlan.Free] ?? 0;
-  const planBars: Array<{ label: string; value: number; color: string; emphasis?: boolean }> = [
-    { label: 'Monthly', value: monthlyCount, color: 'bg-accent-green/60' },
-    { label: 'Yearly', value: yearlyCount, color: 'bg-accent-green', emphasis: true },
-    { label: 'Trial', value: trialCount, color: 'bg-accent-red' },
+  const planBars: Array<{
+    label: 'Monthly' | 'Yearly' | 'Trial';
+    value: number;
+    fillClass: string;
+    outerHeightClass: string;
+    emphasis?: boolean;
+  }> = [
+    { label: 'Monthly', value: monthlyCount, fillClass: 'bg-accent-green/70', outerHeightClass: 'h-32' },
+    {
+      label: 'Yearly',
+      value: yearlyCount,
+      fillClass: 'bg-gradient-to-t from-accent-green to-emerald-300',
+      outerHeightClass: 'h-56',
+      emphasis: true,
+    },
+    { label: 'Trial', value: trialCount, fillClass: 'bg-accent-red', outerHeightClass: 'h-20' },
   ];
   const maxPlanCount = Math.max(1, ...planBars.map((b) => b.value));
 
@@ -266,18 +278,29 @@ const SuperAdminDashboard: React.FC = () => {
           }
           className={surfaceClass}
         >
-          <div className="flex items-end justify-between gap-4">
+          <div className="relative h-64 w-full flex items-end justify-center gap-8 px-4">
+            {/* grid lines */}
+            <div className="absolute inset-0 flex flex-col justify-between pointer-events-none pb-8">
+              <div className="border-b border-gray-200/60 dark:border-white/10 border-dashed w-full h-0" />
+              <div className="border-b border-gray-200/60 dark:border-white/10 border-dashed w-full h-0" />
+              <div className="border-b border-gray-200/60 dark:border-white/10 border-dashed w-full h-0" />
+              <div className="border-b border-gray-200/60 dark:border-white/10 border-dashed w-full h-0" />
+            </div>
+
             {planBars.map((b) => {
               const heightPct = Math.round((b.value / maxPlanCount) * 100);
               return (
-                <div key={b.label} className="flex-1">
-                  <div className="h-44 rounded-3xl bg-gray-100 dark:bg-[#0d1812]/40 border border-gray-200/70 dark:border-white/10 flex items-end p-3">
+                <div key={b.label} className="flex flex-col items-center gap-2 group w-16 z-10">
+                  <div
+                    className={`w-full ${b.outerHeightClass} bg-gray-100 dark:bg-white/5 border border-gray-200/70 dark:border-white/10 rounded-t-lg relative overflow-hidden group-hover:opacity-80 transition-opacity`}
+                    aria-label={`${b.label}: ${b.value}`}
+                  >
                     <div
-                      className={`w-full rounded-2xl ${b.color} ${b.emphasis ? '' : 'opacity-85'}`}
+                      className={`absolute bottom-0 w-full ${b.fillClass}`}
                       style={{ height: `${Math.max(8, heightPct)}%` }}
                     />
                   </div>
-                  <div className={`mt-3 text-xs text-gray-600 dark:text-gray-400 text-center ${b.emphasis ? 'dark:text-white' : ''}`}>{b.label}</div>
+                  <span className={`text-xs ${b.emphasis ? 'font-bold text-accent-green' : 'font-medium text-gray-500 dark:text-gray-400'}`}>{b.label}</span>
                 </div>
               );
             })}
