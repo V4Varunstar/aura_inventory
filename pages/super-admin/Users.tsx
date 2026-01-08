@@ -1,6 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useToast } from '../../context/ToastContext';
-import { Role } from '../../types';
+import Button from '../../components/ui/Button';
+import Input from '../../components/ui/Input';
+import Modal from '../../components/ui/Modal';
+import Select from '../../components/ui/Select';
+import { Company, Role } from '../../types';
+import { createCompanyUser, getAllCompanies } from '../../services/superAdminService';
 
 type StoredSuperAdminUser = {
   id?: string;
@@ -15,6 +20,7 @@ type StoredSuperAdminUser = {
 const SuperAdminUsers: React.FC = () => {
   const { addToast } = useToast();
   const [users, setUsers] = useState<StoredSuperAdminUser[]>([]);
+  const [companies, setCompanies] = useState<Company[]>([]);
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState<'all' | Role>('all');
   const [statusFilter, setStatusFilter] = useState<'all' | 'Active' | 'Blocked'>('all');
@@ -22,7 +28,49 @@ const SuperAdminUsers: React.FC = () => {
   const [pageSize, setPageSize] = useState(10);
   const [page, setPage] = useState(1);
 
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [createForm, setCreateForm] = useState({
+    companyId: '',
+    name: '',
+    email: '',
+    role: Role.Manager as Role,
+    password: '',
+  });
+
   useEffect(() => {
+    const loadUsers = () => {
+      try {
+        const raw = localStorage.getItem('superadmin_users');
+        const parsed = raw ? (JSON.parse(raw) as StoredSuperAdminUser[]) : [];
+        setUsers(Array.isArray(parsed) ? parsed : []);
+      } catch {
+        setUsers([]);
+      }
+    };
+
+    loadUsers();
+  }, []);
+
+  const openCreate = async () => {
+    setShowCreateModal(true);
+    try {
+      const list = await getAllCompanies();
+      setCompanies(list);
+      if (!createForm.companyId && list.length > 0) {
+        setCreateForm((p) => ({ ...p, companyId: list[0].id }));
+      }
+    } catch {
+      setCompanies([]);
+    }
+  };
+
+  const closeCreate = () => {
+    if (creating) return;
+    setShowCreateModal(false);
+  };
+
+  const reloadUsersFromStorage = () => {
     try {
       const raw = localStorage.getItem('superadmin_users');
       const parsed = raw ? (JSON.parse(raw) as StoredSuperAdminUser[]) : [];
@@ -30,7 +78,58 @@ const SuperAdminUsers: React.FC = () => {
     } catch {
       setUsers([]);
     }
-  }, []);
+  };
+
+  const handleCreateUser = async () => {
+    const name = createForm.name.trim();
+    const email = createForm.email.trim();
+    const password = createForm.password.trim();
+    const companyId = createForm.companyId;
+
+    if (!companyId) {
+      addToast('Please select a company', 'error');
+      return;
+    }
+    if (!name) {
+      addToast('Please enter name', 'error');
+      return;
+    }
+    if (!email) {
+      addToast('Please enter email', 'error');
+      return;
+    }
+
+    const company = companies.find((c) => c.id === companyId);
+    if (!company?.orgId) {
+      addToast('Selected company is missing orgId', 'error');
+      return;
+    }
+
+    try {
+      setCreating(true);
+      const created = await createCompanyUser(companyId, {
+        name,
+        email,
+        role: createForm.role,
+        orgId: company.orgId,
+        password: password || undefined,
+      });
+
+      addToast(
+        `User created. Email: ${created.email} | Password: ${created.password}`,
+        'success'
+      );
+
+      reloadUsersFromStorage();
+      setSelectedIds(new Set());
+      setShowCreateModal(false);
+      setCreateForm({ companyId, name: '', email: '', role: Role.Manager, password: '' });
+    } catch (e: any) {
+      addToast(e?.message || 'Failed to create user', 'error');
+    } finally {
+      setCreating(false);
+    }
+  };
 
   const fmtDateTime = (value?: string | Date) => {
     if (!value) return '-';
@@ -155,7 +254,7 @@ const SuperAdminUsers: React.FC = () => {
         </div>
         <button
           type="button"
-          onClick={() => addToast('Add New User (coming soon)', 'info')}
+          onClick={openCreate}
           className="inline-flex items-center justify-center gap-2 bg-primary hover:bg-primary-hover text-white px-5 py-2.5 rounded-lg font-semibold text-sm transition-all shadow-lg shadow-primary/30"
         >
           <span className="material-symbols-outlined text-[20px]">add</span>
@@ -440,6 +539,83 @@ const SuperAdminUsers: React.FC = () => {
           </div>
         </div>
       </div>
+
+      <Modal
+        isOpen={showCreateModal}
+        onClose={closeCreate}
+        title="Add New User"
+        footer={
+          <>
+            <Button variant="secondary" onClick={closeCreate} disabled={creating}>
+              Cancel
+            </Button>
+            <Button onClick={handleCreateUser} isLoading={creating}>
+              Create User
+            </Button>
+          </>
+        }
+      >
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Select
+            label="Company"
+            id="sa-user-company"
+            value={createForm.companyId}
+            onChange={(e) => setCreateForm((p) => ({ ...p, companyId: e.target.value }))}
+          >
+            {companies.length === 0 ? (
+              <option value="">No companies found</option>
+            ) : (
+              companies.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))
+            )}
+          </Select>
+
+          <Select
+            label="Role"
+            id="sa-user-role"
+            value={createForm.role}
+            onChange={(e) => setCreateForm((p) => ({ ...p, role: e.target.value as Role }))}
+          >
+            <option value={Role.Admin}>Admin</option>
+            <option value={Role.Manager}>Manager</option>
+            <option value={Role.Viewer}>Viewer</option>
+          </Select>
+
+          <Input
+            label="Name"
+            id="sa-user-name"
+            value={createForm.name}
+            onChange={(e) => setCreateForm((p) => ({ ...p, name: e.target.value }))}
+            placeholder="User full name"
+          />
+
+          <Input
+            label="Email"
+            id="sa-user-email"
+            value={createForm.email}
+            onChange={(e) => setCreateForm((p) => ({ ...p, email: e.target.value }))}
+            placeholder="user@company.com"
+            type="email"
+          />
+
+          <div className="md:col-span-2">
+            <Input
+              label="Password (optional)"
+              id="sa-user-password"
+              value={createForm.password}
+              onChange={(e) => setCreateForm((p) => ({ ...p, password: e.target.value }))}
+              placeholder="Leave blank to auto-generate"
+              type="text"
+            />
+            <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+              If you leave password blank, default password will be used.
+            </div>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };
