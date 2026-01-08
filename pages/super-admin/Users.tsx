@@ -109,7 +109,7 @@ const SuperAdminUsers: React.FC = () => {
         companyId: fallbackCompanyId,
         name: String(record?.name ?? ''),
         role: (record?.role ?? Role.Manager) as Role,
-        password: '',
+        password: String(record?.password ?? ''),
         status: record?.isEnabled === false ? 'Blocked' : 'Active',
       });
     } catch {
