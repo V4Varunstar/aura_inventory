@@ -605,6 +605,8 @@ export const mockLogin = (email: string, pass: string): Promise<User> => {
     setTimeout(() => {
       const rawEmail = String(email ?? '');
       const emailNorm = rawEmail.trim().toLowerCase();
+      const passRaw = String(pass ?? '');
+      const passTrim = passRaw.trim();
       console.log('🔐 mockLogin called for:', rawEmail, '->', emailNorm);
 
       const now = new Date();
@@ -681,18 +683,19 @@ export const mockLogin = (email: string, pass: string): Promise<User> => {
       let validPassword = false;
       
       // Check built-in test users first
-      if (emailNorm === 'test@orgatre.com' && pass === 'Test@1234') {
+      if (emailNorm === 'test@orgatre.com' && (passRaw === 'Test@1234' || passTrim === 'Test@1234')) {
         validPassword = true;
-      } else if (emailNorm === 'superadmin@aura.com' && pass === 'SuperAdmin@123') {
+      } else if (emailNorm === 'superadmin@aura.com' && (passRaw === 'SuperAdmin@123' || passTrim === 'SuperAdmin@123')) {
         validPassword = true;
-      } else if (emailNorm === 'admin@test.com' && pass === 'Admin@123') {
+      } else if (emailNorm === 'admin@test.com' && (passRaw === 'Admin@123' || passTrim === 'Admin@123')) {
         validPassword = true;
       } else {
         // Check SuperAdmin created users password
         try {
           const superAdminUsers = getStoredSuperAdminUsers();
           const superAdminUser = superAdminUsers.find((u: any) => String(u?.email ?? '').trim().toLowerCase() === emailNorm);
-          if (superAdminUser && superAdminUser.password && superAdminUser.password === pass) {
+          const storedPass = superAdminUser ? String((superAdminUser as any).password ?? '') : '';
+          if (storedPass && (storedPass === passRaw || storedPass === passTrim)) {
             validPassword = true;
             console.log('✅ Password validated against SuperAdmin user');
           }
@@ -703,7 +706,8 @@ export const mockLogin = (email: string, pass: string): Promise<User> => {
         // Also check global registry users
         if (!validPassword) {
           const registryUser = users.find(u => String(u.email ?? '').trim().toLowerCase() === emailNorm) as any;
-          if (registryUser && registryUser.password === pass) {
+          const registryPass = registryUser ? String((registryUser as any).password ?? '') : '';
+          if (registryPass && (registryPass === passRaw || registryPass === passTrim)) {
             validPassword = true;
             console.log('✅ Password validated against global registry');
           }
