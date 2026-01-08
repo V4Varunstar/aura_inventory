@@ -98,6 +98,10 @@ const SuperAdminUsers: React.FC = () => {
       addToast('Please enter email', 'error');
       return;
     }
+    if (!password) {
+      addToast('Please enter password', 'error');
+      return;
+    }
 
     const company = companies.find((c) => c.id === companyId);
     if (!company?.orgId) {
@@ -112,7 +116,7 @@ const SuperAdminUsers: React.FC = () => {
         email,
         role: createForm.role,
         orgId: company.orgId,
-        password: password || undefined,
+        password,
       });
 
       addToast(
@@ -603,16 +607,14 @@ const SuperAdminUsers: React.FC = () => {
 
           <div className="md:col-span-2">
             <Input
-              label="Password (optional)"
+              label="Password"
               id="sa-user-password"
               value={createForm.password}
               onChange={(e) => setCreateForm((p) => ({ ...p, password: e.target.value }))}
-              placeholder="Leave blank to auto-generate"
+              placeholder="Enter password"
               type="text"
             />
-            <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-              If you leave password blank, default password will be used.
-            </div>
+              <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">Password is required.</div>
           </div>
         </div>
       </Modal>
