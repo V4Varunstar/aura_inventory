@@ -8,7 +8,7 @@ interface SuperAdminLayoutProps {
   children: React.ReactNode;
 }
 
-const SUPER_ADMIN_BUILD_TAG = 'sa-ui-11';
+const SUPER_ADMIN_BUILD_TAG = 'sa-ui-12';
 
 const SuperAdminLayout: React.FC<SuperAdminLayoutProps> = ({ children }) => {
   const { user, logout } = useAuth();

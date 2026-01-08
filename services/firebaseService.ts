@@ -131,6 +131,30 @@ class StorageManager {
 
 const storage = new StorageManager();
 
+// In this app, Super Admin-created users are stored in localStorage (per-domain).
+// On Vercel, every deploy has a unique *.vercel.app domain, which would split user storage.
+// Force a canonical host to avoid "User not found" when users were created on a different deploy URL.
+const CANONICAL_VERCEL_HOST = 'aura-inventory.vercel.app';
+
+const maybeRedirectToCanonicalVercelHost = () => {
+  try {
+    const host = window.location.hostname;
+    const isVercel = host.endsWith('.vercel.app');
+    const isLocal = host === 'localhost' || host === '127.0.0.1' || host.endsWith('.local');
+    if (!isVercel || isLocal) return;
+
+    if (host !== CANONICAL_VERCEL_HOST) {
+      const target = `https://${CANONICAL_VERCEL_HOST}${window.location.pathname}${window.location.search}${window.location.hash}`;
+      console.warn('🔁 Redirecting to canonical host to preserve SuperAdmin user storage:', { from: host, to: CANONICAL_VERCEL_HOST });
+      window.location.replace(target);
+    }
+  } catch {
+    // no-op
+  }
+};
+
+maybeRedirectToCanonicalVercelHost();
+
 // Add a robust initialization function for Vercel production
 const initializeVercelProduction = () => {
   try {
@@ -674,7 +698,11 @@ export const mockLogin = (email: string, pass: string): Promise<User> => {
           console.log('🧪 Allowlisted dev user:', emailNorm, foundUser ? 'FOUND' : 'NOT FOUND');
         } else {
           console.log('❌ Login blocked: user not created by Super Admin:', emailNorm);
-          reject(new Error('User not found. Please contact Super Admin to create your account.'));
+          reject(
+            new Error(
+              'User not found. Please contact Super Admin to create your account (use the same browser + aura-inventory.vercel.app).'
+            )
+          );
           return;
         }
       }
