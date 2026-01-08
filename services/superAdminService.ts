@@ -1,5 +1,5 @@
 import { Company, SuperAdminStats, CreateCompanyRequest, Role, SubscriptionStatus, SubscriptionPlan } from '../types';
-import { addUserToGlobalRegistry } from './firebaseService';
+import { upsertUserInGlobalRegistry } from './firebaseService';
 
 // This will be replaced with actual Firestore calls in production
 // For now, using localStorage simulation to match existing pattern
@@ -219,7 +219,7 @@ export const createCompanyUser = async (
   saveToStorage(SUPER_ADMIN_STORAGE_KEYS.USERS, superAdminUsers);
 
   // Add user to global registry for cross-session access
-  addUserToGlobalRegistry({
+  upsertUserInGlobalRegistry({
     id: newUser.id,
     name: newUser.name,
     email: newUser.email,
@@ -298,4 +298,86 @@ export const updateCompanySubscription = async (
   companies[companyIndex] = next;
   saveToStorage(SUPER_ADMIN_STORAGE_KEYS.COMPANIES, companies);
   return simulateApi(next);
+};
+
+export const updateCompanyUser = async (
+  userEmail: string,
+  updates: {
+    name?: string;
+    role?: Role;
+    isEnabled?: boolean;
+    companyId?: string;
+    password?: string;
+  }
+): Promise<any> => {
+  const emailKey = userEmail.trim().toLowerCase();
+  if (!emailKey) throw new Error('User email is required');
+
+  companies = loadFromStorage(SUPER_ADMIN_STORAGE_KEYS.COMPANIES, []);
+  superAdminUsers = loadFromStorage(SUPER_ADMIN_STORAGE_KEYS.USERS, []);
+
+  const userIndex = superAdminUsers.findIndex(
+    (u: any) => String(u?.email ?? '').trim().toLowerCase() === emailKey
+  );
+  if (userIndex === -1) throw new Error('User not found');
+
+  const currentUser = superAdminUsers[userIndex];
+  const nextCompanyId = updates.companyId ?? currentUser.companyId;
+  const currentCompanyId = currentUser.companyId;
+
+  const nextCompany = companies.find((c) => c.id === nextCompanyId);
+  if (!nextCompany) throw new Error('Selected company not found');
+  if (!nextCompany.isActive) throw new Error('Selected company is inactive');
+
+  if (currentCompanyId && nextCompanyId && currentCompanyId !== nextCompanyId) {
+    if (nextCompany.limits.maxUsers !== -1 && nextCompany.usage.users >= nextCompany.limits.maxUsers) {
+      throw new Error(`User limit exceeded. Maximum ${nextCompany.limits.maxUsers} users allowed.`);
+    }
+
+    const oldCompanyIndex = companies.findIndex((c) => c.id === currentCompanyId);
+    if (oldCompanyIndex !== -1) {
+      companies[oldCompanyIndex].usage.users = Math.max(0, (companies[oldCompanyIndex].usage.users || 0) - 1);
+      companies[oldCompanyIndex].updatedAt = new Date();
+    }
+
+    const newCompanyIndex = companies.findIndex((c) => c.id === nextCompanyId);
+    if (newCompanyIndex !== -1) {
+      companies[newCompanyIndex].usage.users = (companies[newCompanyIndex].usage.users || 0) + 1;
+      companies[newCompanyIndex].updatedAt = new Date();
+    }
+
+    saveToStorage(SUPER_ADMIN_STORAGE_KEYS.COMPANIES, companies);
+  }
+
+  const nextPassword =
+    typeof updates.password === 'string' && updates.password.trim().length > 0
+      ? updates.password
+      : currentUser.password;
+
+  const nextUser = {
+    ...currentUser,
+    name: typeof updates.name === 'string' ? updates.name : currentUser.name,
+    role: (updates.role ?? currentUser.role) as Role,
+    isEnabled: typeof updates.isEnabled === 'boolean' ? updates.isEnabled : currentUser.isEnabled,
+    companyId: nextCompanyId,
+    orgId: nextCompany.orgId ?? currentUser.orgId,
+    password: nextPassword,
+    updatedAt: new Date(),
+  };
+
+  superAdminUsers[userIndex] = nextUser;
+  saveToStorage(SUPER_ADMIN_STORAGE_KEYS.USERS, superAdminUsers);
+
+  upsertUserInGlobalRegistry({
+    id: nextUser.id,
+    name: nextUser.name,
+    email: nextUser.email,
+    role: nextUser.role,
+    orgId: nextUser.orgId,
+    companyId: nextUser.companyId,
+    isEnabled: nextUser.isEnabled !== false,
+    password: nextUser.password,
+  });
+
+  return simulateApi(nextUser);
 };

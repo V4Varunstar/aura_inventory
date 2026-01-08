@@ -246,6 +246,33 @@ export const addUserToGlobalRegistry = (userData: {
   }
 };
 
+export const upsertUserInGlobalRegistry = (userData: {
+  id: string;
+  name: string;
+  email: string;
+  role: Role;
+  orgId: string;
+  companyId?: string;
+  isEnabled: boolean;
+  password: string;
+}) => {
+  const existingUser = users.find(u => u.email === userData.email);
+  if (!existingUser) {
+    addUserToGlobalRegistry(userData);
+    return;
+  }
+
+  (existingUser as any).id = userData.id;
+  (existingUser as any).name = userData.name;
+  (existingUser as any).role = userData.role;
+  (existingUser as any).orgId = userData.orgId;
+  (existingUser as any).companyId = userData.companyId;
+  (existingUser as any).isEnabled = userData.isEnabled;
+  (existingUser as any).password = userData.password;
+  (existingUser as any).updatedAt = new Date();
+  console.log('✅ Updated user in global registry:', userData.email);
+};
+
 // Initialize users from localStorage on app start (optimized with caching)
 const initializeUsersFromStorage = () => {
   try {

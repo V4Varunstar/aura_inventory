@@ -5,12 +5,15 @@ import Input from '../../components/ui/Input';
 import Modal from '../../components/ui/Modal';
 import Select from '../../components/ui/Select';
 import { Company, Role } from '../../types';
-import { createCompanyUser, getAllCompanies } from '../../services/superAdminService';
+import { createCompanyUser, getAllCompanies, updateCompanyUser } from '../../services/superAdminService';
 
 type StoredSuperAdminUser = {
   id?: string;
   name?: string;
   email?: string;
+  companyId?: string;
+  orgId?: string;
+  password?: string;
   role?: Role | string;
   isEnabled?: boolean;
   createdAt?: string | Date;
@@ -38,6 +41,22 @@ const SuperAdminUsers: React.FC = () => {
     password: '',
   });
 
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [editTargetEmail, setEditTargetEmail] = useState<string>('');
+  const [editForm, setEditForm] = useState({
+    companyId: '',
+    name: '',
+    role: Role.Manager as Role,
+    password: '',
+    status: 'Active' as 'Active' | 'Blocked',
+  });
+
+  const [showResetModal, setShowResetModal] = useState(false);
+  const [resetting, setResetting] = useState(false);
+  const [resetTargetEmail, setResetTargetEmail] = useState<string>('');
+  const [resetPassword, setResetPassword] = useState('');
+
   useEffect(() => {
     const loadUsers = () => {
       try {
@@ -63,6 +82,62 @@ const SuperAdminUsers: React.FC = () => {
     } catch {
       setCompanies([]);
     }
+  };
+
+  const openEdit = async (email: string) => {
+    const targetEmail = String(email ?? '').trim();
+    if (!targetEmail) return;
+
+    setShowEditModal(true);
+    setEditTargetEmail(targetEmail);
+
+    try {
+      const list = await getAllCompanies();
+      setCompanies(list);
+
+      const raw = localStorage.getItem('superadmin_users');
+      const parsed = raw ? (JSON.parse(raw) as StoredSuperAdminUser[]) : [];
+      const record = Array.isArray(parsed)
+        ? parsed.find(
+            (u) => String(u?.email ?? '').trim().toLowerCase() === targetEmail.toLowerCase()
+          )
+        : undefined;
+
+      const fallbackCompanyId = record?.companyId || list[0]?.id || '';
+
+      setEditForm({
+        companyId: fallbackCompanyId,
+        name: String(record?.name ?? ''),
+        role: (record?.role ?? Role.Manager) as Role,
+        password: '',
+        status: record?.isEnabled === false ? 'Blocked' : 'Active',
+      });
+    } catch {
+      // keep modal open, but clear companies to avoid invalid selections
+      setCompanies([]);
+    }
+  };
+
+  const closeEdit = () => {
+    if (editing) return;
+    setShowEditModal(false);
+    setEditTargetEmail('');
+    setEditForm({ companyId: '', name: '', role: Role.Manager, password: '', status: 'Active' });
+  };
+
+  const openResetPassword = (email: string) => {
+    const targetEmail = String(email ?? '').trim();
+    if (!targetEmail) return;
+    setShowResetModal(true);
+    setResetTargetEmail(targetEmail);
+    setResetPassword('');
+  };
+
+  const closeResetPassword = () => {
+    if (resetting) return;
+    setShowResetModal(false);
+    setResetTargetEmail('');
+    setResetPassword('');
   };
 
   const closeCreate = () => {
@@ -132,6 +207,83 @@ const SuperAdminUsers: React.FC = () => {
       addToast(e?.message || 'Failed to create user', 'error');
     } finally {
       setCreating(false);
+    }
+  };
+
+  const handleSaveEdit = async () => {
+    const name = editForm.name.trim();
+    const companyId = editForm.companyId;
+    const role = editForm.role;
+    const password = editForm.password;
+    const isEnabled = editForm.status === 'Active';
+
+    if (!editTargetEmail) {
+      addToast('Missing user email', 'error');
+      return;
+    }
+    if (!companyId) {
+      addToast('Please select a company', 'error');
+      return;
+    }
+    if (!name) {
+      addToast('Please enter name', 'error');
+      return;
+    }
+
+    try {
+      setEditing(true);
+      await updateCompanyUser(editTargetEmail, {
+        name,
+        role,
+        companyId,
+        isEnabled,
+        password: password, // if blank, service keeps old password
+      });
+
+      addToast('User updated successfully', 'success');
+      reloadUsersFromStorage();
+      closeEdit();
+    } catch (e: any) {
+      addToast(e?.message || 'Failed to update user', 'error');
+    } finally {
+      setEditing(false);
+    }
+  };
+
+  const handleResetPassword = async () => {
+    if (!resetTargetEmail) {
+      addToast('Missing user email', 'error');
+      return;
+    }
+    if (!resetPassword.trim()) {
+      addToast('Please enter password', 'error');
+      return;
+    }
+
+    try {
+      setResetting(true);
+      await updateCompanyUser(resetTargetEmail, { password: resetPassword });
+      addToast('Password updated successfully', 'success');
+      reloadUsersFromStorage();
+      closeResetPassword();
+    } catch (e: any) {
+      addToast(e?.message || 'Failed to reset password', 'error');
+    } finally {
+      setResetting(false);
+    }
+  };
+
+  const handleToggleBlock = async (email: string, currentlyEnabled: boolean) => {
+    const targetEmail = String(email ?? '').trim();
+    if (!targetEmail) return;
+
+    try {
+      await updateCompanyUser(targetEmail, { isEnabled: !currentlyEnabled });
+      addToast(!currentlyEnabled ? 'User unblocked' : 'User blocked', 'success');
+      reloadUsersFromStorage();
+      setSelectedIds(new Set());
+    } catch (e: any) {
+      addToast(e?.message || 'Failed to update user status', 'error');
     }
   };
 
@@ -460,7 +612,7 @@ const SuperAdminUsers: React.FC = () => {
                       <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button
                           type="button"
-                          onClick={() => addToast('Edit user (coming soon)', 'info')}
+                          onClick={() => openEdit(u.email)}
                           className="p-1.5 rounded-lg hover:bg-slate-200 dark:hover:bg-[#3f3f5a] text-slate-500 dark:text-slate-400 transition-colors"
                           title="Edit User"
                         >
@@ -468,7 +620,7 @@ const SuperAdminUsers: React.FC = () => {
                         </button>
                         <button
                           type="button"
-                          onClick={() => addToast('Reset password (coming soon)', 'info')}
+                          onClick={() => openResetPassword(u.email)}
                           className="p-1.5 rounded-lg hover:bg-slate-200 dark:hover:bg-[#3f3f5a] text-slate-500 dark:text-slate-400 transition-colors"
                           title="Reset Password"
                         >
@@ -476,11 +628,15 @@ const SuperAdminUsers: React.FC = () => {
                         </button>
                         <button
                           type="button"
-                          onClick={() => addToast('Block user (coming soon)', 'info')}
-                          className="p-1.5 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 text-red-500 transition-colors"
-                          title="Block User"
+                          onClick={() => handleToggleBlock(u.email, u.enabled)}
+                          className={
+                            u.enabled
+                              ? 'p-1.5 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 text-red-500 transition-colors'
+                              : 'p-1.5 rounded-lg hover:bg-green-100 dark:hover:bg-green-900/30 text-green-600 dark:text-green-400 transition-colors'
+                          }
+                          title={u.enabled ? 'Block User' : 'Unblock User'}
                         >
-                          <span className="material-symbols-outlined text-[18px]">block</span>
+                          <span className="material-symbols-outlined text-[18px]">{u.enabled ? 'block' : 'check_circle'}</span>
                         </button>
                       </div>
                     </td>
@@ -615,6 +771,124 @@ const SuperAdminUsers: React.FC = () => {
               type="text"
             />
               <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">Password is required.</div>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={showEditModal}
+        onClose={closeEdit}
+        title="Edit User"
+        footer={
+          <>
+            <Button variant="secondary" onClick={closeEdit} disabled={editing}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveEdit} isLoading={editing}>
+              Save Changes
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <div className="text-sm text-slate-600 dark:text-[#9d9db9]">
+            Editing: <span className="font-medium text-slate-900 dark:text-white">{editTargetEmail}</span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Select
+              label="Company"
+              id="sa-edit-user-company"
+              value={editForm.companyId}
+              onChange={(e) => setEditForm((p) => ({ ...p, companyId: e.target.value }))}
+            >
+              {companies.length === 0 ? (
+                <option value="">No companies found</option>
+              ) : (
+                companies.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))
+              )}
+            </Select>
+
+            <Select
+              label="Role"
+              id="sa-edit-user-role"
+              value={editForm.role}
+              onChange={(e) => setEditForm((p) => ({ ...p, role: e.target.value as Role }))}
+            >
+              <option value={Role.Admin}>Admin</option>
+              <option value={Role.Manager}>Manager</option>
+              <option value={Role.Viewer}>Viewer</option>
+            </Select>
+
+            <Input
+              label="Name"
+              id="sa-edit-user-name"
+              value={editForm.name}
+              onChange={(e) => setEditForm((p) => ({ ...p, name: e.target.value }))}
+              placeholder="User full name"
+            />
+
+            <Select
+              label="Status"
+              id="sa-edit-user-status"
+              value={editForm.status}
+              onChange={(e) => setEditForm((p) => ({ ...p, status: e.target.value as any }))}
+            >
+              <option value="Active">Active</option>
+              <option value="Blocked">Blocked</option>
+            </Select>
+
+            <div className="md:col-span-2">
+              <Input
+                label="Password (optional)"
+                id="sa-edit-user-password"
+                value={editForm.password}
+                onChange={(e) => setEditForm((p) => ({ ...p, password: e.target.value }))}
+                placeholder="Leave blank to keep current password"
+                type="text"
+              />
+              <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                If you type a password here, exactly that password will be saved.
+              </div>
+            </div>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={showResetModal}
+        onClose={closeResetPassword}
+        title="Reset Password"
+        footer={
+          <>
+            <Button variant="secondary" onClick={closeResetPassword} disabled={resetting}>
+              Cancel
+            </Button>
+            <Button onClick={handleResetPassword} isLoading={resetting}>
+              Update Password
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <div className="text-sm text-slate-600 dark:text-[#9d9db9]">
+            Reset password for:{' '}
+            <span className="font-medium text-slate-900 dark:text-white">{resetTargetEmail}</span>
+          </div>
+          <Input
+            label="New Password"
+            id="sa-reset-user-password"
+            value={resetPassword}
+            onChange={(e) => setResetPassword(e.target.value)}
+            placeholder="Enter new password"
+            type="text"
+          />
+          <div className="text-xs text-gray-500 dark:text-gray-400">
+            The password is saved exactly as entered.
           </div>
         </div>
       </Modal>
