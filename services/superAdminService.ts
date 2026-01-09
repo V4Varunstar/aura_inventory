@@ -1,5 +1,12 @@
 import { Company, SuperAdminStats, CreateCompanyRequest, Role, SubscriptionStatus, SubscriptionPlan } from '../types';
 import { upsertUserInGlobalRegistry } from './firebaseService';
+import {
+  fetchAllRemoteCompanies,
+  fetchAllRemoteUsers,
+  isRemoteStoreEnabled,
+  upsertRemoteCompany,
+  upsertRemoteUser,
+} from './superAdminRemoteStore';
 
 // This will be replaced with actual Firestore calls in production
 // For now, using localStorage simulation to match existing pattern
@@ -78,6 +85,25 @@ export const getSuperAdminStats = async (): Promise<SuperAdminStats> => {
 export const getAllCompanies = async (): Promise<Company[]> => {
   try {
     console.log('📊 getAllCompanies called');
+
+    // If Firestore is configured, sync from remote so data is consistent across devices/browsers.
+    if (isRemoteStoreEnabled()) {
+      try {
+        const remoteCompanies = await fetchAllRemoteCompanies();
+        if (remoteCompanies.length > 0) {
+          companies = remoteCompanies.map((c: any) => ({
+            ...(c as any),
+            createdAt: c.createdAt ? new Date(c.createdAt) : new Date(),
+            updatedAt: c.updatedAt ? new Date(c.updatedAt) : new Date(),
+            validFrom: c.validFrom ? new Date(c.validFrom) : new Date(),
+            validTo: c.validTo ? new Date(c.validTo) : new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+          }));
+          saveToStorage(SUPER_ADMIN_STORAGE_KEYS.COMPANIES, companies);
+        }
+      } catch (e) {
+        console.warn('⚠️ Firestore companies sync failed; using localStorage', e);
+      }
+    }
     
     // Reload from localStorage in case data was updated in another tab
     companies = loadFromStorage(SUPER_ADMIN_STORAGE_KEYS.COMPANIES, []);
@@ -135,6 +161,10 @@ export const createCompany = async (request: CreateCompanyRequest): Promise<Comp
   companies.push(newCompany);
   saveToStorage(SUPER_ADMIN_STORAGE_KEYS.COMPANIES, companies);
 
+  if (isRemoteStoreEnabled()) {
+    upsertRemoteCompany(newCompany).catch((e) => console.warn('⚠️ Failed to write company to Firestore', e));
+  }
+
   // Automatically create a default admin user for the company (for easier testing)
   if (request.ownerEmail && request.ownerName) {
     try {
@@ -163,6 +193,10 @@ export const toggleCompanyStatus = async (companyId: string, isActive: boolean):
   companies[companyIndex].isActive = isActive;
   companies[companyIndex].updatedAt = new Date();
   saveToStorage(SUPER_ADMIN_STORAGE_KEYS.COMPANIES, companies);
+
+  if (isRemoteStoreEnabled()) {
+    upsertRemoteCompany(companies[companyIndex]).catch((e) => console.warn('⚠️ Failed to write company to Firestore', e));
+  }
 
   return simulateApi(undefined as any);
 };
@@ -217,6 +251,10 @@ export const createCompanyUser = async (
   // Store user in localStorage (for persistence)
   superAdminUsers.push(newUser);
   saveToStorage(SUPER_ADMIN_STORAGE_KEYS.USERS, superAdminUsers);
+
+  if (isRemoteStoreEnabled()) {
+    upsertRemoteUser(newUser).catch((e) => console.warn('⚠️ Failed to write user to Firestore', e));
+  }
 
   // Add user to global registry for cross-session access
   upsertUserInGlobalRegistry({
@@ -297,6 +335,9 @@ export const updateCompanySubscription = async (
 
   companies[companyIndex] = next;
   saveToStorage(SUPER_ADMIN_STORAGE_KEYS.COMPANIES, companies);
+  if (isRemoteStoreEnabled()) {
+    upsertRemoteCompany(next).catch((e) => console.warn('⚠️ Failed to write company to Firestore', e));
+  }
   return simulateApi(next);
 };
 
@@ -368,6 +409,10 @@ export const updateCompanyUser = async (
   superAdminUsers[userIndex] = nextUser;
   saveToStorage(SUPER_ADMIN_STORAGE_KEYS.USERS, superAdminUsers);
 
+  if (isRemoteStoreEnabled()) {
+    upsertRemoteUser(nextUser).catch((e) => console.warn('⚠️ Failed to write user update to Firestore', e));
+  }
+
   upsertUserInGlobalRegistry({
     id: nextUser.id,
     name: nextUser.name,
@@ -380,4 +425,35 @@ export const updateCompanyUser = async (
   });
 
   return simulateApi(nextUser);
+};
+
+export const syncSuperAdminUsersFromRemote = async (): Promise<void> => {
+  if (!isRemoteStoreEnabled()) return;
+  try {
+    const remoteUsers = await fetchAllRemoteUsers();
+    if (remoteUsers.length === 0) return;
+
+    superAdminUsers = remoteUsers.map((u: any) => ({
+      ...u,
+      createdAt: u.createdAt ? new Date(u.createdAt) : new Date(),
+      updatedAt: u.updatedAt ? new Date(u.updatedAt) : new Date(),
+    }));
+    saveToStorage(SUPER_ADMIN_STORAGE_KEYS.USERS, superAdminUsers);
+
+    superAdminUsers.forEach((u: any) => {
+      if (!u?.email) return;
+      upsertUserInGlobalRegistry({
+        id: u.id,
+        name: u.name,
+        email: u.email,
+        role: u.role,
+        orgId: u.orgId,
+        companyId: u.companyId,
+        isEnabled: u.isEnabled !== false,
+        password: u.password,
+      });
+    });
+  } catch (e) {
+    console.warn('⚠️ Firestore users sync failed; using localStorage', e);
+  }
 };

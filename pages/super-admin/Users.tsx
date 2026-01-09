@@ -5,7 +5,12 @@ import Input from '../../components/ui/Input';
 import Modal from '../../components/ui/Modal';
 import Select from '../../components/ui/Select';
 import { Company, Role } from '../../types';
-import { createCompanyUser, getAllCompanies, updateCompanyUser } from '../../services/superAdminService';
+import {
+  createCompanyUser,
+  getAllCompanies,
+  syncSuperAdminUsersFromRemote,
+  updateCompanyUser,
+} from '../../services/superAdminService';
 
 type StoredSuperAdminUser = {
   id?: string;
@@ -68,7 +73,10 @@ const SuperAdminUsers: React.FC = () => {
       }
     };
 
-    loadUsers();
+    // If Firestore is configured, pull latest users first.
+    syncSuperAdminUsersFromRemote()
+      .catch(() => undefined)
+      .finally(() => loadUsers());
   }, []);
 
   const openCreate = async () => {

@@ -1,4 +1,9 @@
 import {
+  fetchAllRemoteCompanies,
+  fetchAllRemoteUsers,
+  isRemoteStoreEnabled,
+} from './superAdminRemoteStore';
+import {
   User,
   Role,
   Product,
@@ -575,6 +580,30 @@ const getStoredSuperAdminCompanies = (): SuperAdminStoredCompany[] => {
     return [];
   }
 };
+const syncSuperAdminFromRemoteIfNeeded = async (): Promise<void> => {
+  if (!isRemoteStoreEnabled()) return;
+
+  // Only sync when local is empty to avoid extra reads.
+  const localUsers = getStoredSuperAdminUsers();
+  const localCompanies = getStoredSuperAdminCompanies();
+  if (localUsers.length > 0 && localCompanies.length > 0) return;
+
+  try {
+    const [remoteUsers, remoteCompanies] = await Promise.all([
+      localUsers.length > 0 ? Promise.resolve([]) : fetchAllRemoteUsers(),
+      localCompanies.length > 0 ? Promise.resolve([]) : fetchAllRemoteCompanies(),
+    ]);
+
+    if (remoteUsers.length > 0) {
+      localStorage.setItem('superadmin_users', JSON.stringify(remoteUsers));
+    }
+    if (remoteCompanies.length > 0) {
+      localStorage.setItem('superadmin_companies', JSON.stringify(remoteCompanies));
+    }
+  } catch (e) {
+    console.warn('⚠️ Firestore sync failed during login; falling back to localStorage', e);
+  }
+};
 
 const findCompanyForUser = (
   companies: SuperAdminStoredCompany[],
@@ -626,12 +655,14 @@ const validateCompanyAccess = (
 // --- MOCK AUTH FUNCTIONS ---
 export const mockLogin = (email: string, pass: string): Promise<User> => {
   return new Promise((resolve, reject) => {
-    setTimeout(() => {
+    setTimeout(async () => {
       const rawEmail = String(email ?? '');
       const emailNorm = rawEmail.trim().toLowerCase();
       const passRaw = String(pass ?? '');
       const passTrim = passRaw.trim();
       console.log('🔐 mockLogin called for:', rawEmail, '->', emailNorm);
+
+      await syncSuperAdminFromRemoteIfNeeded();
 
       const now = new Date();
       const isDevHost =
