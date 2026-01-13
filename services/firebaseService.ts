@@ -1059,11 +1059,19 @@ export const clearAllProducts = () => {
 };
 
 export const addProduct = (data: Partial<Product>) => {
+  // Ensure new products are scoped to the logged-in org/company.
+  // getProducts() filters by currentUser.orgId for non-SuperAdmin users, so missing orgId
+  // would make the product invisible in the list.
+  const scopedOrgId = data.orgId ?? currentUser?.orgId;
+  const scopedCompanyId = data.companyId ?? currentUser?.companyId;
+
     const newProduct: Product = {
         id: `prod_${Date.now()}`,
         createdAt: new Date(),
         updatedAt: new Date(),
-        ...data
+    ...data,
+    ...(scopedOrgId ? { orgId: scopedOrgId } : {}),
+    ...(scopedCompanyId ? { companyId: scopedCompanyId } : {}),
     } as Product;
     products.push(newProduct);
     saveToStorage(STORAGE_KEYS.PRODUCTS, products);
