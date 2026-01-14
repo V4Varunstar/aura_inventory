@@ -312,6 +312,10 @@ const Products: React.FC = () => {
         setProducts([...products, newProduct]);
         addToast('Product created successfully!', 'success');
       }
+
+      if (showLowStock) {
+        addToast('Low Stock Only is enabled — you may be seeing a filtered list.', 'info');
+      }
       handleCloseModal();
     } catch(error) {
       addToast('Failed to save product.', 'error');
@@ -345,7 +349,9 @@ const Products: React.FC = () => {
   const filteredProducts = showLowStock
     ? products.filter(p => {
         const stock = productStocks[p.id]?.total || 0;
-        return stock > 0 && stock <= p.lowStockThreshold;
+        const threshold = p.lowStockThreshold ?? p.minStockThreshold ?? 0;
+        // Include out-of-stock items (0) as low stock too.
+        return stock <= threshold;
       })
     : products;
 
@@ -360,7 +366,8 @@ const Products: React.FC = () => {
       accessor: 'id', 
       render: (item: Product) => {
         const stock = productStocks[item.id]?.total || 0;
-        const isLowStock = stock < item.lowStockThreshold;
+        const threshold = item.lowStockThreshold ?? item.minStockThreshold ?? 0;
+        const isLowStock = stock <= threshold;
         return (
           <span className={isLowStock ? 'text-red-600 font-semibold' : 'text-green-600 font-semibold'}>
             {stock}

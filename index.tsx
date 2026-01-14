@@ -5,7 +5,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { CompanyProvider } from './context/CompanyContext';
 import { WarehouseProvider } from './context/WarehouseContext';
 import { ToastProvider, useToast } from './context/ToastContext';
-import { getOutwardRecords, getProducts, getInwardRecords, addProductsBatch } from './services/firebaseService';
+import { getOutwardRecords, getProducts, getInwardRecords, addProductsBatch, addProduct, updateProduct } from './services/firebaseService';
 import { getParties, addParty, updateParty, deleteParty } from './services/partyService';
 import SuperAdminRoute from './components/auth/SuperAdminRoute';
 import * as XLSX from 'xlsx';
@@ -980,28 +980,47 @@ function DashboardPage() {
                     <div><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>Warehouse</label><select style={{width:'100%',padding:'14px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px'}} value={formData.warehouse||''} onChange={(e)=>setFormData({...formData,warehouse:e.target.value})}><option value="">Select Warehouse</option><option>Main Warehouse</option><option>Secondary Warehouse</option></select></div>
                   </div>
                   <div style={{marginTop:'32px',display:'flex',gap:'16px'}}>
-                    <button onClick={()=>{
+                    <button onClick={async ()=>{
                       if(!formData.name || !formData.sku) {
                         addToast('❌ Please enter product name and SKU', 'error');
                         return;
                       }
-                      const newProduct = {
-                        id: Date.now(),
-                        name: formData.name,
-                        sku: formData.sku,
-                        ean: formData.ean || '',
-                        category: formData.category || '',
-                        price: formData.price || 0,
-                        quantity: formData.quantity || 0,
-                        minThreshold: formData.minThreshold || 0,
-                        warehouse: formData.warehouse || ''
-                      };
-                      setProducts([...products, newProduct]);
-                      if(formData.ean) {
-                        setUserProducts({...userProducts, [formData.ean]: {name: formData.name, sku: formData.sku, category: formData.category, price: formData.price}});
+                      try {
+                        const parsedPrice = Number(formData.price || 0);
+                        const parsedQty = Number(formData.quantity || 0);
+                        const parsedThreshold = Number(formData.minThreshold || 0);
+
+                        // Persist to the same store used by "View All" (getProducts())
+                        await addProduct({
+                          name: formData.name,
+                          sku: formData.sku,
+                          ean: formData.ean || '',
+                          category: formData.category || '',
+                          // Support both the dashboard fields and the main Product model
+                          price: parsedPrice,
+                          mrp: parsedPrice,
+                          costPrice: parsedPrice,
+                          quantity: parsedQty,
+                          minThreshold: parsedThreshold,
+                          minStockThreshold: parsedThreshold,
+                          lowStockThreshold: parsedThreshold,
+                          unit: 'pcs',
+                          warehouse: formData.warehouse || ''
+                        } as any);
+
+                        const refreshed = await getProducts();
+                        setRealProducts((refreshed || []).filter((p: any) => !p?.isDeleted));
+
+                        if(formData.ean) {
+                          setUserProducts({...userProducts, [formData.ean]: {name: formData.name, sku: formData.sku, category: formData.category, price: parsedPrice}});
+                        }
+
+                        addToast(`✅ Product "${formData.name}" added successfully!`, 'success');
+                        resetView();
+                      } catch (e) {
+                        console.error('Failed to add product:', e);
+                        addToast('❌ Failed to add product. Please try again.', 'error');
                       }
-                      addToast(`✅ Product "${formData.name}" added successfully!`, 'success');
-                      resetView();
                     }} style={{padding:'14px 40px',background:'linear-gradient(135deg, #3b82f6, #2563eb)',color:'white',border:'none',borderRadius:'12px',fontSize:'16px',fontWeight:'800',cursor:'pointer'}}>💾 Save Product</button>
                     <button onClick={resetView} style={{padding:'14px 40px',background:theme.sidebarHover,color:theme.text,border:`2px solid ${theme.border}`,borderRadius:'12px',fontSize:'16px',fontWeight:'700',cursor:'pointer'}}>Cancel</button>
                   </div>
@@ -1023,17 +1042,50 @@ function DashboardPage() {
                     <div><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>Warehouse</label><select style={{width:'100%',padding:'14px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px'}} value={formData.warehouse||''} onChange={(e)=>setFormData({...formData,warehouse:e.target.value})}><option value="">Select Warehouse</option><option>Main Warehouse</option><option>Secondary Warehouse</option></select></div>
                   </div>
                   <div style={{marginTop:'32px',display:'flex',gap:'16px'}}>
-                    <button onClick={()=>{
+                    <button onClick={async ()=>{
                       if(!formData.name || !formData.sku) {
                         addToast('❌ Please enter product name and SKU', 'error');
                         return;
                       }
-                      setProducts(products.map(p=>p.id===formData.id?{...formData}:p));
-                      if(formData.ean) {
-                        setUserProducts({...userProducts, [formData.ean]: {name: formData.name, sku: formData.sku, category: formData.category, price: formData.price}});
+                      try {
+                        const id = String(formData.id || '');
+                        if (!id) {
+                          addToast('❌ Missing product id', 'error');
+                          return;
+                        }
+
+                        const parsedPrice = Number(formData.price || formData.mrp || 0);
+                        const parsedQty = Number(formData.quantity || 0);
+                        const parsedThreshold = Number(formData.minThreshold || formData.minStockThreshold || formData.lowStockThreshold || 0);
+
+                        await updateProduct(id, {
+                          name: formData.name,
+                          sku: formData.sku,
+                          ean: formData.ean || '',
+                          category: formData.category || '',
+                          price: parsedPrice,
+                          mrp: parsedPrice,
+                          costPrice: Number(formData.costPrice || parsedPrice),
+                          quantity: parsedQty,
+                          minThreshold: parsedThreshold,
+                          minStockThreshold: parsedThreshold,
+                          lowStockThreshold: parsedThreshold,
+                          unit: formData.unit || 'pcs',
+                          warehouse: formData.warehouse || ''
+                        } as any);
+
+                        const refreshed = await getProducts();
+                        setRealProducts((refreshed || []).filter((p: any) => !p?.isDeleted));
+
+                        if(formData.ean) {
+                          setUserProducts({...userProducts, [formData.ean]: {name: formData.name, sku: formData.sku, category: formData.category, price: parsedPrice}});
+                        }
+                        addToast(`✅ Product "${formData.name}" updated successfully!`, 'success');
+                        resetView();
+                      } catch (e) {
+                        console.error('Failed to update product:', e);
+                        addToast('❌ Failed to update product. Please try again.', 'error');
                       }
-                      addToast(`✅ Product "${formData.name}" updated successfully!`, 'success');
-                      resetView();
                     }} style={{padding:'14px 40px',background:'linear-gradient(135deg, #3b82f6, #2563eb)',color:'white',border:'none',borderRadius:'12px',fontSize:'16px',fontWeight:'800',cursor:'pointer'}}>💾 Update Product</button>
                     <button onClick={resetView} style={{padding:'14px 40px',background:theme.sidebarHover,color:theme.text,border:`2px solid ${theme.border}`,borderRadius:'12px',fontSize:'16px',fontWeight:'700',cursor:'pointer'}}>Cancel</button>
                   </div>
@@ -1054,9 +1106,9 @@ function DashboardPage() {
                     </div>
                   </div>
                   <div style={{marginBottom:'16px',padding:'12px 20px',background:theme.sidebarHover,borderRadius:'10px',border:`2px solid ${theme.border}`}}>
-                    <span style={{fontSize:'15px',fontWeight:'700',color:theme.text}}>📊 Total Products: {realProducts.length}</span>
+                    <span style={{fontSize:'15px',fontWeight:'700',color:theme.text}}>📊 Total Products: {realProducts.filter((p: any) => !p?.isDeleted).length}</span>
                   </div>
-                  {realProducts.length === 0 ? (
+                  {realProducts.filter((p: any) => !p?.isDeleted).length === 0 ? (
                     <div style={{textAlign:'center',padding:'60px'}}>
                       <div style={{fontSize:'64px',marginBottom:'16px'}}>📦</div>
                       <p style={{fontSize:'18px',color:theme.textSecondary,marginBottom:'24px'}}>No products found. Try refreshing or add new products.</p>
@@ -1075,23 +1127,36 @@ function DashboardPage() {
                       <table style={{width:'100%',borderCollapse:'collapse'}}>
                         <thead><tr style={{background:theme.sidebarHover,borderBottom:`2px solid ${theme.border}`}}><th style={{padding:'16px',textAlign:'left',color:theme.text,fontWeight:'700'}}>SKU</th><th style={{padding:'16px',textAlign:'left',color:theme.text,fontWeight:'700'}}>Product Name</th><th style={{padding:'16px',textAlign:'left',color:theme.text,fontWeight:'700'}}>Category</th><th style={{padding:'16px',textAlign:'left',color:theme.text,fontWeight:'700'}}>Stock</th><th style={{padding:'16px',textAlign:'left',color:theme.text,fontWeight:'700'}}>Price</th><th style={{padding:'16px',textAlign:'center',color:theme.text,fontWeight:'700'}}>Actions</th></tr></thead>
                         <tbody>
-                          {realProducts.map((p,i)=>(
+                          {realProducts.filter((p: any) => !p?.isDeleted).map((p,i)=>(
                             <tr key={i} style={{borderBottom:`1px solid ${theme.border}`}} onMouseEnter={(e)=>e.currentTarget.style.background=theme.sidebarHover} onMouseLeave={(e)=>e.currentTarget.style.background='transparent'}>
                               <td style={{padding:'16px',color:theme.text,fontWeight:'600'}}>{p.sku}</td>
                               <td style={{padding:'16px',color:theme.text}}>{p.name}</td>
                               <td style={{padding:'16px',color:theme.textSecondary}}>{p.category||'-'}</td>
-                              <td style={{padding:'16px',color:p.quantity<(p.minThreshold||10)?'#ef4444':'#10b981',fontWeight:'700'}}>{p.quantity||0}</td>
-                              <td style={{padding:'16px',color:theme.text,fontWeight:'700'}}>₹{p.price||0}</td>
+                              {(() => {
+                                const qty = Number(p.quantity ?? 0);
+                                const threshold = Number(p.minThreshold ?? p.minStockThreshold ?? p.lowStockThreshold ?? 10);
+                                return (
+                                  <td style={{padding:'16px',color:qty < threshold ? '#ef4444' : '#10b981',fontWeight:'700'}}>{qty}</td>
+                                );
+                              })()}
+                              <td style={{padding:'16px',color:theme.text,fontWeight:'700'}}>₹{Number(p.price ?? p.mrp ?? 0)}</td>
                               <td style={{padding:'16px',display:'flex',gap:'8px',justifyContent:'center'}}>
                                 <button onClick={()=>{
                                   setFormData({...p});
                                   setActiveView('edit-product');
                                   addToast(`✏️ Editing ${p.name}...`,'info');
                                 }} style={{padding:'8px 16px',background:'linear-gradient(135deg, #3b82f6, #2563eb)',color:'white',border:'none',borderRadius:'8px',fontSize:'13px',fontWeight:'700',cursor:'pointer'}}>✏️ Edit</button>
-                                <button onClick={()=>{
+                                <button onClick={async ()=>{
                                   if(window.confirm(`Delete product "${p.name}"?`)){
-                                    setProducts(products.filter(prod=>prod.id!==p.id));
-                                    addToast(`🗑️ Product "${p.name}" deleted!`,'success');
+                                    try {
+                                      await updateProduct(String(p.id), { isDeleted: true } as any);
+                                      const refreshed = await getProducts();
+                                      setRealProducts((refreshed || []).filter((x: any) => !x?.isDeleted));
+                                      addToast(`🗑️ Product "${p.name}" deleted!`,'success');
+                                    } catch (e) {
+                                      console.error('Failed to delete product:', e);
+                                      addToast('❌ Failed to delete product', 'error');
+                                    }
                                   }
                                 }} style={{padding:'8px 16px',background:'linear-gradient(135deg, #ef4444, #dc2626)',color:'white',border:'none',borderRadius:'8px',fontSize:'13px',fontWeight:'700',cursor:'pointer'}}>🗑️ Delete</button>
                               </td>

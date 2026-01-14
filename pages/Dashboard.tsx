@@ -172,9 +172,12 @@ const Dashboard: React.FC = () => {
                         totalValue += data.stock * data.product.costPrice;
                     }
 
-                    // Check low stock threshold
-                    if (data.product && data.product.minStockThreshold && data.stock <= data.product.minStockThreshold && data.stock > 0) {
-                        lowStock.push({ ...data.product, quantity: data.stock });
+                    // Check low stock threshold (treat 0 as low stock too)
+                    if (data.product) {
+                        const threshold = data.product.minStockThreshold ?? data.product.lowStockThreshold;
+                        if (typeof threshold === 'number' && data.stock <= threshold) {
+                            lowStock.push({ ...data.product, quantity: data.stock });
+                        }
                     }
                 });
 
