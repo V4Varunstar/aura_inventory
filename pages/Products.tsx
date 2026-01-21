@@ -10,10 +10,12 @@ import Input from '../components/ui/Input';
 import Select from '../components/ui/Select';
 import Table from '../components/ui/Table';
 import { useToast } from '../context/ToastContext';
-import { PlusCircle, Edit, Trash2, Upload } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, Upload, Download } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { Role } from '../types';
 import BulkUpload from '../components/products/BulkUpload';
+import * as XLSX from 'xlsx';
+import { useWarehouse } from '../context/WarehouseContext';
 
 const ProductForm: React.FC<{
   product: Partial<Product> | null;
@@ -232,20 +234,31 @@ const ProductForm: React.FC<{
 
 const Products: React.FC = () => {
   const location = useLocation();
+  const { selectedWarehouse } = useWarehouse();
   const [products, setProducts] = useState<Product[]>([]);
   const [productStocks, setProductStocks] = useState<any>({});
   const [warehouses, setWarehouses] = useState<any[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
   const [showLowStock, setShowLowStock] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isBulkUploadOpen, setIsBulkUploadOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Partial<Product> | null>(null);
   const [isClearing, setIsClearing] = useState(false);
   const { addToast } = useToast();
   const { user } = useAuth();
+
+  const PAGE_SIZE = 25;
   
   const canEdit = user && [Role.Admin, Role.Manager].includes(user.role);
+
+  const getSelectedWarehouseStock = (productId: string) => {
+    if (!selectedWarehouse) return productStocks[productId]?.total || 0;
+    const byWarehouse = productStocks[productId]?.byWarehouse || {};
+    const value = byWarehouse[selectedWarehouse.id];
+    return typeof value === 'number' ? value : 0;
+  };
 
   const fetchCategories = async () => {
     try {
@@ -345,15 +358,98 @@ const Products: React.FC = () => {
     }
   };
 
+  const handleExportToExcel = () => {
+    if (loading) {
+      addToast('Please wait for products to load.', 'info');
+      return;
+    }
+
+    if (filteredProducts.length === 0) {
+      addToast('No products to export.', 'info');
+      return;
+    }
+
+    try {
+      const warehouseIdToName = new Map<string, string>(
+        (warehouses || []).map((w: any) => [String(w.id), String(w.name || w.id)])
+      );
+
+      const rows = filteredProducts.map((p) => {
+        const stockTotal = productStocks[p.id]?.total ?? 0;
+        const byWarehouse = productStocks[p.id]?.byWarehouse ?? {};
+        const warehouseStock = Object.entries(byWarehouse)
+          .map(([whId, qty]) => `${warehouseIdToName.get(String(whId)) ?? String(whId)}: ${qty}`)
+          .join(', ');
+        const selectedWhStock = selectedWarehouse ? (byWarehouse[selectedWarehouse.id] ?? 0) : '';
+
+        return {
+          SKU: p.sku ?? '',
+          Name: p.name ?? '',
+          EAN: p.ean ?? '',
+          Category: (p as any).category ?? '',
+          Unit: (p as any).unit ?? '',
+          'MRP (₹)': typeof p.mrp === 'number' ? p.mrp : '',
+          'Cost Price (₹)': typeof p.costPrice === 'number' ? p.costPrice : '',
+          'Selling Price (₹)': typeof (p as any).sellingPrice === 'number' ? (p as any).sellingPrice : '',
+          'GST %': typeof (p as any).gstPercentage === 'number' ? (p as any).gstPercentage : '',
+          'Low Stock Threshold': (p as any).lowStockThreshold ?? (p as any).minStockThreshold ?? '',
+          'Selected Warehouse': selectedWarehouse?.name || '',
+          'Selected Warehouse Stock': selectedWhStock,
+          'Total Stock': stockTotal,
+          'Warehouse Stock': warehouseStock,
+        };
+      });
+
+      const worksheet = XLSX.utils.json_to_sheet(rows);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Products');
+
+      const fileDate = new Date().toISOString().slice(0, 10);
+      const fileName = `products-${showLowStock ? 'low-stock-' : ''}${fileDate}.xlsx`;
+      const buffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+      const blob = new Blob([buffer], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      });
+
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+
+      addToast(`Exported ${filteredProducts.length} products.`, 'success');
+    } catch (error) {
+      console.error('Export failed:', error);
+      addToast('Failed to export products.', 'error');
+    }
+  };
+
   // Filter products based on low stock
   const filteredProducts = showLowStock
     ? products.filter(p => {
-        const stock = productStocks[p.id]?.total || 0;
+        const stock = getSelectedWarehouseStock(p.id);
         const threshold = p.lowStockThreshold ?? p.minStockThreshold ?? 0;
         // Include out-of-stock items (0) as low stock too.
         return stock <= threshold;
       })
     : products;
+
+  const totalPages = Math.max(1, Math.ceil(filteredProducts.length / PAGE_SIZE));
+  const currentPageSafe = Math.min(Math.max(1, currentPage), totalPages);
+  const startIndex = (currentPageSafe - 1) * PAGE_SIZE;
+  const endIndex = Math.min(filteredProducts.length, startIndex + PAGE_SIZE);
+  const pagedProducts = React.useMemo(
+    () => filteredProducts.slice(startIndex, endIndex),
+    [filteredProducts, startIndex, endIndex]
+  );
+
+  useEffect(() => {
+    // Reset page when filters/data change so user doesn't land on an empty page.
+    setCurrentPage(1);
+  }, [showLowStock, filteredProducts.length]);
 
   const columns: any[] = [
     { header: 'Image', accessor: 'imageUrl', render: (item: Product) => <img src={item.imageUrl} alt={item.name} className="h-10 w-10 rounded-full object-cover" /> },
@@ -362,10 +458,10 @@ const Products: React.FC = () => {
     { header: 'EAN', accessor: 'ean', render: (item: Product) => item.ean || '-' },
     { header: 'Category', accessor: 'category' },
     { 
-      header: 'Stock', 
+      header: selectedWarehouse ? `Stock (${selectedWarehouse.name})` : 'Stock', 
       accessor: 'id', 
       render: (item: Product) => {
-        const stock = productStocks[item.id]?.total || 0;
+        const stock = getSelectedWarehouseStock(item.id);
         const threshold = item.lowStockThreshold ?? item.minStockThreshold ?? 0;
         const isLowStock = stock <= threshold;
         return (
@@ -429,6 +525,14 @@ const Products: React.FC = () => {
           >
             {showLowStock ? 'Show All' : 'Low Stock Only'}
           </Button>
+          <Button
+            onClick={handleExportToExcel}
+            leftIcon={<Download />}
+            variant="secondary"
+            size="sm"
+          >
+            Export to Excel
+          </Button>
           {canEdit && (
             <>
               <Button 
@@ -464,7 +568,36 @@ const Products: React.FC = () => {
               </div>
             )}
             {(!showLowStock || filteredProducts.length > 0) && (
-              <Table columns={columns} data={filteredProducts} />
+              <>
+                <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+                  <div className="text-sm text-gray-600 dark:text-gray-300">
+                    Showing <span className="font-semibold">{filteredProducts.length === 0 ? 0 : startIndex + 1}</span>-
+                    <span className="font-semibold">{endIndex}</span> of <span className="font-semibold">{filteredProducts.length}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                      disabled={currentPageSafe <= 1}
+                    >
+                      Previous
+                    </Button>
+                    <div className="text-sm text-gray-600 dark:text-gray-300">
+                      Page <span className="font-semibold">{currentPageSafe}</span> / <span className="font-semibold">{totalPages}</span>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                      disabled={currentPageSafe >= totalPages}
+                    >
+                      Next
+                    </Button>
+                  </div>
+                </div>
+                <Table columns={columns} data={pagedProducts} />
+              </>
             )}
           </>
         )}

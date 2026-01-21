@@ -60,6 +60,17 @@ export const WarehouseProvider: React.FC<{ children: ReactNode }> = ({ children 
     refreshWarehouses();
   }, [refreshWarehouses]);
 
+  useEffect(() => {
+    const handler = (event: Event) => {
+      const key = (event as CustomEvent)?.detail?.key;
+      if (key === 'aura_inventory_warehouses') {
+        refreshWarehouses();
+      }
+    };
+    window.addEventListener('__aura_storage_updated__', handler as EventListener);
+    return () => window.removeEventListener('__aura_storage_updated__', handler as EventListener);
+  }, [refreshWarehouses]);
+
   const selectWarehouse = useCallback((warehouseId: string) => {
     const warehouse = warehouses.find(w => w.id === warehouseId);
     if (warehouse && company) {

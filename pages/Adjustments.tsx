@@ -6,14 +6,14 @@ import Input from '../components/ui/Input';
 import Select from '../components/ui/Select';
 import { useToast } from '../context/ToastContext';
 import { Product, Warehouse, AdjustmentType } from '../types';
-import { getProducts, getWarehouses, addAdjustment } from '../services/firebaseService';
+import { getProducts, addAdjustment } from '../services/firebaseService';
+import { useWarehouse } from '../context/WarehouseContext';
 
 const Adjustments: React.FC = () => {
+    const { selectedWarehouse, loading: warehouseLoading } = useWarehouse();
     const [products, setProducts] = useState<Product[]>([]);
-    const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
     const [selectedSku, setSelectedSku] = useState('');
     const [quantity, setQuantity] = useState('');
-    const [warehouseId, setWarehouseId] = useState('');
     const [type, setType] = useState<AdjustmentType>(AdjustmentType.Damage);
     const [notes, setNotes] = useState('');
     const [isLoading, setIsLoading] = useState(false);
@@ -22,7 +22,6 @@ const Adjustments: React.FC = () => {
     useEffect(() => {
         const fetchData = async () => {
             setProducts(await getProducts());
-            setWarehouses(await getWarehouses());
         };
         fetchData();
     }, []);
@@ -30,7 +29,6 @@ const Adjustments: React.FC = () => {
     const resetForm = () => {
         setSelectedSku('');
         setQuantity('');
-        setWarehouseId('');
         setType(AdjustmentType.Damage);
         setNotes('');
     }
@@ -39,19 +37,32 @@ const Adjustments: React.FC = () => {
         e.preventDefault();
         setIsLoading(true);
         const selectedProduct = products.find(p => p.sku === selectedSku);
-        if (!selectedProduct || !warehouseId || !quantity) {
+        if (!selectedProduct || !selectedWarehouse || !quantity) {
             addToast('Please fill all required fields.', 'error');
             setIsLoading(false);
             return;
         }
 
+        if (!notes.trim()) {
+            addToast('Please enter reason / notes.', 'error');
+            setIsLoading(false);
+            return;
+        }
+
+        const qty = Number(quantity);
+        const adjustmentType: 'Increase' | 'Decrease' = qty >= 0 ? 'Increase' : 'Decrease';
+
         try {
             await addAdjustment({
                 productId: selectedProduct.id,
                 sku: selectedSku,
+                productName: selectedProduct.name,
                 quantity: Number(quantity),
-                warehouseId,
+                warehouseId: selectedWarehouse.id,
+                warehouseName: selectedWarehouse.name,
                 type,
+                adjustmentType,
+                reason: notes.trim(),
                 notes,
             });
             addToast('Stock adjustment recorded successfully!', 'success');
@@ -68,17 +79,27 @@ const Adjustments: React.FC = () => {
         <div className="space-y-6">
             <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-200">Stock Adjustments</h1>
             <Card title="Create New Stock Adjustment">
+                {warehouseLoading ? (
+                    <div className="p-4 text-sm text-gray-600 dark:text-gray-400">Loading warehouse...</div>
+                ) : !selectedWarehouse ? (
+                    <div className="p-4 text-sm text-yellow-700 dark:text-yellow-400">
+                        Please select a warehouse from the top-right selector.
+                    </div>
+                ) : (
                 <form onSubmit={handleSubmit}>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="md:col-span-2">
+                            <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
+                                <p className="text-sm text-blue-800 dark:text-blue-200">
+                                    <strong>Warehouse:</strong> {selectedWarehouse.name}
+                                </p>
+                            </div>
+                        </div>
                         <Select label="Product (SKU)" value={selectedSku} onChange={e => setSelectedSku(e.target.value)} required>
                             <option value="">Select a product</option>
                             {products.map(p => <option key={p.id} value={p.sku}>{p.name} ({p.sku})</option>)}
                         </Select>
                         <Input label="Quantity" type="number" value={quantity} onChange={e => setQuantity(e.target.value)} required placeholder="Use negative for reduction (e.g., -10)"/>
-                         <Select label="Warehouse" value={warehouseId} onChange={e => setWarehouseId(e.target.value)} required>
-                             <option value="">Select a warehouse</option>
-                            {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
-                        </Select>
                         <Select label="Adjustment Type" value={type} onChange={e => setType(e.target.value as AdjustmentType)} required>
                             {Object.values(AdjustmentType).map(t => <option key={t} value={t}>{t}</option>)}
                         </Select>
@@ -88,9 +109,10 @@ const Adjustments: React.FC = () => {
                         </div>
                     </div>
                     <div className="mt-6 flex justify-end">
-                        <Button type="submit" isLoading={isLoading}>Submit Adjustment</Button>
+                        <Button type="submit" isLoading={isLoading} disabled={!selectedWarehouse}>Submit Adjustment</Button>
                     </div>
                 </form>
+                )}
             </Card>
         </div>
     );

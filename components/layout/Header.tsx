@@ -3,6 +3,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Menu, User, LogOut, Search } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import WarehouseSelector from '../ui/WarehouseSelector';
+import { useWarehouse } from '../../context/WarehouseContext';
 
 interface HeaderProps {
   setSidebarOpen: (open: boolean) => void;
@@ -10,6 +11,7 @@ interface HeaderProps {
 
 const Header: React.FC<HeaderProps> = ({ setSidebarOpen }) => {
   const { user, logout } = useAuth();
+  const { selectedWarehouse } = useWarehouse();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -32,10 +34,7 @@ const Header: React.FC<HeaderProps> = ({ setSidebarOpen }) => {
         >
           <Menu size={24} />
         </button>
-        
-        {/* Warehouse Selector */}
-        <WarehouseSelector />
-        
+
         <div className="relative ml-4 hidden md:block">
           <span className="absolute inset-y-0 left-0 flex items-center pl-3">
              <Search className="h-5 w-5 text-gray-400" />
@@ -47,7 +46,22 @@ const Header: React.FC<HeaderProps> = ({ setSidebarOpen }) => {
           />
         </div>
       </div>
-      <div className="flex items-center">
+      <div className="flex items-center gap-3">
+        {/* Top-right Warehouse Selector */}
+        <div className="hidden sm:block">
+          <WarehouseSelector />
+        </div>
+
+        {/* Active warehouse badge */}
+        {selectedWarehouse && (
+          <div className="flex items-center gap-2 px-2 sm:px-3 py-1.5 rounded-full border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 max-w-[9.5rem] sm:max-w-[14rem]">
+            <span className="hidden sm:inline text-xs text-gray-500 dark:text-gray-400">Currently:</span>
+            <span className="text-xs font-semibold text-gray-800 dark:text-gray-200 truncate">
+              {selectedWarehouse.name}
+            </span>
+          </div>
+        )}
+
         <div className="relative" ref={dropdownRef}>
           <button
             onClick={() => setDropdownOpen(!dropdownOpen)}

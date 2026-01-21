@@ -376,6 +376,26 @@ const STORAGE_KEYS = {
   COURIER_PARTNERS: 'aura_inventory_courier_partners',
 };
 
+// In some flows (logout/login, refresh, module re-init), the in-memory `currentUser`
+// can be temporarily null even though the session exists in localStorage.
+// This helper restores a usable user object so tenant-scoped data (products, etc.)
+// does not become "invisible" after re-login.
+const getCurrentUserSafe = (): User | null => {
+  if (currentUser) return currentUser;
+  try {
+    const raw = localStorage.getItem(SESSION_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed === 'object' && parsed.email && parsed.id && parsed.role) {
+      currentUser = parsed as User;
+      return currentUser;
+    }
+  } catch {
+    // ignore
+  }
+  return null;
+};
+
 // Session protection - prevent accidental clearing
 const backupSession = () => {
   try {
@@ -515,9 +535,52 @@ cleanCorruptedOutwardData();
 const saveToStorage = (key: string, data: any) => {
   try {
     localStorage.setItem(key, JSON.stringify(data));
+
+    // Notify same-tab listeners (storage event doesn't fire in the same tab)
+    try {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('__aura_storage_updated__', { detail: { key } }));
+      }
+    } catch {
+      // ignore
+    }
   } catch (error) {
     console.error('Error saving to localStorage:', error);
   }
+};
+
+const normalizeIsDeletedFlag = (value: unknown): boolean | undefined => {
+  if (value === undefined) return undefined;
+  if (value === null) return undefined;
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'number') return value === 1;
+  if (typeof value === 'string') {
+    const v = value.trim().toLowerCase();
+    if (v === 'true' || v === '1' || v === 'yes') return true;
+    if (v === 'false' || v === '0' || v === 'no' || v === '') return false;
+  }
+  // Unknown truthy values should NOT hide records.
+  return false;
+};
+
+const normalizeProductRecord = (product: any): { changed: boolean } => {
+  let changed = false;
+  if (!product || typeof product !== 'object') return { changed: false };
+
+  if ('isDeleted' in product) {
+    const normalized = normalizeIsDeletedFlag((product as any).isDeleted);
+    if (normalized === undefined) {
+      if ((product as any).isDeleted !== undefined) {
+        delete (product as any).isDeleted;
+        changed = true;
+      }
+    } else if ((product as any).isDeleted !== normalized) {
+      (product as any).isDeleted = normalized;
+      changed = true;
+    }
+  }
+
+  return { changed };
 };
 
 const loadFromStorage = <T>(key: string, defaultValue: T): T => {
@@ -1039,13 +1102,39 @@ export const updatePassword = (userId: string, currentPassword: string, newPassw
 export const getProducts = () => {
     // CRITICAL: Force reload from localStorage to get latest data
     reloadDataFromStorage();
+
+  const user = getCurrentUserSafe();
+
+  // Filter by current user's orgId if not SuperAdmin.
+  // Backward compatibility: older product rows may not have orgId/companyId saved.
+  // Those would incorrectly disappear after logout/login because of tenant filtering.
+  let didBackfillScope = false;
+  let filteredProducts = products;
+  if (user && user.orgId && user.role !== 'SuperAdmin') {
+    const orgId = user.orgId;
+    const companyId = (user as any).companyId;
+
+    // Treat missing orgId as belonging to the current org (single-tenant localStorage).
+    // Also persist the scope once so future loads stay consistent.
+    for (const product of products) {
+      const missingOrg = !product.orgId || String(product.orgId).trim() === '';
+      if (missingOrg) {
+        (product as any).orgId = orgId;
+        if (companyId && (!product.companyId || String(product.companyId).trim() === '')) {
+          (product as any).companyId = companyId;
+        }
+        didBackfillScope = true;
+      }
+    }
+
+    if (didBackfillScope) {
+      saveToStorage(STORAGE_KEYS.PRODUCTS, products);
+    }
+
+    filteredProducts = products.filter(p => p.orgId === orgId);
+  }
     
-    // Filter by current user's orgId if not SuperAdmin
-    const filteredProducts = currentUser && currentUser.orgId && currentUser.role !== 'SuperAdmin'
-        ? products.filter(p => p.orgId === currentUser.orgId)
-        : products;
-    
-    console.log('📦 getProducts: Total in DB:', products.length, 'Filtered for user:', filteredProducts.length);
+    console.log('📦 getProducts: Total in DB:', products.length, 'Filtered for user:', filteredProducts.length, 'Backfilled scope:', didBackfillScope);
     
     return simulateApi([...filteredProducts]);
 };
@@ -1062,8 +1151,9 @@ export const addProduct = (data: Partial<Product>) => {
   // Ensure new products are scoped to the logged-in org/company.
   // getProducts() filters by currentUser.orgId for non-SuperAdmin users, so missing orgId
   // would make the product invisible in the list.
-  const scopedOrgId = data.orgId ?? currentUser?.orgId;
-  const scopedCompanyId = data.companyId ?? currentUser?.companyId;
+  const user = getCurrentUserSafe();
+  const scopedOrgId = data.orgId ?? user?.orgId;
+  const scopedCompanyId = data.companyId ?? (user as any)?.companyId;
 
     const newProduct: Product = {
         id: `prod_${Date.now()}`,
@@ -1264,9 +1354,19 @@ const reloadDataFromStorage = () => {
   cache.clear();
   
   const initProducts = loadFromStorage<Product[]>(STORAGE_KEYS.PRODUCTS, []);
+  // Normalize legacy/invalid flags so UI filters remain consistent.
+  let productsChanged = false;
+  initProducts.forEach((p: any) => {
+    if (normalizeProductRecord(p).changed) productsChanged = true;
+  });
   products.length = 0;
   products.push(...initProducts);
   console.log('🔄 Reloaded', initProducts.length, 'products from localStorage');
+
+  if (productsChanged) {
+    saveToStorage(STORAGE_KEYS.PRODUCTS, products);
+    console.log('🧹 Normalized legacy product fields (e.g. isDeleted)');
+  }
   
   // Reload warehouses
   const initWarehouses = loadFromStorage<Warehouse[]>(STORAGE_KEYS.WAREHOUSES, []);
@@ -1653,7 +1753,7 @@ export const addAdjustment = (data: Partial<Adjustment>) => {
 export const getAdjustmentRecords = () => simulateApi(adjustmentRecords);
 
 // Today's Sales Analytics
-export const getTodaysSalesData = async () => {
+export const getTodaysSalesData = async (warehouseId?: string) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const tomorrow = new Date(today);
@@ -1662,7 +1762,10 @@ export const getTodaysSalesData = async () => {
     // Use real outward records as sales data (instead of mock orders)
     const todaysOutward = outwardRecords.filter(record => {
         const recordDate = new Date(record.createdAt);
-        return recordDate >= today && recordDate < tomorrow;
+      const dateMatch = recordDate >= today && recordDate < tomorrow;
+      if (!dateMatch) return false;
+      if (warehouseId && record.warehouseId !== warehouseId) return false;
+      return true;
     });
     
     // Calculate total sold today from real outward records
@@ -1755,20 +1858,28 @@ export const getTodaysSalesData = async () => {
 };
 
 // Dashboard
-export const getDashboardData = async () => {
+export const getDashboardData = async (warehouseId?: string) => {
     // Get today's date range
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
     
+    // Filter to selected warehouse (if any)
+    const scopedInwardRecords = warehouseId
+      ? inwardRecords.filter(r => r.warehouseId === warehouseId)
+      : inwardRecords;
+    const scopedOutwardRecords = warehouseId
+      ? outwardRecords.filter(r => r.warehouseId === warehouseId)
+      : outwardRecords;
+
     // Calculate real inward and outward for today
-    const todaysInward = inwardRecords.filter(record => {
+    const todaysInward = scopedInwardRecords.filter(record => {
         const recordDate = new Date(record.createdAt);
         return recordDate >= today && recordDate < tomorrow;
     }).reduce((sum, record) => sum + record.quantity, 0);
     
-    const todaysOutward = outwardRecords.filter(record => {
+    const todaysOutward = scopedOutwardRecords.filter(record => {
         const recordDate = new Date(record.createdAt);
         return recordDate >= today && recordDate < tomorrow;
     }).reduce((sum, record) => sum + record.quantity, 0);
@@ -1784,13 +1895,13 @@ export const getDashboardData = async () => {
     const stockBySku = new Map<string, number>();
     
     // Add inward quantities
-    inwardRecords.forEach(record => {
+    scopedInwardRecords.forEach(record => {
         const current = stockBySku.get(record.sku) || 0;
         stockBySku.set(record.sku, current + record.quantity);
     });
     
     // Subtract outward quantities
-    outwardRecords.forEach(record => {
+    scopedOutwardRecords.forEach(record => {
         const current = stockBySku.get(record.sku) || 0;
         stockBySku.set(record.sku, current - record.quantity);
     });
@@ -1812,14 +1923,35 @@ export const getDashboardData = async () => {
     
     console.log(`Total Inventory: ${totalUnits} pcs, Value: ₹${totalStockValue.toFixed(2)}`);
     
-    // Calculate low stock items
-    const lowStockItems = products.filter(product => {
-        const stock = stockBySku.get(product.sku) || 0;
-        return stock > 0 && stock <= product.lowStockThreshold;
-    }).length;
+    // Calculate low stock SKUs (deduped by SKU)
+    const lowStockSkuSet = new Set<string>();
+    products.forEach((product: any) => {
+      if (!product || product.isDeleted === true) return;
+      const sku = String(product.sku || '').trim();
+      if (!sku) return;
+      const stock = stockBySku.get(sku) || 0;
+      const thresholdRaw = product.lowStockThreshold ?? product.minStockThreshold ?? product.minThreshold ?? 0;
+      const threshold = Number(thresholdRaw) || 0;
+
+      // Include out-of-stock items too (stock=0) as low stock.
+      if (stock <= threshold) {
+        lowStockSkuSet.add(sku);
+      }
+    });
+    const lowStockItems = lowStockSkuSet.size;
     
-    // Active SKUs (products with stock > 0)
-    const activeSKUs = Array.from(stockBySku.values()).filter(qty => qty > 0).length;
+    // Active SKUs (non-deleted products with stock > 0)
+    // NOTE: stockBySku can include orphan SKUs from historical inward/outward rows.
+    // Align KPI with the Products page by counting only SKUs that still exist in products.
+    const activeSkuSet = new Set<string>();
+    products.forEach((product: any) => {
+      if (!product || product.isDeleted === true) return;
+      const sku = String(product.sku || '').trim();
+      if (!sku) return;
+      const qty = stockBySku.get(sku) || 0;
+      if (qty > 0) activeSkuSet.add(sku);
+    });
+    const activeSKUs = activeSkuSet.size;
     
     // Calculate expiring items (products with batches expiring within 6 months)
     const sixMonthsFromNow = new Date();
@@ -1832,7 +1964,7 @@ export const getDashboardData = async () => {
     console.log('Six months from now:', sixMonthsFromNow.toLocaleDateString());
     console.log('Total inward records:', inwardRecords.length);
     
-    inwardRecords.forEach(record => {
+    scopedInwardRecords.forEach(record => {
         if (record.expDate) {
             const expDate = new Date(record.expDate);
             expDate.setHours(0, 0, 0, 0);
@@ -1876,12 +2008,12 @@ export const getDashboardData = async () => {
         const nextDate = new Date(date);
         nextDate.setDate(nextDate.getDate() + 1);
         
-        const dayInward = inwardRecords.filter(record => {
+        const dayInward = scopedInwardRecords.filter(record => {
             const recordDate = new Date(record.createdAt);
             return recordDate >= date && recordDate < nextDate;
         }).reduce((sum, record) => sum + record.quantity, 0);
         
-        const dayOutward = outwardRecords.filter(record => {
+        const dayOutward = scopedOutwardRecords.filter(record => {
             const recordDate = new Date(record.createdAt);
             return recordDate >= date && recordDate < nextDate;
         }).reduce((sum, record) => sum + record.quantity, 0);
@@ -1904,7 +2036,7 @@ export const getDashboardData = async () => {
     console.log('Dashboard - outwardSources:', outwardSources);
     console.log('Dashboard - outwardRecords sample:', outwardRecords.slice(0, 3));
     
-    outwardRecords.forEach(record => {
+    scopedOutwardRecords.forEach(record => {
         let destination = 'Unknown';
         
         // First check if destination is already a readable name
@@ -1961,19 +2093,23 @@ export const getDashboardData = async () => {
     
     // Calculate stock by warehouse
     const warehouseStockMap = new Map<string, number>();
-    inwardRecords.forEach(record => {
+    scopedInwardRecords.forEach(record => {
         const current = warehouseStockMap.get(record.warehouseId) || 0;
         warehouseStockMap.set(record.warehouseId, current + record.quantity);
     });
-    outwardRecords.forEach(record => {
+    scopedOutwardRecords.forEach(record => {
         const current = warehouseStockMap.get(record.warehouseId) || 0;
         warehouseStockMap.set(record.warehouseId, current - record.quantity);
     });
-    
-    const stockByWarehouse = warehouses.map(w => ({
+
+    const stockByWarehouse = warehouseId
+      ? warehouses
+        .filter(w => w.id === warehouseId)
+        .map(w => ({ name: w.name, value: warehouseStockMap.get(w.id) || 0 }))
+      : warehouses.map(w => ({
         name: w.name,
         value: warehouseStockMap.get(w.id) || 0
-    }));
+      }));
     
     // Get top SKUs by stock
     const topSKUsByStock = Array.from(stockBySku.entries())

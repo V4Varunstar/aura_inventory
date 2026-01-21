@@ -29,6 +29,7 @@ import {
 import { ActivityLog, Product, Role, Inward, Outward } from '../types';
 import Table from '../components/ui/Table';
 import { useAuth } from '../context/AuthContext';
+import { useWarehouse } from '../context/WarehouseContext';
 
 interface DashboardData {
     summary: {
@@ -80,8 +81,7 @@ const COLORS = ['#10b981', '#3b82f6', '#ef4444', '#f97316', '#8b5cf6'];
 const Dashboard: React.FC = () => {
     const navigate = useNavigate();
     const { user } = useAuth();
-    // const { selectedWarehouse } = useSafeWarehouse();
-    const selectedWarehouse = null; // Temporary: no warehouse context
+    const { selectedWarehouse, loading: warehouseLoading } = useWarehouse();
     const [data, setData] = useState<DashboardData | null>(null);
     const [todaysSalesData, setTodaysSalesData] = useState<TodaysSalesData | null>(null);
     const [warehouseStats, setWarehouseStats] = useState<{
@@ -96,11 +96,14 @@ const Dashboard: React.FC = () => {
     
     useEffect(() => {
         const fetchData = async () => {
+            // Wait until warehouse list is loaded so selectedWarehouse is stable
+            if (warehouseLoading) return;
             try {
                 console.log('Fetching dashboard data...');
+                const warehouseId = selectedWarehouse?.id;
                 const [dashboardData, salesData] = await Promise.all([
-                    getDashboardData(),
-                    getTodaysSalesData(),
+                    getDashboardData(warehouseId),
+                    getTodaysSalesData(warehouseId),
                 ]);
                 console.log('Dashboard data:', dashboardData);
                 console.log('Today\'s sales data:', salesData);
@@ -113,8 +116,9 @@ const Dashboard: React.FC = () => {
                 setLoading(false);
             }
         };
+        setLoading(true);
         fetchData();
-    }, []);
+    }, [selectedWarehouse?.id, warehouseLoading]);
 
     // Fetch warehouse-specific stats when warehouse changes
     useEffect(() => {

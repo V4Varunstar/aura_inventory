@@ -14,6 +14,7 @@ import {
 import { getParties } from '../services/partyService';
 import { useCompany } from '../context/CompanyContext';
 import { useToast } from '../context/ToastContext';
+import { useWarehouse } from '../context/WarehouseContext';
 import { Product, Warehouse, Inward, Outward, Party } from '../types';
 
 type ReportType =
@@ -80,6 +81,7 @@ interface ValueAnalysisData {
 const Reports: React.FC = () => {
   const { company } = useCompany();
   const { addToast } = useToast();
+  const { selectedWarehouse } = useWarehouse();
 
   const [reportType, setReportType] = useState<ReportType>('inward');
   const [filters, setFilters] = useState<ReportFilters>({
@@ -97,6 +99,16 @@ const Reports: React.FC = () => {
   const [valueAnalysisData, setValueAnalysisData] = useState<ValueAnalysisData | null>(null);
   const [loading, setLoading] = useState(false);
   const [dataLoading, setDataLoading] = useState(true);
+
+  const effectiveWarehouseId = selectedWarehouse?.id || filters.warehouseId;
+
+  // Keep report scoped to the globally selected warehouse
+  useEffect(() => {
+    if (!selectedWarehouse) return;
+    setFilters((prev) => ({ ...prev, warehouseId: selectedWarehouse.id }));
+    setReportData([]);
+    setValueAnalysisData(null);
+  }, [selectedWarehouse?.id]);
 
   // Load initial data
   useEffect(() => {
@@ -239,8 +251,8 @@ const Reports: React.FC = () => {
     });
 
     // Apply filters
-    if (filters.warehouseId) {
-      records = records.filter((r) => r.warehouseId === filters.warehouseId);
+    if (effectiveWarehouseId) {
+      records = records.filter((r) => r.warehouseId === effectiveWarehouseId);
     }
     if (filters.productId) {
       records = records.filter((r) => r.productId === filters.productId);
@@ -288,8 +300,8 @@ const Reports: React.FC = () => {
     });
 
     // Apply filters
-    if (filters.warehouseId) {
-      records = records.filter((r) => r.warehouseId === filters.warehouseId);
+    if (effectiveWarehouseId) {
+      records = records.filter((r) => r.warehouseId === effectiveWarehouseId);
     }
     if (filters.productId) {
       records = records.filter((r) => r.productId === filters.productId);
@@ -344,7 +356,7 @@ const Reports: React.FC = () => {
       const stock = calculateStock(productId, warehouseId);
       
       // Apply filters
-      if (filters.warehouseId && stock.warehouseId !== filters.warehouseId) return;
+      if (effectiveWarehouseId && stock.warehouseId !== effectiveWarehouseId) return;
       if (filters.productId && stock.productId !== filters.productId) return;
       
       stockMap.set(combo, stock);
@@ -382,7 +394,7 @@ const Reports: React.FC = () => {
       const stock = calculateStock(productId, warehouseId);
       
       // Apply filters
-      if (filters.warehouseId && stock.warehouseId !== filters.warehouseId) return;
+      if (effectiveWarehouseId && stock.warehouseId !== effectiveWarehouseId) return;
       if (filters.productId && stock.productId !== filters.productId) return;
       
       // Only include if stock is below or equal to threshold
@@ -499,11 +511,11 @@ const Reports: React.FC = () => {
     });
 
     // Apply filters
-    const inwardFiltered = filters.warehouseId
-      ? filteredInward.filter((i) => i.warehouseId === filters.warehouseId)
+    const inwardFiltered = effectiveWarehouseId
+      ? filteredInward.filter((i) => i.warehouseId === effectiveWarehouseId)
       : filteredInward;
-    const outwardFiltered = filters.warehouseId
-      ? filteredOutward.filter((o) => o.warehouseId === filters.warehouseId)
+    const outwardFiltered = effectiveWarehouseId
+      ? filteredOutward.filter((o) => o.warehouseId === effectiveWarehouseId)
       : filteredOutward;
 
     // Group by date
@@ -581,11 +593,11 @@ const Reports: React.FC = () => {
     });
 
     // Apply filters
-    const inwardFiltered = filters.warehouseId
-      ? filteredInward.filter((i) => i.warehouseId === filters.warehouseId)
+    const inwardFiltered = effectiveWarehouseId
+      ? filteredInward.filter((i) => i.warehouseId === effectiveWarehouseId)
       : filteredInward;
-    const outwardFiltered = filters.warehouseId
-      ? filteredOutward.filter((o) => o.warehouseId === filters.warehouseId)
+    const outwardFiltered = effectiveWarehouseId
+      ? filteredOutward.filter((o) => o.warehouseId === effectiveWarehouseId)
       : filteredOutward;
 
     const totalInwardQty = inwardFiltered.reduce((sum, i) => sum + i.quantity, 0);
@@ -613,7 +625,7 @@ const Reports: React.FC = () => {
 
     combinations.forEach((combo) => {
       const [productId, warehouseId] = combo.split('_');
-      if (filters.warehouseId && warehouseId !== filters.warehouseId) return;
+      if (effectiveWarehouseId && warehouseId !== effectiveWarehouseId) return;
       const stock = calculateStock(productId, warehouseId);
       stockMap.set(combo, stock);
     });
@@ -727,7 +739,8 @@ const Reports: React.FC = () => {
     'valueAnalysis',
   ].includes(reportType);
 
-  const showWarehouseFilter = true; // All reports support warehouse filter
+  // If a global warehouse is selected, hide the per-page filter to avoid confusion.
+  const showWarehouseFilter = !selectedWarehouse;
   const showProductFilter = ['inward', 'outward', 'stock', 'lowStock'].includes(
     reportType
   );
@@ -766,48 +779,44 @@ const Reports: React.FC = () => {
         <div className="space-y-4">
           {/* Report Type */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Report Type
-            </label>
             <Select
+              label="Report Type"
               value={reportType}
               onChange={(e) => {
                 setReportType(e.target.value as ReportType);
                 setReportData([]);
                 setValueAnalysisData(null);
               }}
-              options={reportTypeOptions}
-              fullWidth
-            />
+            >
+              {reportTypeOptions.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </Select>
           </div>
 
           {/* Date Filters */}
           {showDateFilters && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Start Date
-                </label>
                 <Input
+                  label="Start Date"
                   type="date"
                   value={filters.startDate}
                   onChange={(e) =>
                     setFilters({ ...filters, startDate: e.target.value })
                   }
-                  fullWidth
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  End Date
-                </label>
                 <Input
+                  label="End Date"
                   type="date"
                   value={filters.endDate}
                   onChange={(e) =>
                     setFilters({ ...filters, endDate: e.target.value })
                   }
-                  fullWidth
                 />
               </div>
             </div>
@@ -818,33 +827,45 @@ const Reports: React.FC = () => {
             {/* Warehouse Filter */}
             {showWarehouseFilter && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Warehouse (Optional)
-                </label>
                 <Select
-                  value={filters.warehouseId || ''}
-                  onChange={(e) =>
+                  label={selectedWarehouse ? 'Warehouse (Selected)' : 'Warehouse (Optional)'}
+                  value={effectiveWarehouseId || ''}
+                  onChange={(e) => {
+                    // If no global selection exists (edge-case), allow fallback to local filter.
+                    if (selectedWarehouse) return;
                     setFilters({
                       ...filters,
                       warehouseId: e.target.value || undefined,
-                    })
-                  }
-                  options={[
-                    { value: '', label: 'All Warehouses' },
-                    ...warehouses.map((w) => ({ value: w.id, label: w.name })),
-                  ]}
-                  fullWidth
-                />
+                    });
+                  }}
+                  disabled={!!selectedWarehouse}
+                >
+                  {selectedWarehouse ? (
+                    <option value={selectedWarehouse.id}>{selectedWarehouse.name}</option>
+                  ) : (
+                    <>
+                      <option value="">All Warehouses</option>
+                      {warehouses.map((w) => (
+                        <option key={w.id} value={w.id}>
+                          {w.name}
+                        </option>
+                      ))}
+                    </>
+                  )}
+                </Select>
+                {selectedWarehouse && (
+                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                    Change warehouse from the top-right selector.
+                  </p>
+                )}
               </div>
             )}
 
             {/* Product Filter */}
             {showProductFilter && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Product (Optional)
-                </label>
                 <Select
+                  label="Product (Optional)"
                   value={filters.productId || ''}
                   onChange={(e) =>
                     setFilters({
@@ -852,25 +873,22 @@ const Reports: React.FC = () => {
                       productId: e.target.value || undefined,
                     })
                   }
-                  options={[
-                    { value: '', label: 'All Products' },
-                    ...products.map((p) => ({
-                      value: p.id,
-                      label: `${p.name} (${p.sku})`,
-                    })),
-                  ]}
-                  fullWidth
-                />
+                >
+                  <option value="">All Products</option>
+                  {products.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name} ({p.sku})
+                    </option>
+                  ))}
+                </Select>
               </div>
             )}
 
             {/* Party Filter */}
             {showPartyFilter && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Party (Optional)
-                </label>
                 <Select
+                  label="Party (Optional)"
                   value={filters.partyId || ''}
                   onChange={(e) =>
                     setFilters({
@@ -878,12 +896,14 @@ const Reports: React.FC = () => {
                       partyId: e.target.value || undefined,
                     })
                   }
-                  options={[
-                    { value: '', label: 'All Parties' },
-                    ...parties.map((p) => ({ value: p.id, label: p.name })),
-                  ]}
-                  fullWidth
-                />
+                >
+                  <option value="">All Parties</option>
+                  {parties.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+                </Select>
               </div>
             )}
           </div>
@@ -892,9 +912,8 @@ const Reports: React.FC = () => {
           <div className="flex space-x-3 pt-4">
             <Button
               onClick={generateReport}
-              loading={loading}
+              isLoading={loading}
               leftIcon={<FileText size={18} />}
-              fullWidth={false}
             >
               Generate Report
             </Button>
@@ -903,7 +922,6 @@ const Reports: React.FC = () => {
                 onClick={exportToExcel}
                 variant="secondary"
                 leftIcon={<Download size={18} />}
-                fullWidth={false}
               >
                 Export to Excel
               </Button>

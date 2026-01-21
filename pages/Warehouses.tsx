@@ -11,6 +11,7 @@ import { getWarehouses, addWarehouse, updateWarehouse, deleteWarehouse } from '.
 import { warehouseHasStock, getWarehouseStock } from '../utils/stockUtils';
 import { useToast } from '../context/ToastContext';
 import { useCompany } from '../context/CompanyContext';
+import { useWarehouse } from '../context/WarehouseContext';
 import { PlusCircle, Edit, Trash2 } from 'lucide-react';
 
 const WarehouseForm: React.FC<{
@@ -69,6 +70,7 @@ const Warehouses: React.FC = () => {
     }>({ isOpen: false, warehouse: null, hasStock: false, stockDetails: [] });
     const { addToast } = useToast();
     const { company } = useCompany();
+    const { refreshWarehouses } = useWarehouse();
 
     useEffect(() => {
         const fetchWarehouses = async () => {
@@ -99,10 +101,12 @@ const Warehouses: React.FC = () => {
             if (data.id) {
                 const updated = await updateWarehouse(data.id, data);
                 setWarehouses(warehouses.map(w => w.id === updated.id ? updated : w));
+          await refreshWarehouses();
                 addToast('Warehouse updated', 'success');
             } else {
                 const created = await addWarehouse(data);
                 setWarehouses([...warehouses, created]);
+          await refreshWarehouses();
                 addToast('Warehouse created', 'success');
             }
             handleCloseModal();
@@ -139,6 +143,7 @@ const Warehouses: React.FC = () => {
         try {
             await deleteWarehouse(deleteModal.warehouse.id, reason);
             setWarehouses(warehouses.filter(w => w.id !== deleteModal.warehouse!.id));
+          await refreshWarehouses();
             addToast('Warehouse deleted successfully', 'success');
             setDeleteModal({ isOpen: false, warehouse: null, hasStock: false, stockDetails: [] });
         } catch (error: any) {

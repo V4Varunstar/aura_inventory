@@ -3,9 +3,19 @@ import ReactDOM from 'react-dom/client';
 import { HashRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { CompanyProvider } from './context/CompanyContext';
-import { WarehouseProvider } from './context/WarehouseContext';
+import { WarehouseProvider, useWarehouse } from './context/WarehouseContext';
 import { ToastProvider, useToast } from './context/ToastContext';
-import { getOutwardRecords, getProducts, getInwardRecords, addProductsBatch, addProduct, updateProduct } from './services/firebaseService';
+import {
+  getOutwardRecords,
+  getProducts,
+  getInwardRecords,
+  addProductsBatch,
+  addProduct,
+  updateProduct,
+  getWarehouses,
+  addWarehouse,
+  updateWarehouse,
+} from './services/firebaseService';
 import { getParties, addParty, updateParty, deleteParty } from './services/partyService';
 import SuperAdminRoute from './components/auth/SuperAdminRoute';
 import * as XLSX from 'xlsx';
@@ -334,6 +344,7 @@ function Login() {
 function DashboardPage() {
   const { user, logout, loading } = useAuth();
   const { addToast } = useToast();
+  const { refreshWarehouses } = useWarehouse();
 
   const SIMPLE_INWARD_KEY = 'aura_inventory_simple_inward_entries';
   const SIMPLE_OUTWARD_KEY = 'aura_inventory_simple_outward_entries';
@@ -387,6 +398,184 @@ function DashboardPage() {
   const [realInwardRecords, setRealInwardRecords] = React.useState<any[]>([]);
   const [parties, setParties] = React.useState<any[]>([]);
   const [partiesLoading, setPartiesLoading] = React.useState(false);
+
+  const [viewProductsPage, setViewProductsPage] = React.useState(1);
+  const VIEW_PRODUCTS_PAGE_SIZE = 25;
+
+  const normalizeSku = React.useCallback((sku: any) => {
+    return String(sku ?? '').trim().toLowerCase();
+  }, []);
+
+  // Single source of truth for SKU-based counts on the dashboard.
+  // - excludes soft-deleted rows
+  // - dedupes by SKU (prevents duplicates inflating Low Stock > Total)
+  const skuProducts = React.useMemo(() => {
+    const map = new Map<string, any>();
+    (realProducts || []).forEach((p: any) => {
+      if (!p || p.isDeleted === true) return;
+      const key = normalizeSku(p.sku);
+      if (!key) return;
+      if (!map.has(key)) map.set(key, p);
+    });
+    return Array.from(map.values());
+  }, [realProducts, normalizeSku]);
+
+  const lowStockSkuProducts = React.useMemo(() => {
+    return skuProducts.filter((p: any) => {
+      const qty = Number.parseFloat(String(p?.quantity ?? '0')) || 0;
+      const threshold =
+        Number.parseFloat(String(p?.lowStockThreshold ?? p?.minThreshold ?? p?.minStockThreshold ?? 10)) || 10;
+      return qty < threshold;
+    });
+  }, [skuProducts]);
+
+  const viewAllProductsItems = skuProducts;
+  const viewProductsTotalPages = Math.max(1, Math.ceil(viewAllProductsItems.length / VIEW_PRODUCTS_PAGE_SIZE));
+  const viewProductsPageSafe = Math.min(Math.max(1, viewProductsPage), viewProductsTotalPages);
+  const viewProductsStart = (viewProductsPageSafe - 1) * VIEW_PRODUCTS_PAGE_SIZE;
+  const viewProductsEnd = Math.min(viewAllProductsItems.length, viewProductsStart + VIEW_PRODUCTS_PAGE_SIZE);
+  const viewProductsPageItems = React.useMemo(
+    () => viewAllProductsItems.slice(viewProductsStart, viewProductsEnd),
+    [viewAllProductsItems, viewProductsStart, viewProductsEnd]
+  );
+
+  React.useEffect(() => {
+    // Keep pagination valid as data changes.
+    setViewProductsPage(1);
+  }, [viewAllProductsItems.length]);
+
+  const handleExportAllProductsToExcel = React.useCallback(() => {
+    if (!viewAllProductsItems || viewAllProductsItems.length === 0) {
+      addToast('ℹ️ No products to export', 'info');
+      return;
+    }
+
+    try {
+      const rows = viewAllProductsItems.map((p: any) => {
+        const qty = Number.parseFloat(String(p?.quantity ?? '0')) || 0;
+        const threshold =
+          Number.parseFloat(String(p?.lowStockThreshold ?? p?.minThreshold ?? p?.minStockThreshold ?? '')) || '';
+        const mrp = Number(p?.mrp ?? p?.price ?? 0);
+        const costPrice = p?.costPrice !== undefined ? Number(p.costPrice) : '';
+        const sellingPrice = p?.sellingPrice !== undefined ? Number(p.sellingPrice) : '';
+        const gst = p?.gstPercentage !== undefined ? Number(p.gstPercentage) : '';
+
+        return {
+          SKU: p?.sku ?? '',
+          Name: p?.name ?? '',
+          EAN: p?.ean ?? '',
+          Category: p?.category ?? '',
+          Unit: p?.unit ?? '',
+          'MRP (₹)': Number.isFinite(mrp) ? mrp : '',
+          'Cost Price (₹)': Number.isFinite(costPrice as any) ? costPrice : costPrice,
+          'Selling Price (₹)': Number.isFinite(sellingPrice as any) ? sellingPrice : sellingPrice,
+          'GST %': Number.isFinite(gst as any) ? gst : gst,
+          'Low Stock Threshold': threshold,
+          Stock: qty,
+        };
+      });
+
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.json_to_sheet(rows);
+      XLSX.utils.book_append_sheet(wb, ws, 'Products');
+
+      const fileDate = new Date().toISOString().slice(0, 10);
+      XLSX.writeFile(wb, `All_Products_${fileDate}.xlsx`);
+      addToast(`✅ Exported ${viewAllProductsItems.length} products`, 'success');
+    } catch (e) {
+      console.error('Export failed:', e);
+      addToast('❌ Failed to export products', 'error');
+    }
+  }, [addToast, viewAllProductsItems]);
+
+  const [settingsWarehouses, setSettingsWarehouses] = React.useState<any[]>([]);
+  const [settingsWarehousesLoading, setSettingsWarehousesLoading] = React.useState(false);
+
+  const refreshSettingsWarehouses = React.useCallback(async () => {
+    setSettingsWarehousesLoading(true);
+    try {
+      const fetched = await getWarehouses();
+      setSettingsWarehouses(Array.isArray(fetched) ? fetched : []);
+    } catch (e) {
+      console.error('Failed to load warehouses:', e);
+      addToast('Failed to load warehouses', 'error');
+      setSettingsWarehouses([]);
+    } finally {
+      setSettingsWarehousesLoading(false);
+    }
+  }, [addToast]);
+
+  const refreshAllWarehouses = React.useCallback(async () => {
+    await refreshSettingsWarehouses();
+    try {
+      await refreshWarehouses();
+    } catch {
+      // ignore
+    }
+  }, [refreshSettingsWarehouses, refreshWarehouses]);
+
+  const goToWarehouseConfig = React.useCallback(() => {
+    setActiveView('warehouse-config');
+    setFormData({});
+  }, []);
+
+  const handleCreateWarehouse = React.useCallback(async () => {
+    const name = String(formData.warehouseName || '').trim();
+    const location = String(formData.warehouseLocation || '').trim();
+    const address = String(formData.address || '').trim();
+
+    if (!name || !location) {
+      addToast('❌ Please fill warehouse name and location', 'error');
+      return;
+    }
+
+    try {
+      await addWarehouse({
+        name,
+        location,
+        address: address || undefined,
+        status: 'Active',
+      });
+      await refreshAllWarehouses();
+      addToast(`✅ Warehouse "${name}" added successfully!`, 'success');
+      goToWarehouseConfig();
+    } catch (e) {
+      console.error('Failed to create warehouse:', e);
+      addToast('Failed to add warehouse', 'error');
+    }
+  }, [addToast, formData, goToWarehouseConfig, refreshAllWarehouses]);
+
+  const handleUpdateWarehouse = React.useCallback(async () => {
+    const id = String(formData.warehouseId || '').trim();
+    const name = String(formData.warehouseName || '').trim();
+    const location = String(formData.warehouseLocation || '').trim();
+    const address = String(formData.address || '').trim();
+    const status = String(formData.warehouseStatus || 'Active').trim() || 'Active';
+
+    if (!id) {
+      addToast('Warehouse not found', 'error');
+      return;
+    }
+    if (!name || !location) {
+      addToast('❌ Please fill warehouse name and location', 'error');
+      return;
+    }
+
+    try {
+      await updateWarehouse(id, {
+        name,
+        location,
+        address: address || undefined,
+        status,
+      });
+      await refreshAllWarehouses();
+      addToast(`✅ Warehouse "${name}" updated successfully!`, 'success');
+      goToWarehouseConfig();
+    } catch (e) {
+      console.error('Failed to update warehouse:', e);
+      addToast('Failed to update warehouse', 'error');
+    }
+  }, [addToast, formData, goToWarehouseConfig, refreshAllWarehouses]);
   
   // Load real data from database
   React.useEffect(() => {
@@ -426,6 +615,12 @@ function DashboardPage() {
     if (!user) return;
     refreshParties();
   }, [loading, user, refreshParties]);
+
+  React.useEffect(() => {
+    if (currentPage === 'settings' && activeView === 'warehouse-config') {
+      refreshAllWarehouses();
+    }
+  }, [activeView, currentPage, refreshAllWarehouses]);
 
   // Persist simple (UI-only) inward/outward entries so they survive refresh
   React.useEffect(() => {
@@ -609,6 +804,10 @@ function DashboardPage() {
     if (view) {
       setActiveView(view);
       addToast(`${action}`, 'success');
+
+      if (view === 'view-products') {
+        setViewProductsPage(1);
+      }
     } else {
       addToast(`${action} - Feature coming soon!`, 'success');
     }
@@ -729,11 +928,11 @@ function DashboardPage() {
               {/* Stats Cards */}
               <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(260px,1fr))',gap:'24px',marginBottom:'40px'}}>
                 {[
-                  {title:'Total SKU',value:realProducts.length.toString(),change:'+0%',icon:'📦',color:'#3b82f6',gradient:'linear-gradient(135deg, #3b82f6, #2563eb)',trend:'up',page:'products',view:''},
+                  {title:'Total SKU',value:skuProducts.length.toString(),change:'+0%',icon:'📦',color:'#3b82f6',gradient:'linear-gradient(135deg, #3b82f6, #2563eb)',trend:'up',page:'products',view:''},
                   {title:"Today's Inward",value:inwardEntries.filter(e=>e.entryDate===new Date().toLocaleDateString('en-IN')).reduce((sum,e)=>sum+(parseInt(e.quantity)||0),0).toString(),change:'+12%',icon:'📥',color:'#10b981',gradient:'linear-gradient(135deg, #10b981, #059669)',trend:'up',page:'inward',view:''},
                   {title:"Today's Outward",value:outwardEntries.filter(e=>e.entryDate===new Date().toLocaleDateString('en-IN')).reduce((sum,e)=>sum+(parseInt(e.quantity)||0),0).toString(),change:'+15%',icon:'📤',color:'#f59e0b',gradient:'linear-gradient(135deg, #f59e0b, #d97706)',trend:'up',page:'outward',view:''},
                   {title:'Inventory Value',value:(()=>{const stockBySku=new Map();inwardEntries.forEach(e=>stockBySku.set(e.sku,(stockBySku.get(e.sku)||0)+(parseInt(e.quantity)||0)));outwardEntries.forEach(e=>stockBySku.set(e.sku,(stockBySku.get(e.sku)||0)-(parseInt(e.quantity)||0)));let total=0;stockBySku.forEach((qty,sku)=>{if(qty>0){const product=realProducts.find(p=>p.sku===sku);if(product){total+=qty*(parseFloat(product.costPrice)||parseFloat(product.mrp)||parseFloat(product.price)||0);}}});return total>=100000?'₹'+(total/100000).toFixed(2)+'L':total>=1000?'₹'+(total/1000).toFixed(2)+'K':'₹'+total.toFixed(0);})(),change:'+0%',icon:'💰',color:'#8b5cf6',gradient:'linear-gradient(135deg, #8b5cf6, #7c3aed)',trend:'up',page:'reports',view:''},
-                  {title:'Low Stock SKU',value:realProducts.filter(p=>(parseFloat(p.quantity)||0)<(parseFloat(p.lowStockThreshold)||parseFloat(p.minThreshold)||10)).length.toString(),change:'-0%',icon:'⚠️',color:'#ef4444',gradient:'linear-gradient(135deg, #ef4444, #dc2626)',trend:'down',page:'reports',view:'low-stock-list'}
+                  {title:'Low Stock SKU',value:lowStockSkuProducts.length.toString(),change:'-0%',icon:'⚠️',color:'#ef4444',gradient:'linear-gradient(135deg, #ef4444, #dc2626)',trend:'down',page:'reports',view:'low-stock-list'}
                 ].map((stat,i)=>(
                   <div key={i} onClick={()=>{setCurrentPage(stat.page);if(stat.view){setActiveView(stat.view);}else{resetView();}addToast(`Opening ${stat.title}...`,'info');}} style={{background:theme.cardBg,padding:'26px',borderRadius:'16px',border:`2px solid ${theme.border}`,transition:'all 0.4s',cursor:'pointer',position:'relative',overflow:'hidden',boxShadow:darkMode?'0 4px 16px rgba(0,0,0,0.3)':'0 4px 16px rgba(0,0,0,0.08)'}} onMouseEnter={(e)=>{e.currentTarget.style.transform='translateY(-8px)';e.currentTarget.style.borderColor=stat.color;e.currentTarget.style.boxShadow=`0 12px 32px ${stat.color}40`;}} onMouseLeave={(e)=>{e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.borderColor=theme.border;e.currentTarget.style.boxShadow=darkMode?'0 4px 16px rgba(0,0,0,0.3)':'0 4px 16px rgba(0,0,0,0.08)';}}>
                     <div style={{position:'absolute',top:0,right:0,width:'120px',height:'120px',background:stat.gradient,opacity:0.08,borderRadius:'50%',transform:'translate(30%, -30%)'}}></div>
@@ -1009,7 +1208,7 @@ function DashboardPage() {
                         } as any);
 
                         const refreshed = await getProducts();
-                        setRealProducts((refreshed || []).filter((p: any) => !p?.isDeleted));
+                        setRealProducts((refreshed || []).filter((p: any) => p?.isDeleted !== true));
 
                         if(formData.ean) {
                           setUserProducts({...userProducts, [formData.ean]: {name: formData.name, sku: formData.sku, category: formData.category, price: parsedPrice}});
@@ -1075,7 +1274,7 @@ function DashboardPage() {
                         } as any);
 
                         const refreshed = await getProducts();
-                        setRealProducts((refreshed || []).filter((p: any) => !p?.isDeleted));
+                        setRealProducts((refreshed || []).filter((p: any) => p?.isDeleted !== true));
 
                         if(formData.ean) {
                           setUserProducts({...userProducts, [formData.ean]: {name: formData.name, sku: formData.sku, category: formData.category, price: parsedPrice}});
@@ -1096,19 +1295,63 @@ function DashboardPage() {
                   <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'24px'}}>
                     <h2 style={{fontSize:'28px',fontWeight:'900',color:theme.text}}>📋 All Products</h2>
                     <div style={{display:'flex',gap:'12px'}}>
+                      <button onClick={handleExportAllProductsToExcel} style={{padding:'10px 24px',background:'linear-gradient(135deg, #3b82f6, #2563eb)',color:'white',border:'none',borderRadius:'10px',fontSize:'15px',fontWeight:'700',cursor:'pointer'}}>⬇️ Export to Excel</button>
                       <button onClick={async ()=>{
                         addToast('🔄 Refreshing products...','info');
                         const refreshed = await getProducts();
                         setRealProducts(refreshed);
+                        setViewProductsPage(1);
                         addToast(`✅ Loaded ${refreshed.length} products`,'success');
                       }} style={{padding:'10px 24px',background:'linear-gradient(135deg, #10b981, #059669)',color:'white',border:'none',borderRadius:'10px',fontSize:'15px',fontWeight:'700',cursor:'pointer'}}>🔄 Refresh</button>
                       <button onClick={resetView} style={{padding:'10px 24px',background:theme.sidebarHover,color:theme.text,border:`2px solid ${theme.border}`,borderRadius:'10px',fontSize:'15px',fontWeight:'700',cursor:'pointer'}}>← Back</button>
                     </div>
                   </div>
-                  <div style={{marginBottom:'16px',padding:'12px 20px',background:theme.sidebarHover,borderRadius:'10px',border:`2px solid ${theme.border}`}}>
-                    <span style={{fontSize:'15px',fontWeight:'700',color:theme.text}}>📊 Total Products: {realProducts.filter((p: any) => !p?.isDeleted).length}</span>
+                  <div style={{marginBottom:'16px',padding:'12px 20px',background:theme.sidebarHover,borderRadius:'10px',border:`2px solid ${theme.border}`,display:'flex',justifyContent:'space-between',alignItems:'center',gap:'12px',flexWrap:'wrap'}}>
+                    <span style={{fontSize:'15px',fontWeight:'700',color:theme.text}}>📊 Total SKUs: {viewAllProductsItems.length}</span>
+                    <span style={{fontSize:'13px',fontWeight:'700',color:theme.textSecondary}}>
+                      Showing {viewAllProductsItems.length === 0 ? 0 : viewProductsStart + 1}-{viewProductsEnd} of {viewAllProductsItems.length}
+                    </span>
+                    <div style={{display:'flex',gap:'8px',alignItems:'center'}}>
+                      <button
+                        onClick={() => setViewProductsPage(p => Math.max(1, p - 1))}
+                        disabled={viewProductsPageSafe <= 1}
+                        style={{
+                          padding:'8px 14px',
+                          background: viewProductsPageSafe <= 1 ? theme.border : theme.sidebarHover,
+                          color: theme.text,
+                          border:`2px solid ${theme.border}`,
+                          borderRadius:'10px',
+                          fontSize:'13px',
+                          fontWeight:'800',
+                          cursor: viewProductsPageSafe <= 1 ? 'not-allowed' : 'pointer',
+                          opacity: viewProductsPageSafe <= 1 ? 0.7 : 1
+                        }}
+                      >
+                        ← Previous
+                      </button>
+                      <span style={{fontSize:'13px',fontWeight:'800',color:theme.textSecondary}}>
+                        Page {viewProductsPageSafe} / {viewProductsTotalPages}
+                      </span>
+                      <button
+                        onClick={() => setViewProductsPage(p => Math.min(viewProductsTotalPages, p + 1))}
+                        disabled={viewProductsPageSafe >= viewProductsTotalPages}
+                        style={{
+                          padding:'8px 14px',
+                          background: viewProductsPageSafe >= viewProductsTotalPages ? theme.border : theme.sidebarHover,
+                          color: theme.text,
+                          border:`2px solid ${theme.border}`,
+                          borderRadius:'10px',
+                          fontSize:'13px',
+                          fontWeight:'800',
+                          cursor: viewProductsPageSafe >= viewProductsTotalPages ? 'not-allowed' : 'pointer',
+                          opacity: viewProductsPageSafe >= viewProductsTotalPages ? 0.7 : 1
+                        }}
+                      >
+                        Next →
+                      </button>
+                    </div>
                   </div>
-                  {realProducts.filter((p: any) => !p?.isDeleted).length === 0 ? (
+                  {viewAllProductsItems.length === 0 ? (
                     <div style={{textAlign:'center',padding:'60px'}}>
                       <div style={{fontSize:'64px',marginBottom:'16px'}}>📦</div>
                       <p style={{fontSize:'18px',color:theme.textSecondary,marginBottom:'24px'}}>No products found. Try refreshing or add new products.</p>
@@ -1118,6 +1361,7 @@ function DashboardPage() {
                           addToast('🔄 Refreshing...','info');
                           const refreshed = await getProducts();
                           setRealProducts(refreshed);
+                          setViewProductsPage(1);
                           addToast(`✅ Loaded ${refreshed.length} products`,'success');
                         }} style={{padding:'14px 32px',background:'linear-gradient(135deg, #10b981, #059669)',color:'white',border:'none',borderRadius:'12px',fontSize:'16px',fontWeight:'700',cursor:'pointer'}}>🔄 Refresh</button>
                       </div>
@@ -1127,7 +1371,7 @@ function DashboardPage() {
                       <table style={{width:'100%',borderCollapse:'collapse'}}>
                         <thead><tr style={{background:theme.sidebarHover,borderBottom:`2px solid ${theme.border}`}}><th style={{padding:'16px',textAlign:'left',color:theme.text,fontWeight:'700'}}>SKU</th><th style={{padding:'16px',textAlign:'left',color:theme.text,fontWeight:'700'}}>Product Name</th><th style={{padding:'16px',textAlign:'left',color:theme.text,fontWeight:'700'}}>Category</th><th style={{padding:'16px',textAlign:'left',color:theme.text,fontWeight:'700'}}>Stock</th><th style={{padding:'16px',textAlign:'left',color:theme.text,fontWeight:'700'}}>Price</th><th style={{padding:'16px',textAlign:'center',color:theme.text,fontWeight:'700'}}>Actions</th></tr></thead>
                         <tbody>
-                          {realProducts.filter((p: any) => !p?.isDeleted).map((p,i)=>(
+                          {viewProductsPageItems.map((p,i)=>(
                             <tr key={i} style={{borderBottom:`1px solid ${theme.border}`}} onMouseEnter={(e)=>e.currentTarget.style.background=theme.sidebarHover} onMouseLeave={(e)=>e.currentTarget.style.background='transparent'}>
                               <td style={{padding:'16px',color:theme.text,fontWeight:'600'}}>{p.sku}</td>
                               <td style={{padding:'16px',color:theme.text}}>{p.name}</td>
@@ -1151,7 +1395,8 @@ function DashboardPage() {
                                     try {
                                       await updateProduct(String(p.id), { isDeleted: true } as any);
                                       const refreshed = await getProducts();
-                                      setRealProducts((refreshed || []).filter((x: any) => !x?.isDeleted));
+                                      setRealProducts((refreshed || []).filter((x: any) => x?.isDeleted !== true));
+                                      setViewProductsPage(1);
                                       addToast(`🗑️ Product "${p.name}" deleted!`,'success');
                                     } catch (e) {
                                       console.error('Failed to delete product:', e);
@@ -2237,7 +2482,7 @@ function DashboardPage() {
                     <div style={{display:'flex',gap:'12px'}}>
                       <button 
                         onClick={()=>{
-                          const lowStockProducts = realProducts.filter(p=>(parseFloat(p.quantity)||0)<(parseFloat(p.lowStockThreshold)||parseFloat(p.minThreshold)||10));
+                          const lowStockProducts = lowStockSkuProducts;
                           if(lowStockProducts.length === 0){
                             addToast('No low stock items to export','info');
                             return;
@@ -2267,9 +2512,9 @@ function DashboardPage() {
                   {/* Summary Cards */}
                   <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:'20px',marginBottom:'32px'}}>
                     {[
-                      {label:'Total Low Stock SKUs',value:realProducts.filter(p=>(parseFloat(p.quantity)||0)<(parseFloat(p.lowStockThreshold)||parseFloat(p.minThreshold)||10)).length.toString(),color:'#ef4444',icon:'⚠️'},
+                      {label:'Total Low Stock SKUs',value:lowStockSkuProducts.length.toString(),color:'#ef4444',icon:'⚠️'},
                       {label:'Critical (Stock = 0)',value:realProducts.filter(p=>(parseFloat(p.quantity)||0)===0).length.toString(),color:'#dc2626',icon:'🚨'},
-                      {label:'Total SKUs',value:realProducts.length.toString(),color:'#3b82f6',icon:'📦'}
+                      {label:'Total SKUs',value:skuProducts.length.toString(),color:'#3b82f6',icon:'📦'}
                     ].map((stat,i)=>(
                       <div key={i} style={{background:theme.sidebarHover,padding:'24px',borderRadius:'16px',border:`2px solid ${theme.border}`,textAlign:'center'}}>
                         <div style={{fontSize:'32px',marginBottom:'8px'}}>{stat.icon}</div>
@@ -2281,7 +2526,7 @@ function DashboardPage() {
 
                   {/* Low Stock Products Table */}
                   <div style={{background:theme.sidebarHover,padding:'24px',borderRadius:'16px',border:`2px solid ${theme.border}`}}>
-                    {realProducts.filter(p=>(parseFloat(p.quantity)||0)<(parseFloat(p.lowStockThreshold)||parseFloat(p.minThreshold)||10)).length === 0 ? (
+                    {lowStockSkuProducts.length === 0 ? (
                       <div style={{textAlign:'center',padding:'60px'}}>
                         <div style={{fontSize:'64px',marginBottom:'16px'}}>✅</div>
                         <p style={{fontSize:'18px',color:theme.text,fontWeight:'700',marginBottom:'8px'}}>All stocks are healthy!</p>
@@ -2303,8 +2548,7 @@ function DashboardPage() {
                             </tr>
                           </thead>
                           <tbody>
-                            {realProducts
-                              .filter(p=>(parseFloat(p.quantity)||0)<(parseFloat(p.lowStockThreshold)||parseFloat(p.minThreshold)||10))
+                            {lowStockSkuProducts
                               .sort((a,b)=>(parseFloat(a.quantity)||0)-(parseFloat(b.quantity)||0))
                               .map((p,i)=>{
                                 const currentStock = parseFloat(p.quantity)||0;
@@ -2525,15 +2769,19 @@ function DashboardPage() {
                     <button onClick={resetView} style={{padding:'10px 24px',background:theme.sidebarHover,color:theme.text,border:`2px solid ${theme.border}`,borderRadius:'10px',fontSize:'15px',fontWeight:'700',cursor:'pointer'}}>← Back</button>
                   </div>
                   <div style={{display:'grid',gridTemplateColumns:'repeat(2,1fr)',gap:'20px',marginBottom:'32px'}}>
-                    {[{name:'Main Warehouse',location:'Mumbai, India',status:'Active',products:189},{name:'Secondary Warehouse',location:'Delhi, India',status:'Active',products:58}].map((w,i)=>(
-                      <div key={i} style={{background:theme.sidebarHover,padding:'24px',borderRadius:'16px',border:`2px solid ${theme.border}`}}>
+                    {settingsWarehousesLoading ? (
+                      <div style={{gridColumn:'1 / -1',padding:'24px',color:theme.textSecondary}}>Loading warehouses...</div>
+                    ) : settingsWarehouses.length === 0 ? (
+                      <div style={{gridColumn:'1 / -1',padding:'24px',color:theme.textSecondary}}>No warehouses configured</div>
+                    ) : settingsWarehouses.map((w:any)=>(
+                      <div key={w.id || w.name} style={{background:theme.sidebarHover,padding:'24px',borderRadius:'16px',border:`2px solid ${theme.border}`}}>
                         <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:'12px'}}>
-                          <h3 style={{color:theme.text,fontSize:'20px',fontWeight:'800'}}>{w.name}</h3>
-                          <button onClick={()=>{setActiveView('edit-warehouse');setFormData({...formData,warehouseName:w.name,warehouseLocation:w.location});addToast(`✏️ Editing ${w.name}...`,'info');}} style={{padding:'6px 16px',background:'linear-gradient(135deg, #3b82f6, #2563eb)',color:'white',border:'none',borderRadius:'8px',fontSize:'13px',fontWeight:'700',cursor:'pointer'}}>✏️ Edit</button>
+                          <h3 style={{color:theme.text,fontSize:'20px',fontWeight:'800'}}>{w.name || 'Unnamed Warehouse'}</h3>
+                          <button onClick={()=>{setActiveView('edit-warehouse');setFormData({...formData,warehouseId:w.id,warehouseName:w.name,warehouseLocation:w.location||'',address:w.address||'',warehouseStatus:w.status||'Active'});addToast(`✏️ Editing ${w.name || 'Warehouse'}...`,'info');}} style={{padding:'6px 16px',background:'linear-gradient(135deg, #3b82f6, #2563eb)',color:'white',border:'none',borderRadius:'8px',fontSize:'13px',fontWeight:'700',cursor:'pointer'}}>✏️ Edit</button>
                         </div>
-                        <p style={{color:theme.textSecondary,fontSize:'14px',marginBottom:'8px'}}>📍 {w.location}</p>
-                        <p style={{color:'#10b981',fontSize:'14px',marginBottom:'8px',fontWeight:'700'}}>✓ {w.status}</p>
-                        <p style={{color:theme.text,fontSize:'14px'}}>{w.products} products stored</p>
+                        <p style={{color:theme.textSecondary,fontSize:'14px',marginBottom:'8px'}}>📍 {w.location || '—'}</p>
+                        <p style={{color:'#10b981',fontSize:'14px',marginBottom:'8px',fontWeight:'700'}}>✓ {w.status || 'Active'}</p>
+                        <p style={{color:theme.text,fontSize:'14px'}}>— products stored</p>
                       </div>
                     ))}
                   </div>
@@ -2544,7 +2792,7 @@ function DashboardPage() {
                 <div style={{background:theme.cardBg,padding:'40px',borderRadius:'20px',border:`2px solid ${theme.border}`,boxShadow:darkMode?'0 8px 32px rgba(0,0,0,0.3)':'0 8px 32px rgba(0,0,0,0.1)'}}>
                   <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'32px'}}>
                     <h2 style={{fontSize:'28px',fontWeight:'900',color:theme.text}}>➕ Add New Warehouse</h2>
-                    <button onClick={resetView} style={{padding:'10px 24px',background:theme.sidebarHover,color:theme.text,border:`2px solid ${theme.border}`,borderRadius:'10px',fontSize:'15px',fontWeight:'700',cursor:'pointer'}}>← Back</button>
+                    <button onClick={goToWarehouseConfig} style={{padding:'10px 24px',background:theme.sidebarHover,color:theme.text,border:`2px solid ${theme.border}`,borderRadius:'10px',fontSize:'15px',fontWeight:'700',cursor:'pointer'}}>← Back</button>
                   </div>
                   <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'24px',maxWidth:'900px'}}>
                     <div><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>Warehouse Name</label><input type="text" placeholder="Enter warehouse name" value={formData.warehouseName||''} onChange={(e)=>setFormData({...formData,warehouseName:e.target.value})} style={{width:'100%',padding:'14px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px'}} /></div>
@@ -2554,8 +2802,8 @@ function DashboardPage() {
                     <div style={{gridColumn:'1 / -1'}}><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>Address</label><textarea placeholder="Full address" value={formData.address||''} onChange={(e)=>setFormData({...formData,address:e.target.value})} style={{width:'100%',padding:'14px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px',minHeight:'100px'}} /></div>
                   </div>
                   <div style={{marginTop:'32px',display:'flex',gap:'16px'}}>
-                    <button onClick={()=>{if(formData.warehouseName && formData.warehouseLocation){addToast(`✅ Warehouse "${formData.warehouseName}" added successfully!`,'success');resetView();}else{addToast('❌ Please fill warehouse name and location','error');}}} style={{padding:'14px 40px',background:'linear-gradient(135deg, #6366f1, #4f46e5)',color:'white',border:'none',borderRadius:'12px',fontSize:'16px',fontWeight:'800',cursor:'pointer'}}>💾 Save Warehouse</button>
-                    <button onClick={resetView} style={{padding:'14px 40px',background:theme.sidebarHover,color:theme.text,border:`2px solid ${theme.border}`,borderRadius:'12px',fontSize:'16px',fontWeight:'700',cursor:'pointer'}}>Cancel</button>
+                    <button onClick={handleCreateWarehouse} style={{padding:'14px 40px',background:'linear-gradient(135deg, #6366f1, #4f46e5)',color:'white',border:'none',borderRadius:'12px',fontSize:'16px',fontWeight:'800',cursor:'pointer'}}>💾 Save Warehouse</button>
+                    <button onClick={goToWarehouseConfig} style={{padding:'14px 40px',background:theme.sidebarHover,color:theme.text,border:`2px solid ${theme.border}`,borderRadius:'12px',fontSize:'16px',fontWeight:'700',cursor:'pointer'}}>Cancel</button>
                   </div>
                 </div>
               )}
@@ -2563,7 +2811,7 @@ function DashboardPage() {
                 <div style={{background:theme.cardBg,padding:'40px',borderRadius:'20px',border:`2px solid ${theme.border}`,boxShadow:darkMode?'0 8px 32px rgba(0,0,0,0.3)':'0 8px 32px rgba(0,0,0,0.1)'}}>
                   <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'32px'}}>
                     <h2 style={{fontSize:'28px',fontWeight:'900',color:theme.text}}>✏️ Edit Warehouse</h2>
-                    <button onClick={resetView} style={{padding:'10px 24px',background:theme.sidebarHover,color:theme.text,border:`2px solid ${theme.border}`,borderRadius:'10px',fontSize:'15px',fontWeight:'700',cursor:'pointer'}}>← Back</button>
+                    <button onClick={goToWarehouseConfig} style={{padding:'10px 24px',background:theme.sidebarHover,color:theme.text,border:`2px solid ${theme.border}`,borderRadius:'10px',fontSize:'15px',fontWeight:'700',cursor:'pointer'}}>← Back</button>
                   </div>
                   <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'24px',maxWidth:'900px'}}>
                     <div><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>Warehouse Name</label><input type="text" placeholder="Enter warehouse name" value={formData.warehouseName||''} onChange={(e)=>setFormData({...formData,warehouseName:e.target.value})} style={{width:'100%',padding:'14px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px'}} /></div>
@@ -2573,8 +2821,8 @@ function DashboardPage() {
                     <div style={{gridColumn:'1 / -1'}}><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>Address</label><textarea placeholder="Full address" value={formData.address||''} onChange={(e)=>setFormData({...formData,address:e.target.value})} style={{width:'100%',padding:'14px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px',minHeight:'100px'}} /></div>
                   </div>
                   <div style={{marginTop:'32px',display:'flex',gap:'16px'}}>
-                    <button onClick={()=>{if(formData.warehouseName && formData.warehouseLocation){addToast(`✅ Warehouse "${formData.warehouseName}" updated successfully!`,'success');resetView();}else{addToast('❌ Please fill warehouse name and location','error');}}} style={{padding:'14px 40px',background:'linear-gradient(135deg, #6366f1, #4f46e5)',color:'white',border:'none',borderRadius:'12px',fontSize:'16px',fontWeight:'800',cursor:'pointer'}}>💾 Save Changes</button>
-                    <button onClick={resetView} style={{padding:'14px 40px',background:theme.sidebarHover,color:theme.text,border:`2px solid ${theme.border}`,borderRadius:'12px',fontSize:'16px',fontWeight:'700',cursor:'pointer'}}>Cancel</button>
+                    <button onClick={handleUpdateWarehouse} style={{padding:'14px 40px',background:'linear-gradient(135deg, #6366f1, #4f46e5)',color:'white',border:'none',borderRadius:'12px',fontSize:'16px',fontWeight:'800',cursor:'pointer'}}>💾 Save Changes</button>
+                    <button onClick={goToWarehouseConfig} style={{padding:'14px 40px',background:theme.sidebarHover,color:theme.text,border:`2px solid ${theme.border}`,borderRadius:'12px',fontSize:'16px',fontWeight:'700',cursor:'pointer'}}>Cancel</button>
                   </div>
                 </div>
               )}
