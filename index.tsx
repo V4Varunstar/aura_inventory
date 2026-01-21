@@ -5,6 +5,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { CompanyProvider } from './context/CompanyContext';
 import { WarehouseProvider, useWarehouse } from './context/WarehouseContext';
 import { ToastProvider, useToast } from './context/ToastContext';
+import WarehouseSelector from './components/ui/WarehouseSelector';
 import {
   getOutwardRecords,
   getProducts,
@@ -915,8 +916,17 @@ function DashboardPage() {
       <div style={{flex:1,overflow:'auto'}}>
         {/* Header */}
         <div style={{background:theme.headerBg,padding:'20px 40px',borderBottom:`1px solid ${theme.border}`}}>
-          <h1 style={{fontSize:'24px',fontWeight:'bold',color:theme.text,marginBottom:'4px',textTransform:'capitalize'}}>{currentPage}</h1>
-          <p style={{fontSize:'14px',color:theme.textSecondary}}>Welcome back, {user.name}</p>
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:'16px',flexWrap:'wrap'}}>
+            <div>
+              <h1 style={{fontSize:'24px',fontWeight:'bold',color:theme.text,marginBottom:'4px',textTransform:'capitalize'}}>{currentPage}</h1>
+              <p style={{fontSize:'14px',color:theme.textSecondary}}>Welcome back, {user.name}</p>
+            </div>
+            <div style={{display:'flex',alignItems:'center',gap:'12px'}}>
+              <div style={{minWidth:'220px'}}>
+                <WarehouseSelector />
+              </div>
+            </div>
+          </div>
         </div>
         
         {/* Main Content */}
