@@ -28,7 +28,7 @@ const WarehouseSelector: React.FC = () => {
       <select
         value={selectedWarehouse?.id || ''}
         onChange={(e) => selectWarehouse(e.target.value)}
-        className="h-10 min-w-[140px] px-3 rounded-md border border-gray-300 dark:border-gray-600 bg-primary-50 dark:bg-gray-800 text-sm font-semibold text-gray-900 dark:text-gray-100 shadow-sm hover:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500"
+        className="h-10 min-w-[140px] px-3 rounded-md border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm font-semibold text-slate-900 dark:text-slate-100 shadow-sm hover:border-slate-300 dark:hover:border-slate-500 focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500"
       >
         {warehouses.map((warehouse) => (
           <option key={warehouse.id} value={warehouse.id}>
