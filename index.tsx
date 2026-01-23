@@ -922,7 +922,7 @@ function DashboardPage() {
               <p style={{fontSize:'14px',color:theme.textSecondary}}>Welcome back, {user.name}</p>
             </div>
             <div style={{display:'flex',alignItems:'center',gap:'12px'}}>
-              <div style={{minWidth:'280px'}}>
+              <div style={{minWidth:'180px'}}>
                 <WarehouseSelector />
               </div>
             </div>
