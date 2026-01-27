@@ -73,11 +73,6 @@ export default defineConfig(({ mode }) => {
             entryFileNames: 'assets/[name]-[hash].js',
             assetFileNames: 'assets/[name]-[hash].[ext]'
           },
-          treeshake: {
-            moduleSideEffects: false,
-            propertyReadSideEffects: false,
-            unknownGlobalSideEffects: false
-          }
         }
       },
       define: {
