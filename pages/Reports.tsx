@@ -113,7 +113,7 @@ const Reports: React.FC = () => {
   // Load initial data
   useEffect(() => {
     loadInitialData();
-  }, [company]);
+  }, [company, selectedWarehouse?.id]);
 
   const loadInitialData = async () => {
     if (!company) return;
@@ -125,8 +125,8 @@ const Reports: React.FC = () => {
           getProducts(),
           getWarehouses(),
           getParties(),
-          getInwardRecords(),
-          getOutwardRecords(),
+          getInwardRecords({ companyId: company.id, warehouseId: selectedWarehouse?.id }),
+          getOutwardRecords({ companyId: company.id, warehouseId: selectedWarehouse?.id }),
         ]);
 
       setProducts(productsData.filter((p: Product) => !p.isDeleted));

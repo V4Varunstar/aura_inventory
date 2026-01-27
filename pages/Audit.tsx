@@ -7,6 +7,7 @@ import { Product, Inward, Outward, Warehouse } from '../types';
 import { getProducts, getInwardRecords, getOutwardRecords, getProductStock, getWarehouses } from '../services/firebaseService';
 import { getSources } from '../services/sourceService';
 import { useCompany } from '../context/CompanyContext';
+import { useWarehouse } from '../context/WarehouseContext';
 import { Search, Package, TrendingUp, TrendingDown, AlertCircle } from 'lucide-react';
 
 interface AuditTransaction {
@@ -24,6 +25,7 @@ interface AuditTransaction {
 
 const Audit: React.FC = () => {
   const { company } = useCompany();
+  const { selectedWarehouse } = useWarehouse();
   const [searchTerm, setSearchTerm] = useState('');
   const [searchType, setSearchType] = useState<'sku' | 'ean'>('sku');
   const [loading, setLoading] = useState(false);
@@ -42,8 +44,8 @@ const Audit: React.FC = () => {
       const companyId = company?.id || 'default';
       const [productsData, inwardsData, outwardsData, warehousesData, inwardSourcesData, outwardSourcesData] = await Promise.all([
         getProducts(),
-        getInwardRecords(),
-        getOutwardRecords(),
+        getInwardRecords({ companyId: company?.id, warehouseId: selectedWarehouse?.id }),
+        getOutwardRecords({ companyId: company?.id, warehouseId: selectedWarehouse?.id }),
         getWarehouses(),
         getSources(companyId, 'inward'),
         getSources(companyId, 'outward'),
@@ -53,12 +55,8 @@ const Audit: React.FC = () => {
       const filteredProducts = company?.id 
         ? productsData.filter(p => !p.companyId || p.companyId === company.id)
         : productsData;
-      const filteredInwards = company?.id
-        ? inwardsData.filter(i => i.companyId === company.id)
-        : inwardsData;
-      const filteredOutwards = company?.id
-        ? outwardsData.filter(o => o.companyId === company.id)
-        : outwardsData;
+      const filteredInwards = inwardsData;
+      const filteredOutwards = outwardsData;
       
       setProducts(filteredProducts);
       setInwardRecords(filteredInwards);
@@ -68,7 +66,7 @@ const Audit: React.FC = () => {
       setOutwardSources(outwardSourcesData);
     };
     fetchData();
-  }, [company?.id]);
+  }, [company?.id, selectedWarehouse?.id]);
 
   const handleSearch = () => {
     if (!searchTerm.trim()) return;
@@ -99,7 +97,7 @@ const Audit: React.FC = () => {
     setSelectedProduct(product);
 
     // Calculate current stock
-    const stock = getProductStock(product.id, undefined, company?.id);
+    const stock = getProductStock(product.id, selectedWarehouse?.id, company?.id);
     setCurrentStock(stock);
 
     // Get all transactions for this product
@@ -108,6 +106,7 @@ const Audit: React.FC = () => {
     // Add inward transactions
     inwardRecords
       .filter(record => record.productId === product.id)
+      .filter(record => !selectedWarehouse || record.warehouseId === selectedWarehouse.id)
       .forEach(record => {
         const warehouse = warehouses.find(w => w.id === record.warehouseId);
         const source = inwardSources.find(s => s.id === record.source);
@@ -127,6 +126,7 @@ const Audit: React.FC = () => {
     // Add outward transactions
     outwardRecords
       .filter(record => record.productId === product.id)
+      .filter(record => !selectedWarehouse || record.warehouseId === selectedWarehouse.id)
       .forEach(record => {
         const warehouse = warehouses.find(w => w.id === record.warehouseId);
         const destination = outwardSources.find(s => s.id === record.destination);

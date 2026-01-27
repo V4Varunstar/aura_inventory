@@ -376,6 +376,40 @@ const STORAGE_KEYS = {
   COURIER_PARTNERS: 'aura_inventory_courier_partners',
 };
 
+type WarehouseRefNormalizationResult = {
+  warehouseId: string;
+  warehouseName?: string;
+};
+
+const normalizeWarehouseRef = (warehouseIdOrName: string): WarehouseRefNormalizationResult => {
+  const raw = String(warehouseIdOrName || '').trim();
+  if (!raw) {
+    throw new Error('warehouseId is required');
+  }
+
+  // Ensure we have the latest warehouses loaded for name→id resolution.
+  // This is important for bulk upload flows where getWarehouses() may not have run yet.
+  if (warehouses.length === 0) {
+    const storedWarehouses = storage.read<Warehouse[]>(STORAGE_KEYS.WAREHOUSES, []);
+    if (Array.isArray(storedWarehouses) && storedWarehouses.length > 0) {
+      warehouses.push(...storedWarehouses);
+    }
+  }
+
+  // Prefer matching by ID first.
+  const byId = warehouses.find(w => w.id === raw);
+  if (byId) return { warehouseId: byId.id, warehouseName: byId.name };
+
+  // Fall back to matching by name (case-insensitive) to support bulk uploads.
+  const lower = raw.toLowerCase();
+  const byName = warehouses.find(w => String(w.name || '').toLowerCase() === lower);
+  if (byName) return { warehouseId: byName.id, warehouseName: byName.name };
+
+  // If we can’t resolve it, keep the raw value but do NOT silently change it.
+  // This ensures we never write a record that incorrectly points to another warehouse.
+  return { warehouseId: raw };
+};
+
 // In some flows (logout/login, refresh, module re-init), the in-memory `currentUser`
 // can be temporarily null even though the session exists in localStorage.
 // This helper restores a usable user object so tenant-scoped data (products, etc.)
@@ -1657,13 +1691,25 @@ export const deleteWarehouse = async (id: string, reason: string) => {
 
 // Inward
 export const addInward = (data: Partial<Inward>) => {
+  if (!data.warehouseId) {
+    return Promise.reject(new Error('Please select a warehouse before adding inward stock.'));
+  }
+
+  let normalizedWarehouse: WarehouseRefNormalizationResult;
+  try {
+    normalizedWarehouse = normalizeWarehouseRef(String(data.warehouseId));
+  } catch (e) {
+    return Promise.reject(e);
+  }
     const newInward: Inward = {
         id: `in_${Date.now()}`,
         companyId: data.companyId || 'demo-company-001',
         createdBy: currentUser?.id || 'unknown',
         createdAt: new Date(),
         transactionDate: new Date(),
-        ...data
+        ...data,
+        warehouseId: normalizedWarehouse.warehouseId,
+        warehouseName: data.warehouseName || normalizedWarehouse.warehouseName,
     } as Inward;
     
     console.log('📥 Adding inward record:', newInward.id, 'Product:', newInward.productId, 'Qty:', newInward.quantity);
@@ -1682,20 +1728,37 @@ export const addInward = (data: Partial<Inward>) => {
     return simulateApi(newInward);
 };
 
-export const getInwardRecords = () => {
+export const getInwardRecords = (params?: { warehouseId?: string; companyId?: string }) => {
     // ALWAYS reload inward records from localStorage to get latest data
     const storedInward = loadFromStorage<Inward[]>(STORAGE_KEYS.INWARD, []);
     inwardRecords.length = 0;
     inwardRecords.push(...storedInward);
     console.log('🔄 Reloaded', storedInward.length, 'inward records from localStorage');
-    return simulateApi(inwardRecords);
+
+    const filtered = inwardRecords.filter((record) => {
+      if (params?.companyId && record.companyId !== params.companyId) return false;
+      if (params?.warehouseId && record.warehouseId !== params.warehouseId) return false;
+      return true;
+    });
+
+    return simulateApi(filtered);
 };
 
 // Outward
 export const addOutward = (data: Partial<Outward>) => {
+  if (!data.warehouseId) {
+    return Promise.reject(new Error('Please select a warehouse before adding outward stock.'));
+  }
+
+  let normalizedWarehouse: WarehouseRefNormalizationResult;
+  try {
+    normalizedWarehouse = normalizeWarehouseRef(String(data.warehouseId));
+  } catch (e) {
+    return Promise.reject(e);
+  }
     // Check for sufficient stock with companyId
     const companyId = data.companyId || 'demo-company-001';
-    const currentStock = getProductStock(data.productId!, data.warehouseId, companyId);
+    const currentStock = getProductStock(data.productId!, normalizedWarehouse.warehouseId, companyId);
     if (currentStock < data.quantity!) {
         return Promise.reject(new Error(`Insufficient stock. Available: ${currentStock}, Requested: ${data.quantity}`));
     }
@@ -1706,7 +1769,9 @@ export const addOutward = (data: Partial<Outward>) => {
         createdBy: currentUser?.id || 'unknown',
         createdAt: new Date(),
         transactionDate: new Date(),
-        ...data
+      ...data,
+      warehouseId: normalizedWarehouse.warehouseId,
+      warehouseName: data.warehouseName || normalizedWarehouse.warehouseName,
     } as Outward;
     
     console.log('📤 Adding outward record:', newOutward.id, 'Product:', newOutward.productId, 'Qty:', newOutward.quantity);
@@ -1725,13 +1790,20 @@ export const addOutward = (data: Partial<Outward>) => {
     return simulateApi(newOutward);
 };
 
-export const getOutwardRecords = () => {
+export const getOutwardRecords = (params?: { warehouseId?: string; companyId?: string }) => {
     // ALWAYS reload outward records from localStorage to get latest data
     const storedOutward = loadFromStorage<Outward[]>(STORAGE_KEYS.OUTWARD, []);
     outwardRecords.length = 0;
     outwardRecords.push(...storedOutward);
     console.log('🔄 Reloaded', storedOutward.length, 'outward records from localStorage');
-    return simulateApi(outwardRecords);
+
+    const filtered = outwardRecords.filter((record) => {
+      if (params?.companyId && record.companyId !== params.companyId) return false;
+      if (params?.warehouseId && record.warehouseId !== params.warehouseId) return false;
+      return true;
+    });
+
+    return simulateApi(filtered);
 };
 
 // Adjustment

@@ -94,24 +94,40 @@ const InHandInventoryPieChart: React.FC<InHandInventoryPieChartProps> = ({
     products.forEach((product, index) => {
       const stockData = productStocks[product.id];
       if (!stockData) return;
-      
-      const totalStock = stockData.total || 0;
+
+      const isWarehouseFiltered = selectedWarehouse !== 'all';
+      const byWarehouse = stockData.byWarehouse || {};
+      const totalStock = isWarehouseFiltered
+        ? (typeof byWarehouse[selectedWarehouse] === 'number' ? byWarehouse[selectedWarehouse] : 0)
+        : (stockData.total || 0);
       
       if (totalStock > 0) {
         const warehouseStocks: { warehouseId: string; warehouseName: string; quantity: number }[] = [];
         
         // Get warehouse breakdown
         if (stockData.byWarehouse) {
-          Object.entries(stockData.byWarehouse).forEach(([warehouseId, quantity]: [string, any]) => {
-            const warehouse = warehouses.find(w => w.id === warehouseId);
-            if (warehouse && quantity > 0) {
+          if (isWarehouseFiltered) {
+            const qty = byWarehouse[selectedWarehouse];
+            const warehouse = warehouses.find(w => w.id === selectedWarehouse);
+            if (warehouse && typeof qty === 'number' && qty > 0) {
               warehouseStocks.push({
                 warehouseId: warehouse.id,
                 warehouseName: warehouse.name,
-                quantity: quantity
+                quantity: qty
               });
             }
-          });
+          } else {
+            Object.entries(stockData.byWarehouse).forEach(([warehouseId, quantity]: [string, any]) => {
+              const warehouse = warehouses.find(w => w.id === warehouseId);
+              if (warehouse && quantity > 0) {
+                warehouseStocks.push({
+                  warehouseId: warehouse.id,
+                  warehouseName: warehouse.name,
+                  quantity: quantity
+                });
+              }
+            });
+          }
         }
         
         productInventory.push({

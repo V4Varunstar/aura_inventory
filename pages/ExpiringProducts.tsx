@@ -7,6 +7,7 @@ import { ArrowLeft, Download, Clock } from 'lucide-react';
 import { Inward, Product, Warehouse } from '../types';
 import { downloadExcel } from '../utils/excelHelper';
 import { getProducts, getWarehouses } from '../services/firebaseService';
+import { useWarehouse } from '../context/WarehouseContext';
 
 interface ExpiringItem {
     sku: string;
@@ -21,20 +22,27 @@ interface ExpiringItem {
 
 const ExpiringProducts: React.FC = () => {
     const navigate = useNavigate();
+    const { selectedWarehouse } = useWarehouse();
     const [expiringItems, setExpiringItems] = useState<ExpiringItem[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         fetchExpiringProducts();
-    }, []);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [selectedWarehouse?.id]);
 
     const fetchExpiringProducts = async () => {
         try {
             // Get data from localStorage
-            const inwardRecords: Inward[] = JSON.parse(localStorage.getItem('aura_inventory_inward') || '[]');
+            const allInwardRecords: Inward[] = JSON.parse(localStorage.getItem('aura_inventory_inward') || '[]');
             // Get products and warehouses from service (includes defaults)
             const products: Product[] = await getProducts();
             const warehouses: Warehouse[] = await getWarehouses();
+
+            // Scope everything to selected warehouse (when set)
+            const inwardRecords: Inward[] = selectedWarehouse
+                ? allInwardRecords.filter(r => r.warehouseId === selectedWarehouse.id)
+                : allInwardRecords;
 
             console.log('Expiring Products Debug:');
             console.log('Total inward records:', inwardRecords.length);
@@ -69,14 +77,20 @@ const ExpiringProducts: React.FC = () => {
             });
 
             // Get outward records
-            const outwardRecords = JSON.parse(localStorage.getItem('aura_inventory_outward') || '[]');
+            const allOutwardRecords = JSON.parse(localStorage.getItem('aura_inventory_outward') || '[]');
+            const outwardRecords = selectedWarehouse
+                ? allOutwardRecords.filter((r: any) => r.warehouseId === selectedWarehouse.id)
+                : allOutwardRecords;
             outwardRecords.forEach((record: any) => {
                 const key = `${record.sku}|${record.warehouseId}|${normalizeBatch(record.batchNo)}`;
                 stockByBatch.set(key, (stockByBatch.get(key) || 0) - record.quantity);
             });
 
             // Get adjustments
-            const adjustments = JSON.parse(localStorage.getItem('aura_inventory_adjustments') || '[]');
+            const allAdjustments = JSON.parse(localStorage.getItem('aura_inventory_adjustments') || '[]');
+            const adjustments = selectedWarehouse
+                ? allAdjustments.filter((r: any) => r.warehouseId === selectedWarehouse.id)
+                : allAdjustments;
             adjustments.forEach((record: any) => {
                 const key = `${record.sku}|${record.warehouseId}|${normalizeBatch(record.batchNo)}`;
                 stockByBatch.set(key, record.adjustedQuantity);

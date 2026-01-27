@@ -129,15 +129,11 @@ const Dashboard: React.FC = () => {
             }
 
             try {
-                const [products, inwardRecords, outwardRecords] = await Promise.all([
+                const [products, warehouseInward, warehouseOutward] = await Promise.all([
                     getProducts(),
-                    getInwardRecords(),
-                    getOutwardRecords()
+                    getInwardRecords({ companyId: user?.companyId, warehouseId: selectedWarehouse.id }),
+                    getOutwardRecords({ companyId: user?.companyId, warehouseId: selectedWarehouse.id })
                 ]);
-
-                // Filter data for selected warehouse
-                const warehouseInward = inwardRecords.filter((r: Inward) => r.warehouseId === selectedWarehouse.id);
-                const warehouseOutward = outwardRecords.filter((r: Outward) => r.warehouseId === selectedWarehouse.id);
 
                 // Calculate stock per product
                 const stockMap = new Map<string, { product: Product; inward: number; outward: number; stock: number }>();
@@ -440,11 +436,11 @@ const Dashboard: React.FC = () => {
                     </div>
                     
                     <div className="grid grid-cols-1 gap-6">
-                        <InHandInventoryPieChart />
+                        <InHandInventoryPieChart selectedWarehouse={selectedWarehouse?.id || 'all'} />
                     </div>
                     
                     <div className="grid grid-cols-1 gap-6">
-                        <CategoryWiseSalesPieChart />
+                        <CategoryWiseSalesPieChart warehouseId={selectedWarehouse?.id} />
                     </div>
                     
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

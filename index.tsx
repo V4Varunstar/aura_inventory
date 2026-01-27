@@ -345,10 +345,10 @@ function Login() {
 function DashboardPage() {
   const { user, logout, loading } = useAuth();
   const { addToast } = useToast();
-  const { refreshWarehouses } = useWarehouse();
+  const { refreshWarehouses, selectedWarehouse } = useWarehouse();
 
-  const SIMPLE_INWARD_KEY = 'aura_inventory_simple_inward_entries';
-  const SIMPLE_OUTWARD_KEY = 'aura_inventory_simple_outward_entries';
+  const LEGACY_SIMPLE_INWARD_KEY = 'aura_inventory_simple_inward_entries';
+  const LEGACY_SIMPLE_OUTWARD_KEY = 'aura_inventory_simple_outward_entries';
 
   const DEFAULT_SUPPLIERS: any[] = [
     {id:1,name:'ABC Suppliers',contact:'Rajesh Kumar',phone:'+91 9876543210',email:'rajesh@abc.com'},
@@ -361,6 +361,21 @@ function DashboardPage() {
     const scope = user?.orgId || anyUser?.companyId || user?.id || 'default';
     return `aura_inventory_simple_suppliers_${scope}`;
   }, [user]);
+
+  const SIMPLE_WAREHOUSE_SCOPE = React.useMemo(() => {
+    const anyUser = user as any;
+    const userScope = user?.orgId || anyUser?.companyId || user?.id || 'default';
+    const whScope = selectedWarehouse?.id || 'no_warehouse';
+    return { userScope, whScope };
+  }, [user, selectedWarehouse?.id]);
+
+  const SIMPLE_INWARD_KEY = React.useMemo(() => {
+    return `aura_inventory_simple_inward_entries_${SIMPLE_WAREHOUSE_SCOPE.userScope}_${SIMPLE_WAREHOUSE_SCOPE.whScope}`;
+  }, [SIMPLE_WAREHOUSE_SCOPE]);
+
+  const SIMPLE_OUTWARD_KEY = React.useMemo(() => {
+    return `aura_inventory_simple_outward_entries_${SIMPLE_WAREHOUSE_SCOPE.userScope}_${SIMPLE_WAREHOUSE_SCOPE.whScope}`;
+  }, [SIMPLE_WAREHOUSE_SCOPE]);
 
   const readArrayFromStorage = (key: string): any[] => {
     try {
@@ -391,12 +406,52 @@ function DashboardPage() {
   });
   const [lineItems, setLineItems] = React.useState<any[]>([{id: 1, ean: '', productName: '', sku: '', quantity: '', batch: ''}]);
   const [userProducts, setUserProducts] = React.useState<any>({});
-  const [inwardEntries, setInwardEntries] = React.useState<any[]>(() => readArrayFromStorage(SIMPLE_INWARD_KEY));
-  const [outwardEntries, setOutwardEntries] = React.useState<any[]>(() => readArrayFromStorage(SIMPLE_OUTWARD_KEY));
-  const [products, setProducts] = React.useState<any[]>([]);
+  const [simpleInward, setSimpleInward] = React.useState<any>(() => ({
+    storageKey: SIMPLE_INWARD_KEY,
+    entries: readArrayFromStorage(SIMPLE_INWARD_KEY),
+  }));
+  const [simpleOutward, setSimpleOutward] = React.useState<any>(() => ({
+    storageKey: SIMPLE_OUTWARD_KEY,
+    entries: readArrayFromStorage(SIMPLE_OUTWARD_KEY),
+  }));
+  const inwardEntries = simpleInward.entries as any[];
+  const outwardEntries = simpleOutward.entries as any[];
+  const visibleInwardEntries = React.useMemo(() => {
+    if (!selectedWarehouse) return inwardEntries;
+    return inwardEntries.filter((e: any) => e?.warehouseId === selectedWarehouse.id);
+  }, [inwardEntries, selectedWarehouse?.id]);
+
+  const visibleOutwardEntries = React.useMemo(() => {
+    if (!selectedWarehouse) return outwardEntries;
+    return outwardEntries.filter((e: any) => e?.warehouseId === selectedWarehouse.id);
+  }, [outwardEntries, selectedWarehouse?.id]);
+
   const [realOutwardRecords, setRealOutwardRecords] = React.useState<any[]>([]);
   const [realProducts, setRealProducts] = React.useState<any[]>([]);
   const [realInwardRecords, setRealInwardRecords] = React.useState<any[]>([]);
+
+  const visibleRealOutwardRecords = React.useMemo(() => {
+    if (!selectedWarehouse) return realOutwardRecords;
+    return (realOutwardRecords || []).filter((r: any) => r?.warehouseId === selectedWarehouse.id);
+  }, [realOutwardRecords, selectedWarehouse?.id]);
+
+  const visibleRealInwardRecords = React.useMemo(() => {
+    if (!selectedWarehouse) return realInwardRecords;
+    return (realInwardRecords || []).filter((r: any) => r?.warehouseId === selectedWarehouse.id);
+  }, [realInwardRecords, selectedWarehouse?.id]);
+  const setInwardEntries = (updater: any) => {
+    setSimpleInward((prev: any) => ({
+      ...prev,
+      entries: typeof updater === 'function' ? updater(prev.entries || []) : updater,
+    }));
+  };
+  const setOutwardEntries = (updater: any) => {
+    setSimpleOutward((prev: any) => ({
+      ...prev,
+      entries: typeof updater === 'function' ? updater(prev.entries || []) : updater,
+    }));
+  };
+  const [products, setProducts] = React.useState<any[]>([]);
   const [parties, setParties] = React.useState<any[]>([]);
   const [partiesLoading, setPartiesLoading] = React.useState(false);
 
@@ -551,7 +606,8 @@ function DashboardPage() {
     const name = String(formData.warehouseName || '').trim();
     const location = String(formData.warehouseLocation || '').trim();
     const address = String(formData.address || '').trim();
-    const status = String(formData.warehouseStatus || 'Active').trim() || 'Active';
+    const statusRaw = String(formData.warehouseStatus || 'Active').trim();
+    const status: 'Active' | 'Inactive' = statusRaw === 'Inactive' ? 'Inactive' : 'Active';
 
     if (!id) {
       addToast('Warehouse not found', 'error');
@@ -567,7 +623,7 @@ function DashboardPage() {
         name,
         location,
         address: address || undefined,
-        status,
+        status: status as 'Active' | 'Inactive',
       });
       await refreshAllWarehouses();
       addToast(`✅ Warehouse "${name}" updated successfully!`, 'success');
@@ -583,9 +639,9 @@ function DashboardPage() {
     const loadData = async () => {
       try {
         const [outwardData, productsData, inwardData] = await Promise.all([
-          getOutwardRecords(),
+          getOutwardRecords({ companyId: user?.companyId, warehouseId: selectedWarehouse?.id }),
           getProducts(),
-          getInwardRecords()
+          getInwardRecords({ companyId: user?.companyId, warehouseId: selectedWarehouse?.id })
         ]);
         setRealOutwardRecords(outwardData);
         setRealProducts(productsData);
@@ -595,7 +651,7 @@ function DashboardPage() {
       }
     };
     loadData();
-  }, []);
+  }, [selectedWarehouse?.id, user?.companyId]);
 
   const refreshParties = React.useCallback(async () => {
     setPartiesLoading(true);
@@ -617,6 +673,80 @@ function DashboardPage() {
     refreshParties();
   }, [loading, user, refreshParties]);
 
+  // When selected warehouse changes, load that warehouse's simple entries.
+  React.useEffect(() => {
+    setSimpleInward({
+      storageKey: SIMPLE_INWARD_KEY,
+      entries: readArrayFromStorage(SIMPLE_INWARD_KEY),
+    });
+  }, [SIMPLE_INWARD_KEY]);
+
+  React.useEffect(() => {
+    setSimpleOutward({
+      storageKey: SIMPLE_OUTWARD_KEY,
+      entries: readArrayFromStorage(SIMPLE_OUTWARD_KEY),
+    });
+  }, [SIMPLE_OUTWARD_KEY]);
+
+  // One-time migration: if legacy simple entries exist (no warehouse separation),
+  // move them into the currently selected warehouse bucket.
+  React.useEffect(() => {
+    try {
+      if (!selectedWarehouse) return;
+      const migrationFlag = `aura_inventory_simple_entries_migrated_${SIMPLE_WAREHOUSE_SCOPE.userScope}`;
+      if (localStorage.getItem(migrationFlag) === '1') return;
+
+      const legacyInward = readArrayFromStorage(LEGACY_SIMPLE_INWARD_KEY);
+      const legacyOutward = readArrayFromStorage(LEGACY_SIMPLE_OUTWARD_KEY);
+      const hasLegacy = legacyInward.length > 0 || legacyOutward.length > 0;
+
+      if (!hasLegacy) {
+        localStorage.setItem(migrationFlag, '1');
+        return;
+      }
+
+      // Only migrate into a warehouse bucket if the bucket is currently empty.
+      const currentInward = readArrayFromStorage(SIMPLE_INWARD_KEY);
+      const currentOutward = readArrayFromStorage(SIMPLE_OUTWARD_KEY);
+
+      if (legacyInward.length > 0 && currentInward.length === 0) {
+        const migrated = legacyInward.map((e: any) => ({
+          ...e,
+          warehouseId: e?.warehouseId || selectedWarehouse.id,
+          warehouseName: e?.warehouseName || selectedWarehouse.name,
+        }));
+        localStorage.setItem(SIMPLE_INWARD_KEY, JSON.stringify(migrated));
+      }
+
+      if (legacyOutward.length > 0 && currentOutward.length === 0) {
+        const migrated = legacyOutward.map((e: any) => ({
+          ...e,
+          warehouseId: e?.warehouseId || selectedWarehouse.id,
+          warehouseName: e?.warehouseName || selectedWarehouse.name,
+        }));
+        localStorage.setItem(SIMPLE_OUTWARD_KEY, JSON.stringify(migrated));
+      }
+
+      // Remove legacy keys to prevent cross-warehouse mixing going forward.
+      localStorage.removeItem(LEGACY_SIMPLE_INWARD_KEY);
+      localStorage.removeItem(LEGACY_SIMPLE_OUTWARD_KEY);
+      localStorage.setItem(migrationFlag, '1');
+
+      setSimpleInward({
+        storageKey: SIMPLE_INWARD_KEY,
+        entries: readArrayFromStorage(SIMPLE_INWARD_KEY),
+      });
+      setSimpleOutward({
+        storageKey: SIMPLE_OUTWARD_KEY,
+        entries: readArrayFromStorage(SIMPLE_OUTWARD_KEY),
+      });
+      addToast('✅ Old inward/outward entries moved into the selected warehouse', 'info');
+    } catch (e) {
+      console.error('Simple entries migration failed:', e);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedWarehouse?.id, SIMPLE_INWARD_KEY, SIMPLE_OUTWARD_KEY, SIMPLE_WAREHOUSE_SCOPE.userScope]);
+
   React.useEffect(() => {
     if (currentPage === 'settings' && activeView === 'warehouse-config') {
       refreshAllWarehouses();
@@ -626,19 +756,19 @@ function DashboardPage() {
   // Persist simple (UI-only) inward/outward entries so they survive refresh
   React.useEffect(() => {
     try {
-      localStorage.setItem(SIMPLE_INWARD_KEY, JSON.stringify(inwardEntries));
+      localStorage.setItem(String(simpleInward?.storageKey || SIMPLE_INWARD_KEY), JSON.stringify(inwardEntries));
     } catch (e) {
       console.error('Failed to persist inward entries:', e);
     }
-  }, [inwardEntries]);
+  }, [inwardEntries, simpleInward?.storageKey, SIMPLE_INWARD_KEY]);
 
   React.useEffect(() => {
     try {
-      localStorage.setItem(SIMPLE_OUTWARD_KEY, JSON.stringify(outwardEntries));
+      localStorage.setItem(String(simpleOutward?.storageKey || SIMPLE_OUTWARD_KEY), JSON.stringify(outwardEntries));
     } catch (e) {
       console.error('Failed to persist outward entries:', e);
     }
-  }, [outwardEntries]);
+  }, [outwardEntries, simpleOutward?.storageKey, SIMPLE_OUTWARD_KEY]);
 
   // Load/persist suppliers so they survive logout/login (DashboardPage remount)
   React.useEffect(() => {
@@ -1902,7 +2032,7 @@ function DashboardPage() {
                     <div><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>Date</label><input type="date" value={formData.date||''} style={{width:'100%',padding:'14px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px'}} onChange={(e)=>setFormData({...formData,date:e.target.value})} /></div>
                   </div>
                   <div style={{display:'flex',gap:'16px'}}>
-                    <button onClick={()=>{const validItems=lineItems.filter(item=>item.productName && item.quantity);if(validItems.length>0 && formData.supplier && formData.date){const newEntries=validItems.map(item=>({...item,supplier:formData.supplier,date:formData.date,po:formData.po,entryDate:new Date().toLocaleDateString('en-IN')}));setInwardEntries(prev=>[...prev,...newEntries]);addToast(`✅ Inward entry recorded: ${validItems.length} product(s) added!`,'success');setLineItems([{id:1,ean:'',productName:'',sku:'',quantity:'',batch:''}]);setFormData({});resetView();}else{addToast('❌ Please fill all required fields (products, supplier, date)','error');}}} style={{padding:'14px 40px',background:'linear-gradient(135deg, #10b981, #059669)',color:'white',border:'none',borderRadius:'12px',fontSize:'16px',fontWeight:'800',cursor:'pointer'}}>✓ Submit All Entries</button>
+                    <button onClick={()=>{if(!selectedWarehouse){addToast('❌ Please select a warehouse first','error');return;}const validItems=lineItems.filter(item=>item.productName && item.quantity);if(validItems.length>0 && formData.supplier && formData.date){const newEntries=validItems.map(item=>({...item,supplier:formData.supplier,date:formData.date,po:formData.po,entryDate:new Date().toLocaleDateString('en-IN'),warehouseId:selectedWarehouse.id,warehouseName:selectedWarehouse.name}));setInwardEntries((prev:any[])=>[...prev,...newEntries]);addToast(`✅ Inward entry recorded: ${validItems.length} product(s) added!`,'success');setLineItems([{id:1,ean:'',productName:'',sku:'',quantity:'',batch:''}]);setFormData({});resetView();}else{addToast('❌ Please fill all required fields (products, supplier, date)','error');}}} style={{padding:'14px 40px',background:'linear-gradient(135deg, #10b981, #059669)',color:'white',border:'none',borderRadius:'12px',fontSize:'16px',fontWeight:'800',cursor:'pointer'}}>✓ Submit All Entries</button>
                     <button onClick={resetView} style={{padding:'14px 40px',background:theme.sidebarHover,color:theme.text,border:`2px solid ${theme.border}`,borderRadius:'12px',fontSize:'16px',fontWeight:'700',cursor:'pointer'}}>Cancel</button>
                   </div>
                 </div>
@@ -1951,12 +2081,17 @@ function DashboardPage() {
                     <table style={{width:'100%',borderCollapse:'collapse'}}>
                       <thead><tr style={{background:theme.sidebarHover,borderBottom:`2px solid ${theme.border}`}}><th style={{padding:'16px',textAlign:'left',color:theme.text,fontWeight:'700'}}>Date</th><th style={{padding:'16px',textAlign:'left',color:theme.text,fontWeight:'700'}}>Product</th><th style={{padding:'16px',textAlign:'left',color:theme.text,fontWeight:'700'}}>Batch</th><th style={{padding:'16px',textAlign:'left',color:theme.text,fontWeight:'700'}}>Qty</th><th style={{padding:'16px',textAlign:'left',color:theme.text,fontWeight:'700'}}>Supplier</th></tr></thead>
                       <tbody>
-                        {inwardEntries.length === 0 ? (
+                        {!selectedWarehouse ? (
+                          <tr><td colSpan={5} style={{padding:'40px',textAlign:'center',color:theme.textSecondary}}>
+                            <div style={{fontSize:'48px',marginBottom:'12px'}}>🏬</div>
+                            <p style={{fontSize:'16px'}}>Please select a warehouse to view inward history</p>
+                          </td></tr>
+                        ) : visibleInwardEntries.length === 0 ? (
                           <tr><td colSpan={5} style={{padding:'40px',textAlign:'center',color:theme.textSecondary}}>
                             <div style={{fontSize:'48px',marginBottom:'12px'}}>📦</div>
                             <p style={{fontSize:'16px'}}>No inward entries yet</p>
                           </td></tr>
-                        ) : inwardEntries.map((item,i)=>(
+                        ) : visibleInwardEntries.map((item,i)=>(
                           <tr key={i} style={{borderBottom:`1px solid ${theme.border}`,cursor:'pointer'}} onMouseEnter={(e)=>e.currentTarget.style.background=theme.sidebarHover} onMouseLeave={(e)=>e.currentTarget.style.background='transparent'}>
                             <td style={{padding:'16px',color:theme.textSecondary}}>{item.date||item.entryDate}</td>
                             <td style={{padding:'16px',color:theme.text,fontWeight:'600'}}>{item.productName||item.product}</td>
@@ -2021,7 +2156,7 @@ function DashboardPage() {
                     <div><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>Platform</label><select style={{width:'100%',padding:'14px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'15px'}} value={formData.platform||''} onChange={(e)=>setFormData({...formData,platform:e.target.value})}><option value="">Select Platform</option><option>Meesho</option><option>Amazon</option><option>Flipkart</option><option>Myntra</option><option>Ajio</option><option>Direct Order</option></select></div>
                   </div>
                   <div style={{display:'flex',gap:'16px'}}>
-                    <button onClick={()=>{const validItems=lineItems.filter(item=>item.productName && item.quantity);if(validItems.length>0 && formData.platform){const shipDate=formData.shipmentDate||new Date().toISOString().split('T')[0];const newEntries=validItems.map(item=>({...item,orderNo:formData.orderNo||'',platform:formData.platform,entryDate:new Date(shipDate).toLocaleDateString('en-IN'),shipmentDate:shipDate}));setOutwardEntries(prev=>[...prev,...newEntries]);addToast(`✅ Shipment created: ${validItems.length} product(s) dispatched to ${formData.platform}!`,'success');setLineItems([{id:1,ean:'',productName:'',sku:'',quantity:'',batch:''}]);setFormData({});resetView();}else{addToast('❌ Please fill all required fields (products, platform)','error');}}} style={{padding:'14px 40px',background:'linear-gradient(135deg, #f59e0b, #d97706)',color:'white',border:'none',borderRadius:'12px',fontSize:'16px',fontWeight:'800',cursor:'pointer'}}>🚚 Create Shipment</button>
+                    <button onClick={()=>{if(!selectedWarehouse){addToast('❌ Please select a warehouse first','error');return;}const validItems=lineItems.filter(item=>item.productName && item.quantity);if(validItems.length>0 && formData.platform){const shipDate=formData.shipmentDate||new Date().toISOString().split('T')[0];const newEntries=validItems.map(item=>({...item,orderNo:formData.orderNo||'',platform:formData.platform,entryDate:new Date(shipDate).toLocaleDateString('en-IN'),shipmentDate:shipDate,warehouseId:selectedWarehouse.id,warehouseName:selectedWarehouse.name}));setOutwardEntries(prev=>[...prev,...newEntries]);addToast(`✅ Shipment created: ${validItems.length} product(s) dispatched to ${formData.platform}!`,'success');setLineItems([{id:1,ean:'',productName:'',sku:'',quantity:'',batch:''}]);setFormData({});resetView();}else{addToast('❌ Please fill all required fields (products, platform)','error');}}} style={{padding:'14px 40px',background:'linear-gradient(135deg, #f59e0b, #d97706)',color:'white',border:'none',borderRadius:'12px',fontSize:'16px',fontWeight:'800',cursor:'pointer'}}>🚚 Create Shipment</button>
                     <button onClick={resetView} style={{padding:'14px 40px',background:theme.sidebarHover,color:theme.text,border:`2px solid ${theme.border}`,borderRadius:'12px',fontSize:'16px',fontWeight:'700',cursor:'pointer'}}>Cancel</button>
                   </div>
                 </div>
@@ -2062,7 +2197,7 @@ function DashboardPage() {
               )}
               {activeView === 'platform-orders' && (() => {
                 // Calculate platform-wise orders from real data
-                const platformCounts = realOutwardRecords.reduce((acc: any, record: any) => {
+                const platformCounts = visibleRealOutwardRecords.reduce((acc: any, record: any) => {
                   const platform = record.platform || 'Other';
                   acc[platform] = (acc[platform] || 0) + 1;
                   return acc;
@@ -2075,7 +2210,7 @@ function DashboardPage() {
                 ];
                 
                 // Get recent orders with product names
-                const recentOrders = realOutwardRecords.slice(-10).reverse().map((record: any) => {
+                const recentOrders = visibleRealOutwardRecords.slice(-10).reverse().map((record: any) => {
                   const product = realProducts.find((p: any) => p.id === record.productId);
                   return {
                     id: record.orderNumber || record.awbNumber || record.id,
@@ -2101,7 +2236,7 @@ function DashboardPage() {
                           <p style={{color:theme.textSecondary,fontSize:'14px'}}>Total Orders</p>
                         </div>
                       ))}
-                      {activeView === 'view-outward' && (
+                      {String(activeView) === 'view-outward' && (
                         <div style={{background:theme.cardBg,padding:'40px',borderRadius:'20px',border:`2px solid ${theme.border}`,boxShadow:darkMode?'0 8px 32px rgba(0,0,0,0.3)':'0 8px 32px rgba(0,0,0,0.1)'}}>
                           <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'32px'}}>
                             <h2 style={{fontSize:'28px',fontWeight:'900',color:theme.text}}>📜 Outward History</h2>
@@ -2111,12 +2246,17 @@ function DashboardPage() {
                             <table style={{width:'100%',borderCollapse:'collapse'}}>
                               <thead><tr style={{background:theme.sidebarHover,borderBottom:`2px solid ${theme.border}`}}><th style={{padding:'16px',textAlign:'left',color:theme.text,fontWeight:'700'}}>Date</th><th style={{padding:'16px',textAlign:'left',color:theme.text,fontWeight:'700'}}>Product</th><th style={{padding:'16px',textAlign:'left',color:theme.text,fontWeight:'700'}}>Qty</th><th style={{padding:'16px',textAlign:'left',color:theme.text,fontWeight:'700'}}>Platform</th><th style={{padding:'16px',textAlign:'left',color:theme.text,fontWeight:'700'}}>Order/Invoice</th></tr></thead>
                               <tbody>
-                                {outwardEntries.length === 0 ? (
+                                {!selectedWarehouse ? (
+                                  <tr><td colSpan={5} style={{padding:'40px',textAlign:'center',color:theme.textSecondary}}>
+                                    <div style={{fontSize:'48px',marginBottom:'12px'}}>🏬</div>
+                                    <p style={{fontSize:'16px'}}>Please select a warehouse to view outward history</p>
+                                  </td></tr>
+                                ) : visibleOutwardEntries.length === 0 ? (
                                   <tr><td colSpan={5} style={{padding:'40px',textAlign:'center',color:theme.textSecondary}}>
                                     <div style={{fontSize:'48px',marginBottom:'12px'}}>📦</div>
                                     <p style={{fontSize:'16px'}}>No outward entries yet</p>
                                   </td></tr>
-                                ) : outwardEntries.map((item,i)=>(
+                                ) : visibleOutwardEntries.map((item,i)=>(
                                   <tr key={i} style={{borderBottom:`1px solid ${theme.border}`,cursor:'pointer'}} onMouseEnter={(e)=>e.currentTarget.style.background=theme.sidebarHover} onMouseLeave={(e)=>e.currentTarget.style.background='transparent'}>
                                     <td style={{padding:'16px',color:theme.textSecondary}}>{item.shipmentDate||item.date||item.entryDate}</td>
                                     <td style={{padding:'16px',color:theme.text,fontWeight:'600'}}>{item.productName||item.product}</td>

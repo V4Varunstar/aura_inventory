@@ -2,9 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useToast } from '../context/ToastContext';
 import { useCompany } from '../context/CompanyContext';
 import { useAuth } from '../context/AuthContext';
-import { Product, Warehouse, Source, Inward } from '../types';
+import { useWarehouse } from '../context/WarehouseContext';
+import { Product, Warehouse, Inward } from '../types';
 import { getProducts, getWarehouses, addOutward, getProductStock, getCourierPartners, addCourierPartner, getInwardRecords } from '../services/firebaseService';
-import { getSources } from '../services/sourceService';
+import { getSources, Source } from '../services/sourceService';
 
 interface OutwardFormItem {
     id: string;
@@ -31,6 +32,7 @@ const OutwardStockForm: React.FC<OutwardStockFormProps> = ({ onSuccess }) => {
     const { company } = useCompany();
     const { user } = useAuth();
     const { addToast } = useToast();
+    const { selectedWarehouse } = useWarehouse();
     
     const companyId = user?.companyId || company?.id || 'default';
     
@@ -66,7 +68,10 @@ const OutwardStockForm: React.FC<OutwardStockFormProps> = ({ onSuccess }) => {
                     getProducts(),
                     getWarehouses(),
                     getSources(companyId, 'outward'),
-                    getInwardRecords()
+                    getInwardRecords({
+                        companyId: company?.id,
+                        warehouseId: selectedWarehouse?.id,
+                    })
                 ]);
                 
                 setProducts(productsData);
@@ -83,7 +88,7 @@ const OutwardStockForm: React.FC<OutwardStockFormProps> = ({ onSuccess }) => {
         };
         
         fetchData();
-    }, [companyId]);
+    }, [companyId, company?.id, selectedWarehouse?.id]);
 
     // Filter products based on search term
     useEffect(() => {
@@ -106,7 +111,7 @@ const OutwardStockForm: React.FC<OutwardStockFormProps> = ({ onSuccess }) => {
     // Update available batches when product is selected
     useEffect(() => {
         if (selectedProduct) {
-            const warehouseId = warehouses[0]?.id; // Using first warehouse for now
+            const warehouseId = selectedWarehouse?.id || warehouses[0]?.id;
             if (warehouseId) {
                 const batches = allBatches.filter(batch => 
                     batch.productId === selectedProduct.id && 
@@ -127,7 +132,7 @@ const OutwardStockForm: React.FC<OutwardStockFormProps> = ({ onSuccess }) => {
             setAvailableBatches([]);
             setAvailableStock(0);
         }
-    }, [selectedProduct, warehouses, allBatches, companyId]);
+    }, [selectedProduct, selectedWarehouse?.id, warehouses, allBatches, companyId]);
 
     // Auto-fill data when batch is selected
     useEffect(() => {
@@ -173,7 +178,7 @@ const OutwardStockForm: React.FC<OutwardStockFormProps> = ({ onSuccess }) => {
         try {
             const destinationSource = outwardDestinations.find(s => s.id === destinationChannel);
             const destinationName = destinationSource ? destinationSource.name : destinationChannel;
-            const warehouseId = warehouses[0]?.id;
+            const warehouseId = selectedWarehouse?.id || warehouses[0]?.id;
             
             if (!warehouseId) {
                 throw new Error('No warehouse available');

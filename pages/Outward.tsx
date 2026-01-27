@@ -79,7 +79,10 @@ const Outward: React.FC = () => {
                 getSources(companyId, 'outward'),
                 getCourierPartners(),
                 getParties(),
-                getInwardRecords()
+                getInwardRecords({
+                    companyId: company?.id,
+                    warehouseId: selectedWarehouse?.id,
+                })
             ]);
             setProducts(productsData);
             setWarehouses(warehousesData);
@@ -91,7 +94,7 @@ const Outward: React.FC = () => {
             if (couriersData.length > 0) setCourierPartner(couriersData[0]);
         };
         fetchData();
-    }, [companyId]);
+    }, [companyId, company?.id, selectedWarehouse?.id]);
 
     // Auto-select warehouse from context
     useEffect(() => {
@@ -135,7 +138,7 @@ const Outward: React.FC = () => {
             productId: '',
             productName: '',
             quantity: 1,
-            warehouseId: '',
+            warehouseId: selectedWarehouse?.id || '',
             availableStock: 0,
             batchId: '',
             batchNo: '',
@@ -564,6 +567,7 @@ const Outward: React.FC = () => {
                                                 label="From Warehouse *"
                                                 value={item.warehouseId}
                                                 onChange={e => updateItem(item.id, 'warehouseId', e.target.value)}
+                                                disabled={!!selectedWarehouse}
                                                 required
                                             >
                                                 <option value="">Select Warehouse</option>

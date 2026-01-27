@@ -74,12 +74,12 @@ const Inward: React.FC = () => {
         fetchData();
     }, [companyId]);
 
-    // Auto-select warehouse from context
+    // Keep form warehouse strictly in sync with global warehouse selector
     useEffect(() => {
-        if (selectedWarehouse && !warehouseId) {
+        if (selectedWarehouse && selectedWarehouse.id !== warehouseId) {
             setWarehouseId(selectedWarehouse.id);
         }
-    }, [selectedWarehouse, warehouseId]);
+    }, [selectedWarehouse?.id, warehouseId]);
 
     const handleSourceCreated = async () => {
         if (!companyId) return;
@@ -250,7 +250,13 @@ const Inward: React.FC = () => {
                             onChange={e => setTransactionDate(e.target.value)} 
                             required 
                         />
-                        <Select label="To Warehouse *" value={warehouseId} onChange={e => setWarehouseId(e.target.value)} required>
+                        <Select
+                            label="To Warehouse *"
+                            value={warehouseId}
+                            onChange={e => setWarehouseId(e.target.value)}
+                            required
+                            disabled={!!selectedWarehouse}
+                        >
                             <option value="">Select warehouse</option>
                             {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
                         </Select>
@@ -346,11 +352,9 @@ const Inward: React.FC = () => {
                                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
                                             <div>
-                                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                                    EAN / Barcode
-                                                </label>
                                                 <div className="flex gap-2">
                                                     <Input
+                                                        label="EAN / Barcode"
                                                         value={item.ean}
                                                         onChange={e => updateItem(item.id, 'ean', e.target.value)}
                                                         placeholder="Scan or enter EAN"

@@ -31,6 +31,7 @@ interface CategoryData {
 
 interface CategoryWiseSalesPieChartProps {
   selectedMonth?: string; // Format: "YYYY-MM"
+  warehouseId?: string; // Optional warehouse filter
   height?: number;
 }
 
@@ -50,6 +51,7 @@ const CATEGORY_COLORS = {
 
 const CategoryWiseSalesPieChart: React.FC<CategoryWiseSalesPieChartProps> = ({
   selectedMonth = new Date().toISOString().slice(0, 7), // Default to current month
+  warehouseId,
   height = 400
 }) => {
   const { company } = useCompany();
@@ -65,7 +67,7 @@ const CategoryWiseSalesPieChart: React.FC<CategoryWiseSalesPieChartProps> = ({
       setLoading(true);
       try {
         const [outwardRecords, productsData] = await Promise.all([
-          getOutwardRecords(),
+          getOutwardRecords({ companyId: company.id, warehouseId }),
           getProducts()
         ]);
 
@@ -73,7 +75,11 @@ const CategoryWiseSalesPieChart: React.FC<CategoryWiseSalesPieChartProps> = ({
         
         // Transform outward records to sales data
         const transformedSalesData: SalesData[] = outwardRecords
-          .filter((record: Outward) => record.companyId === company.id)
+          .filter((record: Outward) => {
+            if (record.companyId !== company.id) return false;
+            if (warehouseId && record.warehouseId !== warehouseId) return false;
+            return true;
+          })
           .map((record: Outward) => {
             const product = productsData.find(p => p.id === record.productId);
             const transactionDate = new Date(record.transactionDate || record.createdAt);
@@ -96,7 +102,7 @@ const CategoryWiseSalesPieChart: React.FC<CategoryWiseSalesPieChartProps> = ({
     };
 
     fetchData();
-  }, [company]);
+  }, [company, warehouseId]);
 
   // Process data for selected month
   const categoryData = useMemo(() => {

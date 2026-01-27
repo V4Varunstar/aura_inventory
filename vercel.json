@@ -56,6 +56,5 @@
     }
   ],
   "cleanUrls": true,
-  "trailingSlash": false,
-  "alias": ["aura-inventory.vercel.app"]
+  "trailingSlash": false
 }
