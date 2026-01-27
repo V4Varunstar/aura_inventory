@@ -2231,21 +2231,39 @@ export const getDashboardData = async (warehouseId?: string) => {
     return simulateApi(data);
 };
 
-// --- MOCK REPORT FUNCTIONS ---
-export const getFullStockReport = (format: 'csv' | 'xlsx') => {
+// --- REPORT EXPORT FUNCTIONS (warehouse-scoped) ---
+const requireReportWarehouseId = (warehouseId?: string) => {
+  const id = String(warehouseId ?? '').trim();
+  if (!id) {
+    throw new Error('warehouseId is required for report exports');
+  }
+  return id;
+};
+
+export const getFullStockReport = (
+  format: 'csv' | 'xlsx',
+  params?: { warehouseId?: string; companyId?: string }
+) => {
+  const warehouseId = requireReportWarehouseId(params?.warehouseId);
     // Generate real stock report data
     const reportData: any[] = [];
-    
-    products.forEach(product => {
-        warehouses.forEach(warehouse => {
-            const stock = getProductStock(product.id, warehouse.id);
+
+  const scopedWarehouses = warehouses.filter(w => w.id === warehouseId);
+  const scopedProducts = params?.companyId
+    ? products.filter(p => (p as any).companyId === params.companyId)
+    : products;
+
+  scopedProducts.forEach(product => {
+    scopedWarehouses.forEach(warehouse => {
+      const stock = getProductStock(product.id, warehouse.id);
             if (stock > 0) {
                 // Get earliest expiry date for this product in this warehouse
-                const relevantBatches = inwardRecords.filter(
-                    r => r.productId === product.id && r.warehouseId === warehouse.id && r.expDate
-                );
+        const relevantBatches = inwardRecords.filter(r => {
+          if (params?.companyId && (r as any).companyId !== params.companyId) return false;
+          return r.productId === product.id && r.warehouseId === warehouse.id && (r as any).expDate;
+        });
                 const earliestExpiry = relevantBatches.length > 0
-                    ? new Date(Math.min(...relevantBatches.map(r => new Date(r.expDate).getTime())))
+          ? new Date(Math.min(...relevantBatches.map(r => new Date((r as any).expDate).getTime())))
                     : null;
                 const daysToExpiry = earliestExpiry
                     ? Math.ceil((earliestExpiry.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
@@ -2311,9 +2329,24 @@ export const forceReloadProducts = () => {
     return simulateApi(products);
 };
 
-export const getInwardReport = (format: 'csv' | 'xlsx') => {
+export const getInwardReport = (
+    format: 'csv' | 'xlsx',
+    params?: { warehouseId?: string; companyId?: string; startDate?: Date; endDate?: Date }
+) => {
+    const warehouseId = requireReportWarehouseId(params?.warehouseId);
     // Generate real inward report
-    const data = inwardRecords.map(record => {
+    const data = inwardRecords
+      .filter(record => {
+        if (record.warehouseId !== warehouseId) return false;
+        if (params?.companyId && (record as any).companyId !== params.companyId) return false;
+
+        const rawDate = (record as any).transactionDate ?? record.createdAt;
+        const d = rawDate instanceof Date ? rawDate : new Date(rawDate);
+        if (params?.startDate && d < params.startDate) return false;
+        if (params?.endDate && d > params.endDate) return false;
+        return true;
+      })
+      .map(record => {
         const product = products.find(p => p.id === record.productId);
         const warehouse = warehouses.find(w => w.id === record.warehouseId);
         const daysToExpiry = record.expDate
@@ -2341,11 +2374,25 @@ export const getInwardReport = (format: 'csv' | 'xlsx') => {
     return simulateApi(data);
 };
 
-export const getOutwardReport = async (format: 'csv' | 'xlsx') => {
+export const getOutwardReport = async (
+    format: 'csv' | 'xlsx',
+    params?: { warehouseId?: string; companyId?: string; startDate?: Date; endDate?: Date }
+) => {
+    const warehouseId = requireReportWarehouseId(params?.warehouseId);
     // Generate real outward report with proper destination names
     const outwardSources = await getSources('default', 'outward');
-    
-    const data = outwardRecords.map(record => {
+
+    const data = outwardRecords
+      .filter(record => {
+        if (record.warehouseId !== warehouseId) return false;
+        if (params?.companyId && (record as any).companyId !== params.companyId) return false;
+        const rawDate = (record as any).transactionDate ?? record.createdAt;
+        const d = rawDate instanceof Date ? rawDate : new Date(rawDate);
+        if (params?.startDate && d < params.startDate) return false;
+        if (params?.endDate && d > params.endDate) return false;
+        return true;
+      })
+      .map(record => {
         const product = products.find(p => p.id === record.productId);
         const warehouse = warehouses.find(w => w.id === record.warehouseId);
         const destinationId = record.destination;
@@ -2441,16 +2488,25 @@ export const getSkuMovementReport = (format: 'csv' | 'xlsx') => {
     return simulateApi(movements);
 };
 
-export const getWarehouseStockReport = (format: 'csv' | 'xlsx') => {
+export const getWarehouseStockReport = (
+  format: 'csv' | 'xlsx',
+  params?: { warehouseId?: string; companyId?: string }
+) => {
+  const warehouseId = requireReportWarehouseId(params?.warehouseId);
     // Generate real warehouse stock report
     const reportData: any[] = [];
-    
-    warehouses.forEach(warehouse => {
+
+  const scopedWarehouses = warehouses.filter(w => w.id === warehouseId);
+  const scopedProducts = params?.companyId
+    ? products.filter(p => (p as any).companyId === params.companyId)
+    : products;
+
+  scopedWarehouses.forEach(warehouse => {
         let totalStock = 0;
         let totalValue = 0;
         const productDetails: any[] = [];
-        
-        products.forEach(product => {
+
+    scopedProducts.forEach(product => {
             const stock = getProductStock(product.id, warehouse.id);
             if (stock > 0) {
                 totalStock += stock;

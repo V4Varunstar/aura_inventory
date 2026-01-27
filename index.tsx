@@ -20,6 +20,8 @@ import {
 import { getParties, addParty, updateParty, deleteParty } from './services/partyService';
 import SuperAdminRoute from './components/auth/SuperAdminRoute';
 import * as XLSX from 'xlsx';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import './index.css';
 
 // Used by index.html bootstrap to detect whether the entry module executed
@@ -477,13 +479,435 @@ function DashboardPage() {
   }, [realProducts, normalizeSku]);
 
   const lowStockSkuProducts = React.useMemo(() => {
-    return skuProducts.filter((p: any) => {
-      const qty = Number.parseFloat(String(p?.quantity ?? '0')) || 0;
-      const threshold =
-        Number.parseFloat(String(p?.lowStockThreshold ?? p?.minThreshold ?? p?.minStockThreshold ?? 10)) || 10;
-      return qty < threshold;
+    // IMPORTANT: low-stock must be calculated per selected warehouse using
+    // opening_stock + inward - outward - sales (sales are outward records in this app).
+    // If no warehouse is selected (edge-case), fall back to product.quantity based logic.
+    if (!selectedWarehouse) {
+      return skuProducts.filter((p: any) => {
+        const qty = Number.parseFloat(String(p?.quantity ?? '0')) || 0;
+        const threshold =
+          Number.parseFloat(String(p?.lowStockThreshold ?? p?.minThreshold ?? p?.minStockThreshold ?? 10)) || 10;
+        return qty < threshold;
+      });
+    }
+
+    const toNumber = (v: any) => {
+      const n = Number.parseFloat(String(v ?? '0'));
+      return Number.isFinite(n) ? n : 0;
+    };
+
+    const thresholdFor = (p: any) => {
+      const raw = p?.lowStockThreshold ?? p?.minStockThreshold ?? p?.minThreshold ?? 0;
+      return Math.max(0, toNumber(raw));
+    };
+
+    const openingStockFor = (p: any, warehouseId: string) => {
+      // Try common shapes first; default to 0 if not present.
+      const byWarehouse =
+        p?.openingStockByWarehouse ??
+        p?.opening_stock_by_warehouse ??
+        p?.openingByWarehouse ??
+        p?.opening_stock_byWarehouse;
+      if (byWarehouse && typeof byWarehouse === 'object') {
+        return toNumber((byWarehouse as any)[warehouseId]);
+      }
+
+      const raw = p?.openingStock ?? p?.opening_stock ?? p?.initialStock ?? p?.initial_stock;
+      return raw !== undefined ? toNumber(raw) : 0;
+    };
+
+    const inwardBySku = new Map<string, number>();
+    (visibleRealInwardRecords || []).forEach((r: any) => {
+      if (!r || r.isDeleted === true) return;
+      const key = normalizeSku(r?.sku);
+      if (!key) return;
+      inwardBySku.set(key, (inwardBySku.get(key) || 0) + toNumber(r?.quantity));
     });
-  }, [skuProducts]);
+
+    const outwardBySku = new Map<string, number>();
+    (visibleRealOutwardRecords || []).forEach((r: any) => {
+      if (!r || r.isDeleted === true) return;
+      const key = normalizeSku(r?.sku);
+      if (!key) return;
+      outwardBySku.set(key, (outwardBySku.get(key) || 0) + toNumber(r?.quantity));
+    });
+
+    const warehouseId = selectedWarehouse.id;
+    return skuProducts
+      .map((p: any) => {
+        const key = normalizeSku(p?.sku);
+        const opening = openingStockFor(p, warehouseId);
+        const inward = inwardBySku.get(key) || 0;
+        const outward = outwardBySku.get(key) || 0;
+        const stock = opening + inward - outward;
+        const threshold = thresholdFor(p);
+        return {
+          ...p,
+          quantity: stock,
+          lowStockThreshold: p?.lowStockThreshold ?? p?.minStockThreshold ?? p?.minThreshold,
+          minThreshold: p?.minThreshold ?? p?.minStockThreshold ?? p?.lowStockThreshold,
+          __warehouseStock: { opening, inward, outward, stock, threshold, warehouseId },
+        };
+      })
+      .filter((p: any) => {
+        const stock = toNumber(p?.quantity);
+        const threshold = thresholdFor(p);
+        return stock <= threshold;
+      });
+  }, [skuProducts, selectedWarehouse?.id, visibleRealInwardRecords, visibleRealOutwardRecords, normalizeSku]);
+
+  const stockReportRows = React.useMemo(() => {
+    if (!selectedWarehouse) return [];
+
+    const toNumber = (v: any) => {
+      const n = Number.parseFloat(String(v ?? '0'));
+      return Number.isFinite(n) ? n : 0;
+    };
+
+    const thresholdFor = (p: any) => {
+      const raw = p?.lowStockThreshold ?? p?.minStockThreshold ?? p?.minThreshold ?? 0;
+      return Math.max(0, toNumber(raw));
+    };
+
+    const openingStockFor = (p: any, warehouseId: string) => {
+      const byWarehouse =
+        p?.openingStockByWarehouse ??
+        p?.opening_stock_by_warehouse ??
+        p?.openingByWarehouse ??
+        p?.opening_stock_byWarehouse;
+      if (byWarehouse && typeof byWarehouse === 'object') {
+        return toNumber((byWarehouse as any)[warehouseId]);
+      }
+      const raw = p?.openingStock ?? p?.opening_stock ?? p?.initialStock ?? p?.initial_stock;
+      return raw !== undefined ? toNumber(raw) : 0;
+    };
+
+    const inwardBySku = new Map<string, number>();
+    (visibleRealInwardRecords || []).forEach((r: any) => {
+      if (!r || r.isDeleted === true) return;
+      const key = normalizeSku(r?.sku);
+      if (!key) return;
+      inwardBySku.set(key, (inwardBySku.get(key) || 0) + toNumber(r?.quantity));
+    });
+
+    const outwardBySku = new Map<string, number>();
+    (visibleRealOutwardRecords || []).forEach((r: any) => {
+      if (!r || r.isDeleted === true) return;
+      const key = normalizeSku(r?.sku);
+      if (!key) return;
+      outwardBySku.set(key, (outwardBySku.get(key) || 0) + toNumber(r?.quantity));
+    });
+
+    const warehouseId = selectedWarehouse.id;
+
+    return skuProducts
+      .map((p: any) => {
+        const key = normalizeSku(p?.sku);
+        const opening = openingStockFor(p, warehouseId);
+        const inward = inwardBySku.get(key) || 0;
+        const outward = outwardBySku.get(key) || 0;
+        const stock = opening + inward - outward;
+        const threshold = thresholdFor(p);
+        const status = stock <= 0 ? 'Out of Stock' : stock <= threshold ? 'Low' : 'OK';
+        return {
+          EAN: p?.ean || p?.eanNo || '-',
+          Product: p?.name || '-',
+          SKU: p?.sku || '-',
+          Warehouse: selectedWarehouse.name,
+          'Opening Stock': opening,
+          Inward: inward,
+          Outward: outward,
+          Stock: stock,
+          Threshold: threshold,
+          Status: status,
+        };
+      })
+      .sort((a: any, b: any) => {
+        // Low/Out-of-stock first
+        const rank = (s: string) => (s === 'Out of Stock' ? 0 : s === 'Low' ? 1 : 2);
+        const r = rank(a.Status) - rank(b.Status);
+        if (r !== 0) return r;
+        return (a.Stock || 0) - (b.Stock || 0);
+      });
+  }, [selectedWarehouse?.id, selectedWarehouse?.name, skuProducts, visibleRealInwardRecords, visibleRealOutwardRecords, normalizeSku]);
+
+  const salesReportRows = React.useMemo(() => {
+    if (!selectedWarehouse) return [];
+    const toNumber = (v: any) => {
+      const n = Number.parseFloat(String(v ?? '0'));
+      return Number.isFinite(n) ? n : 0;
+    };
+    const parseRecordDate = (r: any) => {
+      const raw = r?.transactionDate ?? r?.shipmentDate ?? r?.createdAt ?? r?.date;
+      const d = raw instanceof Date ? raw : new Date(raw);
+      return Number.isNaN(d.getTime()) ? null : d;
+    };
+    const fromStr = String(formData?.salesFromDate || '').trim();
+    const toStr = String(formData?.salesToDate || '').trim();
+    const from = fromStr ? new Date(fromStr) : null;
+    const to = toStr ? new Date(toStr) : null;
+    if (to) to.setHours(23, 59, 59, 999);
+
+    const filtered = (visibleRealOutwardRecords || []).filter((r: any) => {
+      if (!r || r.isDeleted === true) return false;
+      const d = parseRecordDate(r);
+      if (!d) return true; // keep if date missing
+      if (from && d < from) return false;
+      if (to && d > to) return false;
+      return true;
+    });
+
+    const bySku = new Map<string, { sku: string; productName: string; units: number; value: number }>();
+    filtered.forEach((r: any) => {
+      const sku = String(r?.sku || '').trim();
+      const key = normalizeSku(sku);
+      if (!key) return;
+      const p = skuProducts.find((sp: any) => normalizeSku(sp?.sku) === key);
+      const unitPrice = toNumber(p?.sellingPrice ?? p?.mrp ?? p?.price ?? p?.costPrice ?? 0);
+      const qty = toNumber(r?.quantity);
+      const prev = bySku.get(key);
+      const productName = p?.name || r?.productName || 'Unknown';
+      const next = {
+        sku,
+        productName,
+        units: (prev?.units || 0) + qty,
+        value: (prev?.value || 0) + qty * unitPrice,
+      };
+      bySku.set(key, next);
+    });
+
+    return Array.from(bySku.values())
+      .sort((a, b) => b.value - a.value)
+      .map((x) => ({
+        Product: x.productName,
+        SKU: x.sku,
+        Units: x.units,
+        Sales: Math.round(x.value * 100) / 100,
+        'Avg Price': x.units > 0 ? Math.round((x.value / x.units) * 100) / 100 : 0,
+        Warehouse: selectedWarehouse.name,
+      }));
+  }, [selectedWarehouse?.id, selectedWarehouse?.name, visibleRealOutwardRecords, skuProducts, normalizeSku, formData?.salesFromDate, formData?.salesToDate]);
+
+  const lowStockReportRows = React.useMemo(() => {
+    return (stockReportRows || []).filter((r: any) => r?.Status === 'Low' || r?.Status === 'Out of Stock');
+  }, [stockReportRows]);
+
+  const inwardReportRows = React.useMemo(() => {
+    if (!selectedWarehouse) return [];
+
+    const parseRecordDate = (r: any) => {
+      const raw = r?.transactionDate ?? r?.createdAt;
+      const d = raw instanceof Date ? raw : new Date(raw);
+      return Number.isNaN(d.getTime()) ? null : d;
+    };
+    const fromStr = String(formData?.inwardFromDate || '').trim();
+    const toStr = String(formData?.inwardToDate || '').trim();
+    const from = fromStr ? new Date(fromStr) : null;
+    const to = toStr ? new Date(toStr) : null;
+    if (to) to.setHours(23, 59, 59, 999);
+
+    return (visibleRealInwardRecords || [])
+      .filter((r: any) => {
+        if (!r || r.isDeleted === true) return false;
+        const d = parseRecordDate(r);
+        if (!d) return true;
+        if (from && d < from) return false;
+        if (to && d > to) return false;
+        return true;
+      })
+      .sort((a: any, b: any) => {
+        const da = parseRecordDate(a)?.getTime() ?? 0;
+        const db = parseRecordDate(b)?.getTime() ?? 0;
+        return db - da;
+      })
+      .map((r: any) => ({
+        Date: (() => {
+          const d = parseRecordDate(r);
+          return d ? d.toLocaleDateString('en-IN') : '-';
+        })(),
+        EAN: r?.ean || '-',
+        Product: r?.productName || '-',
+        SKU: r?.sku || '-',
+        Quantity: r?.quantity ?? 0,
+        Supplier: r?.partyName || r?.source || '-',
+        Batch: r?.batchNo || '-',
+        Warehouse: selectedWarehouse.name,
+      }));
+  }, [selectedWarehouse?.id, selectedWarehouse?.name, visibleRealInwardRecords, formData?.inwardFromDate, formData?.inwardToDate]);
+
+  const outwardReportRows = React.useMemo(() => {
+    if (!selectedWarehouse) return [];
+
+    const parseRecordDate = (r: any) => {
+      const raw = r?.transactionDate ?? r?.shipmentDate ?? r?.createdAt;
+      const d = raw instanceof Date ? raw : new Date(raw);
+      return Number.isNaN(d.getTime()) ? null : d;
+    };
+    const fromStr = String(formData?.outwardFromDate || '').trim();
+    const toStr = String(formData?.outwardToDate || '').trim();
+    const from = fromStr ? new Date(fromStr) : null;
+    const to = toStr ? new Date(toStr) : null;
+    if (to) to.setHours(23, 59, 59, 999);
+
+    return (visibleRealOutwardRecords || [])
+      .filter((r: any) => {
+        if (!r || r.isDeleted === true) return false;
+        const d = parseRecordDate(r);
+        if (!d) return true;
+        if (from && d < from) return false;
+        if (to && d > to) return false;
+        return true;
+      })
+      .sort((a: any, b: any) => {
+        const da = parseRecordDate(a)?.getTime() ?? 0;
+        const db = parseRecordDate(b)?.getTime() ?? 0;
+        return db - da;
+      })
+      .map((r: any) => ({
+        Date: (() => {
+          const d = parseRecordDate(r);
+          return d ? d.toLocaleDateString('en-IN') : '-';
+        })(),
+        EAN: r?.ean || '-',
+        Product: r?.productName || '-',
+        SKU: r?.sku || '-',
+        Quantity: r?.quantity ?? 0,
+        Platform: r?.platform || r?.destination || '-',
+        'Order No': r?.orderNumber || r?.awbNumber || '-',
+        Batch: r?.batchNo || '-',
+        Warehouse: selectedWarehouse.name,
+      }));
+  }, [selectedWarehouse?.id, selectedWarehouse?.name, visibleRealOutwardRecords, formData?.outwardFromDate, formData?.outwardToDate]);
+
+  const batchReportRows = React.useMemo(() => {
+    if (!selectedWarehouse) return [];
+
+    const parseRecordDate = (r: any) => {
+      const raw = r?.transactionDate ?? r?.createdAt;
+      const d = raw instanceof Date ? raw : new Date(raw);
+      return Number.isNaN(d.getTime()) ? null : d;
+    };
+    const fromStr = String(formData?.batchFromDate || '').trim();
+    const toStr = String(formData?.batchToDate || '').trim();
+    const from = fromStr ? new Date(fromStr) : null;
+    const to = toStr ? new Date(toStr) : null;
+    if (to) to.setHours(23, 59, 59, 999);
+
+    type Acc = {
+      batchNo: string;
+      sku: string;
+      productName: string;
+      ean: string;
+      supplier: string;
+      inward: number;
+      outward: number;
+    };
+
+    const keyOf = (sku: any, batchNo: any) => `${String(sku || '').trim()}__${String(batchNo || '').trim()}`;
+    const map = new Map<string, Acc>();
+
+    (visibleRealInwardRecords || []).forEach((r: any) => {
+      if (!r || r.isDeleted === true) return;
+      if (!r.batchNo) return;
+      const d = parseRecordDate(r);
+      if (d) {
+        if (from && d < from) return;
+        if (to && d > to) return;
+      }
+      const key = keyOf(r.sku, r.batchNo);
+      const prev = map.get(key);
+      const next: Acc = prev || {
+        batchNo: String(r.batchNo),
+        sku: String(r.sku || ''),
+        productName: String(r.productName || ''),
+        ean: String(r.ean || ''),
+        supplier: String(r.partyName || r.source || ''),
+        inward: 0,
+        outward: 0,
+      };
+      next.inward += Number(r.quantity || 0);
+      if (!next.productName && r.productName) next.productName = String(r.productName);
+      if (!next.ean && r.ean) next.ean = String(r.ean);
+      if (!next.supplier && (r.partyName || r.source)) next.supplier = String(r.partyName || r.source);
+      map.set(key, next);
+    });
+
+    (visibleRealOutwardRecords || []).forEach((r: any) => {
+      if (!r || r.isDeleted === true) return;
+      if (!r.batchNo) return;
+      const d = parseRecordDate(r);
+      if (d) {
+        if (from && d < from) return;
+        if (to && d > to) return;
+      }
+      const key = keyOf(r.sku, r.batchNo);
+      const prev = map.get(key);
+      const next: Acc = prev || {
+        batchNo: String(r.batchNo),
+        sku: String(r.sku || ''),
+        productName: String(r.productName || ''),
+        ean: String(r.ean || ''),
+        supplier: '',
+        inward: 0,
+        outward: 0,
+      };
+      next.outward += Number(r.quantity || 0);
+      if (!next.productName && r.productName) next.productName = String(r.productName);
+      if (!next.ean && r.ean) next.ean = String(r.ean);
+      map.set(key, next);
+    });
+
+    return Array.from(map.values())
+      .map((x) => ({
+        'Batch No': x.batchNo || '-',
+        EAN: x.ean || '-',
+        Product: x.productName || '-',
+        SKU: x.sku || '-',
+        Inward: x.inward,
+        Outward: x.outward,
+        Balance: x.inward - x.outward,
+        Supplier: x.supplier || '-',
+        Warehouse: selectedWarehouse.name,
+      }))
+      .sort((a: any, b: any) => (b.Balance || 0) - (a.Balance || 0));
+  }, [selectedWarehouse?.id, selectedWarehouse?.name, visibleRealInwardRecords, visibleRealOutwardRecords, formData?.batchFromDate, formData?.batchToDate]);
+
+  const salesSummary = React.useMemo(() => {
+    if (!selectedWarehouse) {
+      return { totalSales: 0, totalUnits: 0, transactions: 0, avgPerTxn: 0 };
+    }
+
+    const toNumber = (v: any) => {
+      const n = Number.parseFloat(String(v ?? '0'));
+      return Number.isFinite(n) ? n : 0;
+    };
+    const parseRecordDate = (r: any) => {
+      const raw = r?.transactionDate ?? r?.shipmentDate ?? r?.createdAt ?? r?.date;
+      const d = raw instanceof Date ? raw : new Date(raw);
+      return Number.isNaN(d.getTime()) ? null : d;
+    };
+    const fromStr = String(formData?.salesFromDate || '').trim();
+    const toStr = String(formData?.salesToDate || '').trim();
+    const from = fromStr ? new Date(fromStr) : null;
+    const to = toStr ? new Date(toStr) : null;
+    if (to) to.setHours(23, 59, 59, 999);
+
+    const filteredTx = (visibleRealOutwardRecords || []).filter((r: any) => {
+      if (!r || r.isDeleted === true) return false;
+      const d = parseRecordDate(r);
+      if (!d) return true;
+      if (from && d < from) return false;
+      if (to && d > to) return false;
+      return true;
+    });
+
+    const totalSales = (salesReportRows || []).reduce((sum: number, r: any) => sum + toNumber(r?.Sales), 0);
+    const totalUnits = (salesReportRows || []).reduce((sum: number, r: any) => sum + toNumber(r?.Units), 0);
+    const transactions = filteredTx.length;
+    const avgPerTxn = transactions > 0 ? totalSales / transactions : 0;
+
+    return { totalSales, totalUnits, transactions, avgPerTxn };
+  }, [selectedWarehouse?.id, visibleRealOutwardRecords, formData?.salesFromDate, formData?.salesToDate, salesReportRows]);
 
   const viewAllProductsItems = skuProducts;
   const viewProductsTotalPages = Math.max(1, Math.ceil(viewAllProductsItems.length / VIEW_PRODUCTS_PAGE_SIZE));
@@ -929,6 +1353,38 @@ function DashboardPage() {
     a.download = filename;
     a.click();
     window.URL.revokeObjectURL(url);
+  };
+
+  const exportToPDF = (data: any[], filename: string, title?: string) => {
+    if (!data || data.length === 0) return;
+
+    const headers = Object.keys(data[0] || {});
+    const rows = data.map((row) => headers.map((h) => {
+      const v = (row as any)[h];
+      if (v === null || v === undefined) return '';
+      return String(v);
+    }));
+
+    const isLandscape = headers.length > 6;
+    const doc = new jsPDF({ orientation: isLandscape ? 'landscape' : 'portrait', unit: 'pt' });
+    const safeTitle = String(title || 'Report');
+
+    doc.setFontSize(14);
+    doc.text(safeTitle, 40, 40);
+    doc.setFontSize(10);
+    doc.text(`Generated: ${new Date().toLocaleString()}`, 40, 56);
+
+    autoTable(doc, {
+      head: [headers],
+      body: rows,
+      startY: 72,
+      styles: { fontSize: 8, cellPadding: 4 },
+      headStyles: { fillColor: [15, 23, 42] },
+      margin: { left: 40, right: 40 },
+    });
+
+    const outName = filename.toLowerCase().endsWith('.pdf') ? filename : `${filename}.pdf`;
+    doc.save(outName);
   };
   
   const handleAction = (action: string, view?: string) => {
@@ -2553,22 +3009,132 @@ function DashboardPage() {
                   <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'32px'}}>
                     <h2 style={{fontSize:'28px',fontWeight:'900',color:theme.text}}>📊 Sales Report</h2>
                     <div style={{display:'flex',gap:'12px'}}>
-                      <button onClick={()=>{const data=[{Product:'Wireless Mouse',Sales:67000,Units:89,AvgPrice:753},{Product:'USB Cable',Sales:45000,Units:234,AvgPrice:192},{Product:'T-Shirt',Sales:38000,Units:67,AvgPrice:567}];exportToExcel(data,'sales-report.xls');addToast('✅ Sales report exported to Excel','success');}} style={{padding:'10px 24px',background:'linear-gradient(135deg, #10b981, #059669)',color:'white',border:'none',borderRadius:'10px',fontSize:'14px',fontWeight:'700',cursor:'pointer'}}>📊 Export Excel</button>
+                      <button
+                        onClick={() => {
+                          if (!selectedWarehouse) {
+                            addToast('❌ Please select a warehouse first', 'error');
+                            return;
+                          }
+                          if (!salesReportRows || salesReportRows.length === 0) {
+                            addToast('No sales data to export', 'info');
+                            return;
+                          }
+                          exportToExcel(
+                            salesReportRows,
+                            `sales-report_${selectedWarehouse.name}_${new Date().toISOString().split('T')[0]}.xls`
+                          );
+                          addToast('✅ Sales report exported to Excel', 'success');
+                        }}
+                        style={{padding:'10px 24px',background:'linear-gradient(135deg, #10b981, #059669)',color:'white',border:'none',borderRadius:'10px',fontSize:'14px',fontWeight:'700',cursor:'pointer'}}
+                      >
+                        📊 Export Excel
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (!selectedWarehouse) {
+                            addToast('❌ Please select a warehouse first', 'error');
+                            return;
+                          }
+                          if (!salesReportRows || salesReportRows.length === 0) {
+                            addToast('No sales data to export', 'info');
+                            return;
+                          }
+                          exportToPDF(
+                            salesReportRows,
+                            `sales-report_${selectedWarehouse.name}_${new Date().toISOString().split('T')[0]}.pdf`,
+                            `Sales Report - ${selectedWarehouse.name}`
+                          );
+                          addToast('✅ Sales report exported to PDF', 'success');
+                        }}
+                        style={{padding:'10px 24px',background:'linear-gradient(135deg, #0ea5e9, #0284c7)',color:'white',border:'none',borderRadius:'10px',fontSize:'14px',fontWeight:'700',cursor:'pointer'}}
+                      >
+                        📄 Export PDF
+                      </button>
                       <button onClick={resetView} style={{padding:'10px 24px',background:theme.sidebarHover,color:theme.text,border:`2px solid ${theme.border}`,borderRadius:'10px',fontSize:'15px',fontWeight:'700',cursor:'pointer'}}>← Back</button>
                     </div>
                   </div>
+                  <div style={{display:'flex',gap:'16px',marginBottom:'24px',flexWrap:'wrap'}}>
+                    <div>
+                      <label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>From Date</label>
+                      <input
+                        type="date"
+                        value={formData.salesFromDate || ''}
+                        onChange={(e)=>setFormData({...formData,salesFromDate:e.target.value})}
+                        style={{padding:'12px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'14px'}}
+                      />
+                    </div>
+                    <div>
+                      <label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>To Date</label>
+                      <input
+                        type="date"
+                        value={formData.salesToDate || ''}
+                        onChange={(e)=>setFormData({...formData,salesToDate:e.target.value})}
+                        style={{padding:'12px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'14px'}}
+                      />
+                    </div>
+                    <div style={{display:'flex',alignItems:'flex-end'}}>
+                      <button
+                        onClick={() => addToast('✅ Sales filters applied', 'success')}
+                        style={{padding:'12px 24px',background:'linear-gradient(135deg, #3b82f6, #2563eb)',color:'white',border:'none',borderRadius:'10px',fontSize:'14px',fontWeight:'700',cursor:'pointer'}}
+                      >
+                        🔍 Apply
+                      </button>
+                    </div>
+                  </div>
+
                   <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:'20px',marginBottom:'32px'}}>
-                    {[{label:'Total Sales',value:'₹ 0',color:'#06b6d4'},{label:'Orders',value:'0',color:'#10b981'},{label:'Avg Order',value:'₹ 0',color:'#f59e0b'},{label:'Growth',value:'0%',color:'#8b5cf6'}].map((stat,i)=>(
+                    {[
+                      {label:'Total Sales',value:`₹ ${salesSummary.totalSales.toFixed(2)}`,color:'#06b6d4'},
+                      {label:'Transactions',value:`${salesSummary.transactions}`,color:'#10b981'},
+                      {label:'Avg / Txn',value:`₹ ${salesSummary.avgPerTxn.toFixed(2)}`,color:'#f59e0b'},
+                      {label:'Units',value:`${salesSummary.totalUnits}`,color:'#8b5cf6'}
+                    ].map((stat,i)=>(
                       <div key={i} style={{background:theme.sidebarHover,padding:'24px',borderRadius:'16px',border:`2px solid ${theme.border}`,textAlign:'center'}}>
                         <p style={{color:theme.textSecondary,fontSize:'14px',marginBottom:'8px',fontWeight:'600'}}>{stat.label}</p>
                         <p style={{color:stat.color,fontSize:'28px',fontWeight:'900'}}>{stat.value}</p>
                       </div>
                     ))}
                   </div>
-                  <div style={{background:theme.sidebarHover,padding:'32px',borderRadius:'16px',border:`2px solid ${theme.border}`,textAlign:'center'}}>
-                    <div style={{fontSize:'48px',marginBottom:'12px'}}>📊</div>
-                    <p style={{color:theme.textSecondary,fontSize:'16px'}}>No sales data available</p>
-                  </div>
+
+                  {(!selectedWarehouse) ? (
+                    <div style={{background:theme.sidebarHover,padding:'32px',borderRadius:'16px',border:`2px solid ${theme.border}`,textAlign:'center'}}>
+                      <div style={{fontSize:'48px',marginBottom:'12px'}}>🏭</div>
+                      <p style={{color:theme.textSecondary,fontSize:'16px'}}>Please select a warehouse from the top-right selector</p>
+                    </div>
+                  ) : (salesReportRows.length === 0 ? (
+                    <div style={{background:theme.sidebarHover,padding:'32px',borderRadius:'16px',border:`2px solid ${theme.border}`,textAlign:'center'}}>
+                      <div style={{fontSize:'48px',marginBottom:'12px'}}>📊</div>
+                      <p style={{color:theme.textSecondary,fontSize:'16px'}}>No sales data for selected filters</p>
+                    </div>
+                  ) : (
+                    <div style={{background:theme.sidebarHover,padding:'24px',borderRadius:'16px',border:`2px solid ${theme.border}`}}>
+                      <div style={{overflowX:'auto'}}>
+                        <table style={{width:'100%',borderCollapse:'collapse'}}>
+                          <thead>
+                            <tr style={{borderBottom:`2px solid ${theme.border}`}}>
+                              {Object.keys(salesReportRows[0]).map((k)=> (
+                                <th key={k} style={{padding:'12px',textAlign:k==='Sales'||k==='Units'||k==='Avg Price'?'right':'left',color:theme.text,fontWeight:'700'}}>{k}</th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {salesReportRows.slice(0, 50).map((row: any, idx: number) => (
+                              <tr key={idx} style={{borderBottom:`1px solid ${theme.border}`}}>
+                                {Object.keys(salesReportRows[0]).map((k)=> (
+                                  <td key={k} style={{padding:'12px',textAlign:k==='Sales'||k==='Units'||k==='Avg Price'?'right':'left',color:theme.textSecondary}}>
+                                    {row[k]}
+                                  </td>
+                                ))}
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                      {salesReportRows.length > 50 && (
+                        <p style={{marginTop:'10px',color:theme.textSecondary,fontSize:'12px'}}>Showing top 50 rows. Export to download full data.</p>
+                      )}
+                    </div>
+                  ))}
                 </div>
               )}
               {activeView === 'stock-report' && (
@@ -2576,22 +3142,101 @@ function DashboardPage() {
                   <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'32px'}}>
                     <h2 style={{fontSize:'28px',fontWeight:'900',color:theme.text}}>📦 Stock Report</h2>
                     <div style={{display:'flex',gap:'12px'}}>
-                      <button onClick={()=>{const data=[{Product:'Logitech Mouse',SKU:'TECH-WM-001',Stock:12,MinStock:20,Status:'Low'},{Product:'USB Cable',SKU:'TECH-UC-002',Stock:35,MinStock:30,Status:'OK'}];exportToExcel(data,'stock-report.xls');addToast('✅ Stock report exported to Excel','success');}} style={{padding:'10px 24px',background:'linear-gradient(135deg, #10b981, #059669)',color:'white',border:'none',borderRadius:'10px',fontSize:'14px',fontWeight:'700',cursor:'pointer'}}>📊 Export Excel</button>
+                      <button
+                        onClick={() => {
+                          if (!selectedWarehouse) {
+                            addToast('❌ Please select a warehouse first', 'error');
+                            return;
+                          }
+                          if (!stockReportRows || stockReportRows.length === 0) {
+                            addToast('No stock data to export', 'info');
+                            return;
+                          }
+                          exportToExcel(
+                            stockReportRows,
+                            `stock-report_${selectedWarehouse.name}_${new Date().toISOString().split('T')[0]}.xls`
+                          );
+                          addToast('✅ Stock report exported to Excel', 'success');
+                        }}
+                        style={{padding:'10px 24px',background:'linear-gradient(135deg, #10b981, #059669)',color:'white',border:'none',borderRadius:'10px',fontSize:'14px',fontWeight:'700',cursor:'pointer'}}
+                      >
+                        📊 Export Excel
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (!selectedWarehouse) {
+                            addToast('❌ Please select a warehouse first', 'error');
+                            return;
+                          }
+                          if (!stockReportRows || stockReportRows.length === 0) {
+                            addToast('No stock data to export', 'info');
+                            return;
+                          }
+                          exportToPDF(
+                            stockReportRows,
+                            `stock-report_${selectedWarehouse.name}_${new Date().toISOString().split('T')[0]}.pdf`,
+                            `Stock Report - ${selectedWarehouse.name}`
+                          );
+                          addToast('✅ Stock report exported to PDF', 'success');
+                        }}
+                        style={{padding:'10px 24px',background:'linear-gradient(135deg, #0ea5e9, #0284c7)',color:'white',border:'none',borderRadius:'10px',fontSize:'14px',fontWeight:'700',cursor:'pointer'}}
+                      >
+                        📄 Export PDF
+                      </button>
                       <button onClick={resetView} style={{padding:'10px 24px',background:theme.sidebarHover,color:theme.text,border:`2px solid ${theme.border}`,borderRadius:'10px',fontSize:'15px',fontWeight:'700',cursor:'pointer'}}>← Back</button>
                     </div>
                   </div>
                   <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:'20px',marginBottom:'32px'}}>
-                    {[{label:'Total Items',value:products.length.toString(),color:'#3b82f6'},{label:'Low Stock',value:'0',color:'#ef4444'},{label:'Out of Stock',value:'0',color:'#f59e0b'}].map((stat,i)=>(
+                    {[
+                      {label:'Total SKUs',value:stockReportRows.length.toString(),color:'#3b82f6'},
+                      {label:'Low Stock',value:lowStockReportRows.filter((r:any)=>r.Status==='Low').length.toString(),color:'#ef4444'},
+                      {label:'Out of Stock',value:lowStockReportRows.filter((r:any)=>r.Status==='Out of Stock').length.toString(),color:'#f59e0b'}
+                    ].map((stat,i)=>(
                       <div key={i} style={{background:theme.sidebarHover,padding:'24px',borderRadius:'16px',border:`2px solid ${theme.border}`,textAlign:'center'}}>
                         <p style={{color:theme.textSecondary,fontSize:'14px',marginBottom:'8px',fontWeight:'600'}}>{stat.label}</p>
                         <p style={{color:stat.color,fontSize:'32px',fontWeight:'900'}}>{stat.value}</p>
                       </div>
                     ))}
                   </div>
-                  <div style={{background:theme.sidebarHover,padding:'32px',borderRadius:'16px',border:`2px solid ${theme.border}`,textAlign:'center'}}>
-                    <div style={{fontSize:'48px',marginBottom:'12px'}}>📦</div>
-                    <p style={{color:theme.textSecondary,fontSize:'16px'}}>No stock alerts</p>
-                  </div>
+                  {(!selectedWarehouse) ? (
+                    <div style={{background:theme.sidebarHover,padding:'32px',borderRadius:'16px',border:`2px solid ${theme.border}`,textAlign:'center'}}>
+                      <div style={{fontSize:'48px',marginBottom:'12px'}}>🏭</div>
+                      <p style={{color:theme.textSecondary,fontSize:'16px'}}>Please select a warehouse from the top-right selector</p>
+                    </div>
+                  ) : (stockReportRows.length === 0 ? (
+                    <div style={{background:theme.sidebarHover,padding:'32px',borderRadius:'16px',border:`2px solid ${theme.border}`,textAlign:'center'}}>
+                      <div style={{fontSize:'48px',marginBottom:'12px'}}>📦</div>
+                      <p style={{color:theme.textSecondary,fontSize:'16px'}}>No stock data available</p>
+                    </div>
+                  ) : (
+                    <div style={{background:theme.sidebarHover,padding:'24px',borderRadius:'16px',border:`2px solid ${theme.border}`}}>
+                      <div style={{overflowX:'auto'}}>
+                        <table style={{width:'100%',borderCollapse:'collapse'}}>
+                          <thead>
+                            <tr style={{borderBottom:`2px solid ${theme.border}`}}>
+                              {Object.keys(stockReportRows[0]).map((k)=> (
+                                <th key={k} style={{padding:'12px',textAlign:['Opening Stock','Inward','Outward','Stock','Threshold'].includes(k)?'right':k==='Status'?'center':'left',color:theme.text,fontWeight:'700'}}>{k}</th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {stockReportRows.slice(0, 200).map((row: any, idx: number) => (
+                              <tr key={idx} style={{borderBottom:`1px solid ${theme.border}`}}>
+                                {Object.keys(stockReportRows[0]).map((k)=> (
+                                  <td key={k} style={{padding:'12px',textAlign:['Opening Stock','Inward','Outward','Stock','Threshold'].includes(k)?'right':k==='Status'?'center':'left',color:theme.textSecondary,fontWeight:k==='Status'?'700':'400'}}>
+                                    {row[k]}
+                                  </td>
+                                ))}
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                      {stockReportRows.length > 200 && (
+                        <p style={{marginTop:'10px',color:theme.textSecondary,fontSize:'12px'}}>Showing first 200 rows. Export to download full data.</p>
+                      )}
+                    </div>
+                  ))}
                 </div>
               )}
               {activeView === 'low-stock-report' && (
@@ -2600,25 +3245,118 @@ function DashboardPage() {
                     <h2 style={{fontSize:'28px',fontWeight:'900',color:theme.text}}>⚠️ Low Stock Report</h2>
                     <button onClick={resetView} style={{padding:'10px 24px',background:theme.sidebarHover,color:theme.text,border:`2px solid ${theme.border}`,borderRadius:'10px',fontSize:'15px',fontWeight:'700',cursor:'pointer'}}>← Back</button>
                   </div>
-                  <div style={{display:'flex',gap:'16px',marginBottom:'24px'}}>
-                    <div><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>From Date</label><input type="date" value={formData.fromDate||''} onChange={(e)=>setFormData({...formData,fromDate:e.target.value})} style={{padding:'12px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'14px'}} /></div>
-                    <div><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>To Date</label><input type="date" value={formData.toDate||''} onChange={(e)=>setFormData({...formData,toDate:e.target.value})} style={{padding:'12px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'14px'}} /></div>
-                    <div style={{display:'flex',alignItems:'flex-end',gap:'12px'}}>
-                      <button onClick={()=>addToast('Applying filters...','success')} style={{padding:'12px 24px',background:'linear-gradient(135deg, #3b82f6, #2563eb)',color:'white',border:'none',borderRadius:'10px',fontSize:'14px',fontWeight:'700',cursor:'pointer'}}>🔍 Filter</button>
-                      <button onClick={()=>{const data=[{Product:'Running Shoes',SKU:'SKU004',Stock:23,MinStock:50,Status:'Low'},{Product:'Notebook',SKU:'SKU006',Stock:18,MinStock:30,Status:'Critical'}];exportToCSV(data,'low-stock-report.csv');addToast('✅ Exported to CSV','success');}} style={{padding:'12px 24px',background:'linear-gradient(135deg, #06b6d4, #0891b2)',color:'white',border:'none',borderRadius:'10px',fontSize:'14px',fontWeight:'700',cursor:'pointer'}}>📄 CSV</button>
-                      <button onClick={()=>{const data=[{Product:'Running Shoes',SKU:'SKU004',Stock:23,MinStock:50,Status:'Low'},{Product:'Notebook',SKU:'SKU006',Stock:18,MinStock:30,Status:'Critical'}];exportToExcel(data,'low-stock-report.xls');addToast('✅ Exported to Excel','success');}} style={{padding:'12px 24px',background:'linear-gradient(135deg, #10b981, #059669)',color:'white',border:'none',borderRadius:'10px',fontSize:'14px',fontWeight:'700',cursor:'pointer'}}>📊 Excel</button>
-                    </div>
+                  <div style={{display:'flex',gap:'12px',marginBottom:'24px',flexWrap:'wrap'}}>
+                    <button
+                      onClick={() => {
+                        if (!selectedWarehouse) {
+                          addToast('❌ Please select a warehouse first', 'error');
+                          return;
+                        }
+                        if (!lowStockReportRows || lowStockReportRows.length === 0) {
+                          addToast('No low stock items to export', 'info');
+                          return;
+                        }
+                        exportToCSV(
+                          lowStockReportRows,
+                          `low-stock-report_${selectedWarehouse.name}_${new Date().toISOString().split('T')[0]}.csv`
+                        );
+                        addToast('✅ Exported to CSV', 'success');
+                      }}
+                      style={{padding:'12px 24px',background:'linear-gradient(135deg, #06b6d4, #0891b2)',color:'white',border:'none',borderRadius:'10px',fontSize:'14px',fontWeight:'700',cursor:'pointer'}}
+                    >
+                      📄 CSV
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (!selectedWarehouse) {
+                          addToast('❌ Please select a warehouse first', 'error');
+                          return;
+                        }
+                        if (!lowStockReportRows || lowStockReportRows.length === 0) {
+                          addToast('No low stock items to export', 'info');
+                          return;
+                        }
+                        exportToExcel(
+                          lowStockReportRows,
+                          `low-stock-report_${selectedWarehouse.name}_${new Date().toISOString().split('T')[0]}.xls`
+                        );
+                        addToast('✅ Exported to Excel', 'success');
+                      }}
+                      style={{padding:'12px 24px',background:'linear-gradient(135deg, #10b981, #059669)',color:'white',border:'none',borderRadius:'10px',fontSize:'14px',fontWeight:'700',cursor:'pointer'}}
+                    >
+                      📊 Excel
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (!selectedWarehouse) {
+                          addToast('❌ Please select a warehouse first', 'error');
+                          return;
+                        }
+                        if (!lowStockReportRows || lowStockReportRows.length === 0) {
+                          addToast('No low stock items to export', 'info');
+                          return;
+                        }
+                        exportToPDF(
+                          lowStockReportRows,
+                          `low-stock-report_${selectedWarehouse.name}_${new Date().toISOString().split('T')[0]}.pdf`,
+                          `Low Stock Report - ${selectedWarehouse.name}`
+                        );
+                        addToast('✅ Exported to PDF', 'success');
+                      }}
+                      style={{padding:'12px 24px',background:'linear-gradient(135deg, #0ea5e9, #0284c7)',color:'white',border:'none',borderRadius:'10px',fontSize:'14px',fontWeight:'700',cursor:'pointer'}}
+                    >
+                      📄 PDF
+                    </button>
                   </div>
+
                   <div style={{background:theme.sidebarHover,padding:'24px',borderRadius:'16px',border:`2px solid ${theme.border}`}}>
-                    <table style={{width:'100%',borderCollapse:'collapse'}}>
-                      <thead><tr style={{borderBottom:`2px solid ${theme.border}`}}><th style={{padding:'12px',textAlign:'left',color:theme.text,fontWeight:'700'}}>EAN</th><th style={{padding:'12px',textAlign:'left',color:theme.text,fontWeight:'700'}}>Product</th><th style={{padding:'12px',textAlign:'left',color:theme.text,fontWeight:'700'}}>SKU</th><th style={{padding:'12px',textAlign:'right',color:theme.text,fontWeight:'700'}}>Current Stock</th><th style={{padding:'12px',textAlign:'right',color:theme.text,fontWeight:'700'}}>Min Stock</th><th style={{padding:'12px',textAlign:'center',color:theme.text,fontWeight:'700'}}>Status</th></tr></thead>
-                      <tbody>
-                        <tr><td colSpan={6} style={{padding:'40px',textAlign:'center',color:theme.textSecondary}}>
-                          <div style={{fontSize:'48px',marginBottom:'12px'}}>✅</div>
-                          <p style={{fontSize:'16px'}}>No low stock items</p>
-                        </td></tr>
-                      </tbody>
-                    </table>
+                    {!selectedWarehouse ? (
+                      <div style={{textAlign:'center',padding:'40px',color:theme.textSecondary}}>
+                        <div style={{fontSize:'48px',marginBottom:'12px'}}>🏭</div>
+                        <p style={{fontSize:'16px'}}>Please select a warehouse from the top-right selector</p>
+                      </div>
+                    ) : (
+                      <table style={{width:'100%',borderCollapse:'collapse'}}>
+                        <thead>
+                          <tr style={{borderBottom:`2px solid ${theme.border}`}}>
+                            {['EAN','Product','SKU','Warehouse','Opening Stock','Inward','Outward','Stock','Threshold','Status'].map((h) => (
+                              <th
+                                key={h}
+                                style={{padding:'12px',textAlign:['Opening Stock','Inward','Outward','Stock','Threshold'].includes(h)?'right':h==='Status'?'center':'left',color:theme.text,fontWeight:'700'}}
+                              >
+                                {h}
+                              </th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {lowStockReportRows.length === 0 ? (
+                            <tr>
+                              <td colSpan={10} style={{padding:'40px',textAlign:'center',color:theme.textSecondary}}>
+                                <div style={{fontSize:'48px',marginBottom:'12px'}}>✅</div>
+                                <p style={{fontSize:'16px'}}>No low stock items</p>
+                              </td>
+                            </tr>
+                          ) : (
+                            lowStockReportRows.slice(0, 200).map((row: any, idx: number) => (
+                              <tr key={idx} style={{borderBottom:`1px solid ${theme.border}`}}>
+                                {['EAN','Product','SKU','Warehouse','Opening Stock','Inward','Outward','Stock','Threshold','Status'].map((k) => (
+                                  <td
+                                    key={k}
+                                    style={{padding:'12px',textAlign:['Opening Stock','Inward','Outward','Stock','Threshold'].includes(k)?'right':k==='Status'?'center':'left',color:theme.textSecondary,fontWeight:k==='Status'?'700':'400'}}
+                                  >
+                                    {row[k]}
+                                  </td>
+                                ))}
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
+                    )}
+                    {selectedWarehouse && lowStockReportRows.length > 200 && (
+                      <p style={{marginTop:'10px',color:theme.textSecondary,fontSize:'12px'}}>Showing first 200 rows. Export to download full data.</p>
+                    )}
                   </div>
                 </div>
               )}
@@ -2663,7 +3401,7 @@ function DashboardPage() {
                   <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:'20px',marginBottom:'32px'}}>
                     {[
                       {label:'Total Low Stock SKUs',value:lowStockSkuProducts.length.toString(),color:'#ef4444',icon:'⚠️'},
-                      {label:'Critical (Stock = 0)',value:realProducts.filter(p=>(parseFloat(p.quantity)||0)===0).length.toString(),color:'#dc2626',icon:'🚨'},
+                      {label:'Critical (Stock = 0)',value:stockReportRows.filter((r:any)=>Number(r?.Stock||0)===0).length.toString(),color:'#dc2626',icon:'🚨'},
                       {label:'Total SKUs',value:skuProducts.length.toString(),color:'#3b82f6',icon:'📦'}
                     ].map((stat,i)=>(
                       <div key={i} style={{background:theme.sidebarHover,padding:'24px',borderRadius:'16px',border:`2px solid ${theme.border}`,textAlign:'center'}}>
@@ -2753,36 +3491,45 @@ function DashboardPage() {
                     <button onClick={resetView} style={{padding:'10px 24px',background:theme.sidebarHover,color:theme.text,border:`2px solid ${theme.border}`,borderRadius:'10px',fontSize:'15px',fontWeight:'700',cursor:'pointer'}}>← Back</button>
                   </div>
                   <div style={{display:'flex',gap:'16px',marginBottom:'24px'}}>
-                    <div><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>From Date</label><input type="date" value={formData.fromDate||''} onChange={(e)=>setFormData({...formData,fromDate:e.target.value})} style={{padding:'12px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'14px'}} /></div>
-                    <div><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>To Date</label><input type="date" value={formData.toDate||''} onChange={(e)=>setFormData({...formData,toDate:e.target.value})} style={{padding:'12px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'14px'}} /></div>
+                    <div><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>From Date</label><input type="date" value={formData.inwardFromDate||''} onChange={(e)=>setFormData({...formData,inwardFromDate:e.target.value})} style={{padding:'12px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'14px'}} /></div>
+                    <div><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>To Date</label><input type="date" value={formData.inwardToDate||''} onChange={(e)=>setFormData({...formData,inwardToDate:e.target.value})} style={{padding:'12px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'14px'}} /></div>
                     <div style={{display:'flex',alignItems:'flex-end',gap:'12px'}}>
-                      <button onClick={()=>addToast('Applying filters...','success')} style={{padding:'12px 24px',background:'linear-gradient(135deg, #3b82f6, #2563eb)',color:'white',border:'none',borderRadius:'10px',fontSize:'14px',fontWeight:'700',cursor:'pointer'}}>🔍 Filter</button>
-                      <button onClick={()=>{const data=[{Date:'28 Dec 2024',Product:'Wireless Mouse',SKU:'SKU001',Quantity:50,Supplier:'ABC Suppliers',Batch:'BATCH001'},{Date:'27 Dec 2024',Product:'USB Cable',SKU:'SKU002',Quantity:100,Supplier:'XYZ Distributors',Batch:'BATCH002'}];exportToCSV(data,'inward-report.csv');addToast('✅ Exported to CSV','success');}} style={{padding:'12px 24px',background:'linear-gradient(135deg, #06b6d4, #0891b2)',color:'white',border:'none',borderRadius:'10px',fontSize:'14px',fontWeight:'700',cursor:'pointer'}}>📄 CSV</button>
-                      <button onClick={()=>{const data=[{Date:'28 Dec 2024',Product:'Wireless Mouse',SKU:'SKU001',Quantity:50,Supplier:'ABC Suppliers',Batch:'BATCH001'},{Date:'27 Dec 2024',Product:'USB Cable',SKU:'SKU002',Quantity:100,Supplier:'XYZ Distributors',Batch:'BATCH002'}];exportToExcel(data,'inward-report.xls');addToast('✅ Exported to Excel','success');}} style={{padding:'12px 24px',background:'linear-gradient(135deg, #10b981, #059669)',color:'white',border:'none',borderRadius:'10px',fontSize:'14px',fontWeight:'700',cursor:'pointer'}}>📊 Excel</button>
+                      <button onClick={()=>addToast('✅ Inward filters applied','success')} style={{padding:'12px 24px',background:'linear-gradient(135deg, #3b82f6, #2563eb)',color:'white',border:'none',borderRadius:'10px',fontSize:'14px',fontWeight:'700',cursor:'pointer'}}>🔍 Apply</button>
+                      <button onClick={()=>{if(!selectedWarehouse){addToast('❌ Please select a warehouse first','error');return;} if(inwardReportRows.length===0){addToast('No inward data to export','info');return;} exportToCSV(inwardReportRows,`inward-report_${selectedWarehouse.name}_${new Date().toISOString().split('T')[0]}.csv`);addToast('✅ Exported to CSV','success');}} style={{padding:'12px 24px',background:'linear-gradient(135deg, #06b6d4, #0891b2)',color:'white',border:'none',borderRadius:'10px',fontSize:'14px',fontWeight:'700',cursor:'pointer'}}>📄 CSV</button>
+                      <button onClick={()=>{if(!selectedWarehouse){addToast('❌ Please select a warehouse first','error');return;} if(inwardReportRows.length===0){addToast('No inward data to export','info');return;} exportToExcel(inwardReportRows,`inward-report_${selectedWarehouse.name}_${new Date().toISOString().split('T')[0]}.xls`);addToast('✅ Exported to Excel','success');}} style={{padding:'12px 24px',background:'linear-gradient(135deg, #10b981, #059669)',color:'white',border:'none',borderRadius:'10px',fontSize:'14px',fontWeight:'700',cursor:'pointer'}}>📊 Excel</button>
+                      <button onClick={()=>{if(!selectedWarehouse){addToast('❌ Please select a warehouse first','error');return;} if(inwardReportRows.length===0){addToast('No inward data to export','info');return;} exportToPDF(inwardReportRows,`inward-report_${selectedWarehouse.name}_${new Date().toISOString().split('T')[0]}.pdf`,`Inward Report - ${selectedWarehouse.name}`);addToast('✅ Exported to PDF','success');}} style={{padding:'12px 24px',background:'linear-gradient(135deg, #0ea5e9, #0284c7)',color:'white',border:'none',borderRadius:'10px',fontSize:'14px',fontWeight:'700',cursor:'pointer'}}>📄 PDF</button>
                     </div>
                   </div>
                   <div style={{background:theme.sidebarHover,padding:'24px',borderRadius:'16px',border:`2px solid ${theme.border}`}}>
                     <table style={{width:'100%',borderCollapse:'collapse'}}>
                       <thead><tr style={{borderBottom:`2px solid ${theme.border}`}}><th style={{padding:'12px',textAlign:'left',color:theme.text,fontWeight:'700'}}>Date</th><th style={{padding:'12px',textAlign:'left',color:theme.text,fontWeight:'700'}}>EAN</th><th style={{padding:'12px',textAlign:'left',color:theme.text,fontWeight:'700'}}>Product</th><th style={{padding:'12px',textAlign:'left',color:theme.text,fontWeight:'700'}}>SKU</th><th style={{padding:'12px',textAlign:'right',color:theme.text,fontWeight:'700'}}>Quantity</th><th style={{padding:'12px',textAlign:'left',color:theme.text,fontWeight:'700'}}>Supplier</th><th style={{padding:'12px',textAlign:'left',color:theme.text,fontWeight:'700'}}>Batch</th></tr></thead>
                       <tbody>
-                        {inwardEntries.length === 0 ? (
+                        {!selectedWarehouse ? (
+                          <tr><td colSpan={7} style={{padding:'40px',textAlign:'center',color:theme.textSecondary}}>
+                            <div style={{fontSize:'48px',marginBottom:'12px'}}>🏭</div>
+                            <p style={{fontSize:'16px'}}>Please select a warehouse from the top-right selector</p>
+                          </td></tr>
+                        ) : inwardReportRows.length === 0 ? (
                           <tr><td colSpan={7} style={{padding:'40px',textAlign:'center',color:theme.textSecondary}}>
                             <div style={{fontSize:'48px',marginBottom:'12px'}}>📥</div>
-                            <p style={{fontSize:'16px'}}>No inward entries yet</p>
+                            <p style={{fontSize:'16px'}}>No inward entries for selected filters</p>
                           </td></tr>
-                        ) : inwardEntries.map((item,i)=>(
+                        ) : inwardReportRows.slice(0, 200).map((item:any,i:number)=>(
                           <tr key={i} style={{borderBottom:`1px solid ${theme.border}`}}>
-                            <td style={{padding:'12px',color:theme.textSecondary}}>{item.date||item.entryDate}</td>
-                            <td style={{padding:'12px',color:theme.textSecondary,fontSize:'11px',fontFamily:'monospace'}}>{item.ean}</td>
-                            <td style={{padding:'12px',color:theme.text,fontWeight:'600'}}>{item.productName||item.product}</td>
-                            <td style={{padding:'12px',color:theme.textSecondary}}>{item.sku}</td>
-                            <td style={{padding:'12px',textAlign:'right',color:'#10b981',fontWeight:'700'}}>+{item.quantity||item.qty}</td>
-                            <td style={{padding:'12px',color:theme.textSecondary}}>{item.supplier}</td>
-                            <td style={{padding:'12px',color:theme.text,fontFamily:'monospace',fontSize:'12px'}}>{item.batch}</td>
+                            <td style={{padding:'12px',color:theme.textSecondary}}>{item.Date}</td>
+                            <td style={{padding:'12px',color:theme.textSecondary,fontSize:'11px',fontFamily:'monospace'}}>{item.EAN}</td>
+                            <td style={{padding:'12px',color:theme.text,fontWeight:'600'}}>{item.Product}</td>
+                            <td style={{padding:'12px',color:theme.textSecondary}}>{item.SKU}</td>
+                            <td style={{padding:'12px',textAlign:'right',color:'#10b981',fontWeight:'700'}}>+{item.Quantity}</td>
+                            <td style={{padding:'12px',color:theme.textSecondary}}>{item.Supplier}</td>
+                            <td style={{padding:'12px',color:theme.text,fontFamily:'monospace',fontSize:'12px'}}>{item.Batch}</td>
                           </tr>
                         ))}
                       </tbody>
                     </table>
+                    {selectedWarehouse && inwardReportRows.length > 200 && (
+                      <p style={{marginTop:'10px',color:theme.textSecondary,fontSize:'12px'}}>Showing first 200 rows. Export to download full data.</p>
+                    )}
                   </div>
                 </div>
               )}
@@ -2793,36 +3540,45 @@ function DashboardPage() {
                     <button onClick={resetView} style={{padding:'10px 24px',background:theme.sidebarHover,color:theme.text,border:`2px solid ${theme.border}`,borderRadius:'10px',fontSize:'15px',fontWeight:'700',cursor:'pointer'}}>← Back</button>
                   </div>
                   <div style={{display:'flex',gap:'16px',marginBottom:'24px'}}>
-                    <div><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>From Date</label><input type="date" value={formData.fromDate||''} onChange={(e)=>setFormData({...formData,fromDate:e.target.value})} style={{padding:'12px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'14px'}} /></div>
-                    <div><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>To Date</label><input type="date" value={formData.toDate||''} onChange={(e)=>setFormData({...formData,toDate:e.target.value})} style={{padding:'12px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'14px'}} /></div>
+                    <div><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>From Date</label><input type="date" value={formData.outwardFromDate||''} onChange={(e)=>setFormData({...formData,outwardFromDate:e.target.value})} style={{padding:'12px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'14px'}} /></div>
+                    <div><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>To Date</label><input type="date" value={formData.outwardToDate||''} onChange={(e)=>setFormData({...formData,outwardToDate:e.target.value})} style={{padding:'12px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'14px'}} /></div>
                     <div style={{display:'flex',alignItems:'flex-end',gap:'12px'}}>
-                      <button onClick={()=>addToast('Applying filters...','success')} style={{padding:'12px 24px',background:'linear-gradient(135deg, #3b82f6, #2563eb)',color:'white',border:'none',borderRadius:'10px',fontSize:'14px',fontWeight:'700',cursor:'pointer'}}>🔍 Filter</button>
-                      <button onClick={()=>{const data=[{Date:'28 Dec 2024',Product:'Wireless Mouse',SKU:'SKU001',Quantity:25,Platform:'Meesho',OrderNo:'ORD-001'},{Date:'27 Dec 2024',Product:'USB Cable',SKU:'SKU002',Quantity:50,Platform:'Amazon',OrderNo:'ORD-002'}];exportToCSV(data,'outward-report.csv');addToast('✅ Exported to CSV','success');}} style={{padding:'12px 24px',background:'linear-gradient(135deg, #06b6d4, #0891b2)',color:'white',border:'none',borderRadius:'10px',fontSize:'14px',fontWeight:'700',cursor:'pointer'}}>📄 CSV</button>
-                      <button onClick={()=>{const data=[{Date:'28 Dec 2024',Product:'Wireless Mouse',SKU:'SKU001',Quantity:25,Platform:'Meesho',OrderNo:'ORD-001'},{Date:'27 Dec 2024',Product:'USB Cable',SKU:'SKU002',Quantity:50,Platform:'Amazon',OrderNo:'ORD-002'}];exportToExcel(data,'outward-report.xls');addToast('✅ Exported to Excel','success');}} style={{padding:'12px 24px',background:'linear-gradient(135deg, #10b981, #059669)',color:'white',border:'none',borderRadius:'10px',fontSize:'14px',fontWeight:'700',cursor:'pointer'}}>📊 Excel</button>
+                      <button onClick={()=>addToast('✅ Outward filters applied','success')} style={{padding:'12px 24px',background:'linear-gradient(135deg, #3b82f6, #2563eb)',color:'white',border:'none',borderRadius:'10px',fontSize:'14px',fontWeight:'700',cursor:'pointer'}}>🔍 Apply</button>
+                      <button onClick={()=>{if(!selectedWarehouse){addToast('❌ Please select a warehouse first','error');return;} if(outwardReportRows.length===0){addToast('No outward data to export','info');return;} exportToCSV(outwardReportRows,`outward-report_${selectedWarehouse.name}_${new Date().toISOString().split('T')[0]}.csv`);addToast('✅ Exported to CSV','success');}} style={{padding:'12px 24px',background:'linear-gradient(135deg, #06b6d4, #0891b2)',color:'white',border:'none',borderRadius:'10px',fontSize:'14px',fontWeight:'700',cursor:'pointer'}}>📄 CSV</button>
+                      <button onClick={()=>{if(!selectedWarehouse){addToast('❌ Please select a warehouse first','error');return;} if(outwardReportRows.length===0){addToast('No outward data to export','info');return;} exportToExcel(outwardReportRows,`outward-report_${selectedWarehouse.name}_${new Date().toISOString().split('T')[0]}.xls`);addToast('✅ Exported to Excel','success');}} style={{padding:'12px 24px',background:'linear-gradient(135deg, #10b981, #059669)',color:'white',border:'none',borderRadius:'10px',fontSize:'14px',fontWeight:'700',cursor:'pointer'}}>📊 Excel</button>
+                      <button onClick={()=>{if(!selectedWarehouse){addToast('❌ Please select a warehouse first','error');return;} if(outwardReportRows.length===0){addToast('No outward data to export','info');return;} exportToPDF(outwardReportRows,`outward-report_${selectedWarehouse.name}_${new Date().toISOString().split('T')[0]}.pdf`,`Outward Report - ${selectedWarehouse.name}`);addToast('✅ Exported to PDF','success');}} style={{padding:'12px 24px',background:'linear-gradient(135deg, #0ea5e9, #0284c7)',color:'white',border:'none',borderRadius:'10px',fontSize:'14px',fontWeight:'700',cursor:'pointer'}}>📄 PDF</button>
                     </div>
                   </div>
                   <div style={{background:theme.sidebarHover,padding:'24px',borderRadius:'16px',border:`2px solid ${theme.border}`}}>
                     <table style={{width:'100%',borderCollapse:'collapse'}}>
                       <thead><tr style={{borderBottom:`2px solid ${theme.border}`}}><th style={{padding:'12px',textAlign:'left',color:theme.text,fontWeight:'700'}}>Date</th><th style={{padding:'12px',textAlign:'left',color:theme.text,fontWeight:'700'}}>EAN</th><th style={{padding:'12px',textAlign:'left',color:theme.text,fontWeight:'700'}}>Product</th><th style={{padding:'12px',textAlign:'left',color:theme.text,fontWeight:'700'}}>SKU</th><th style={{padding:'12px',textAlign:'right',color:theme.text,fontWeight:'700'}}>Quantity</th><th style={{padding:'12px',textAlign:'left',color:theme.text,fontWeight:'700'}}>Platform</th><th style={{padding:'12px',textAlign:'left',color:theme.text,fontWeight:'700'}}>Order No</th></tr></thead>
                       <tbody>
-                        {outwardEntries.length === 0 ? (
+                        {!selectedWarehouse ? (
+                          <tr><td colSpan={7} style={{padding:'40px',textAlign:'center',color:theme.textSecondary}}>
+                            <div style={{fontSize:'48px',marginBottom:'12px'}}>🏭</div>
+                            <p style={{fontSize:'16px'}}>Please select a warehouse from the top-right selector</p>
+                          </td></tr>
+                        ) : outwardReportRows.length === 0 ? (
                           <tr><td colSpan={7} style={{padding:'40px',textAlign:'center',color:theme.textSecondary}}>
                             <div style={{fontSize:'48px',marginBottom:'12px'}}>📤</div>
-                            <p style={{fontSize:'16px'}}>No outward entries yet</p>
+                            <p style={{fontSize:'16px'}}>No outward entries for selected filters</p>
                           </td></tr>
-                        ) : outwardEntries.map((item,i)=>(
+                        ) : outwardReportRows.slice(0, 200).map((item:any,i:number)=>(
                           <tr key={i} style={{borderBottom:`1px solid ${theme.border}`}}>
-                            <td style={{padding:'12px',color:theme.textSecondary}}>{item.entryDate||item.date}</td>
-                            <td style={{padding:'12px',color:theme.textSecondary,fontSize:'11px',fontFamily:'monospace'}}>{item.ean}</td>
-                            <td style={{padding:'12px',color:theme.text,fontWeight:'600'}}>{item.productName||item.product}</td>
-                            <td style={{padding:'12px',color:theme.textSecondary}}>{item.sku}</td>
-                            <td style={{padding:'12px',textAlign:'right',color:'#f59e0b',fontWeight:'700'}}>-{item.quantity||item.qty}</td>
-                            <td style={{padding:'12px',color:'#3b82f6',fontWeight:'600'}}>{item.platform}</td>
-                            <td style={{padding:'12px',color:theme.textSecondary,fontFamily:'monospace',fontSize:'12px'}}>{item.orderNo||item.order}</td>
+                            <td style={{padding:'12px',color:theme.textSecondary}}>{item.Date}</td>
+                            <td style={{padding:'12px',color:theme.textSecondary,fontSize:'11px',fontFamily:'monospace'}}>{item.EAN}</td>
+                            <td style={{padding:'12px',color:theme.text,fontWeight:'600'}}>{item.Product}</td>
+                            <td style={{padding:'12px',color:theme.textSecondary}}>{item.SKU}</td>
+                            <td style={{padding:'12px',textAlign:'right',color:'#f59e0b',fontWeight:'700'}}>-{item.Quantity}</td>
+                            <td style={{padding:'12px',color:'#3b82f6',fontWeight:'600'}}>{item.Platform}</td>
+                            <td style={{padding:'12px',color:theme.textSecondary,fontFamily:'monospace',fontSize:'12px'}}>{item['Order No']}</td>
                           </tr>
                         ))}
                       </tbody>
                     </table>
+                    {selectedWarehouse && outwardReportRows.length > 200 && (
+                      <p style={{marginTop:'10px',color:theme.textSecondary,fontSize:'12px'}}>Showing first 200 rows. Export to download full data.</p>
+                    )}
                   </div>
                 </div>
               )}
@@ -2833,24 +3589,45 @@ function DashboardPage() {
                     <button onClick={resetView} style={{padding:'10px 24px',background:theme.sidebarHover,color:theme.text,border:`2px solid ${theme.border}`,borderRadius:'10px',fontSize:'15px',fontWeight:'700',cursor:'pointer'}}>← Back</button>
                   </div>
                   <div style={{display:'flex',gap:'16px',marginBottom:'24px'}}>
-                    <div><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>From Date</label><input type="date" value={formData.fromDate||''} onChange={(e)=>setFormData({...formData,fromDate:e.target.value})} style={{padding:'12px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'14px'}} /></div>
-                    <div><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>To Date</label><input type="date" value={formData.toDate||''} onChange={(e)=>setFormData({...formData,toDate:e.target.value})} style={{padding:'12px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'14px'}} /></div>
+                    <div><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>From Date</label><input type="date" value={formData.batchFromDate||''} onChange={(e)=>setFormData({...formData,batchFromDate:e.target.value})} style={{padding:'12px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'14px'}} /></div>
+                    <div><label style={{display:'block',color:theme.text,marginBottom:'8px',fontWeight:'600'}}>To Date</label><input type="date" value={formData.batchToDate||''} onChange={(e)=>setFormData({...formData,batchToDate:e.target.value})} style={{padding:'12px',background:theme.sidebarHover,border:`2px solid ${theme.border}`,borderRadius:'10px',color:theme.text,fontSize:'14px'}} /></div>
                     <div style={{display:'flex',alignItems:'flex-end',gap:'12px'}}>
-                      <button onClick={()=>addToast('Applying filters...','success')} style={{padding:'12px 24px',background:'linear-gradient(135deg, #3b82f6, #2563eb)',color:'white',border:'none',borderRadius:'10px',fontSize:'14px',fontWeight:'700',cursor:'pointer'}}>🔍 Filter</button>
-                      <button onClick={()=>{const data=[{Batch:'BATCH001',Product:'Wireless Mouse',Inward:50,Outward:25,Balance:25,Supplier:'ABC Suppliers'},{Batch:'BATCH002',Product:'USB Cable',Inward:100,Outward:50,Balance:50,Supplier:'XYZ Distributors'}];exportToCSV(data,'batch-report.csv');addToast('✅ Exported to CSV','success');}} style={{padding:'12px 24px',background:'linear-gradient(135deg, #06b6d4, #0891b2)',color:'white',border:'none',borderRadius:'10px',fontSize:'14px',fontWeight:'700',cursor:'pointer'}}>📄 CSV</button>
-                      <button onClick={()=>{const data=[{Batch:'BATCH001',Product:'Wireless Mouse',Inward:50,Outward:25,Balance:25,Supplier:'ABC Suppliers'},{Batch:'BATCH002',Product:'USB Cable',Inward:100,Outward:50,Balance:50,Supplier:'XYZ Distributors'}];exportToExcel(data,'batch-report.xls');addToast('✅ Exported to Excel','success');}} style={{padding:'12px 24px',background:'linear-gradient(135deg, #10b981, #059669)',color:'white',border:'none',borderRadius:'10px',fontSize:'14px',fontWeight:'700',cursor:'pointer'}}>📊 Excel</button>
+                      <button onClick={()=>addToast('✅ Batch filters applied','success')} style={{padding:'12px 24px',background:'linear-gradient(135deg, #3b82f6, #2563eb)',color:'white',border:'none',borderRadius:'10px',fontSize:'14px',fontWeight:'700',cursor:'pointer'}}>🔍 Apply</button>
+                      <button onClick={()=>{if(!selectedWarehouse){addToast('❌ Please select a warehouse first','error');return;} if(batchReportRows.length===0){addToast('No batch data to export','info');return;} exportToCSV(batchReportRows,`batch-report_${selectedWarehouse.name}_${new Date().toISOString().split('T')[0]}.csv`);addToast('✅ Exported to CSV','success');}} style={{padding:'12px 24px',background:'linear-gradient(135deg, #06b6d4, #0891b2)',color:'white',border:'none',borderRadius:'10px',fontSize:'14px',fontWeight:'700',cursor:'pointer'}}>📄 CSV</button>
+                      <button onClick={()=>{if(!selectedWarehouse){addToast('❌ Please select a warehouse first','error');return;} if(batchReportRows.length===0){addToast('No batch data to export','info');return;} exportToExcel(batchReportRows,`batch-report_${selectedWarehouse.name}_${new Date().toISOString().split('T')[0]}.xls`);addToast('✅ Exported to Excel','success');}} style={{padding:'12px 24px',background:'linear-gradient(135deg, #10b981, #059669)',color:'white',border:'none',borderRadius:'10px',fontSize:'14px',fontWeight:'700',cursor:'pointer'}}>📊 Excel</button>
+                      <button onClick={()=>{if(!selectedWarehouse){addToast('❌ Please select a warehouse first','error');return;} if(batchReportRows.length===0){addToast('No batch data to export','info');return;} exportToPDF(batchReportRows,`batch-report_${selectedWarehouse.name}_${new Date().toISOString().split('T')[0]}.pdf`,`Batch Wise Report - ${selectedWarehouse.name}`);addToast('✅ Exported to PDF','success');}} style={{padding:'12px 24px',background:'linear-gradient(135deg, #0ea5e9, #0284c7)',color:'white',border:'none',borderRadius:'10px',fontSize:'14px',fontWeight:'700',cursor:'pointer'}}>📄 PDF</button>
                     </div>
                   </div>
                   <div style={{background:theme.sidebarHover,padding:'24px',borderRadius:'16px',border:`2px solid ${theme.border}`}}>
                     <table style={{width:'100%',borderCollapse:'collapse'}}>
                       <thead><tr style={{borderBottom:`2px solid ${theme.border}`}}><th style={{padding:'12px',textAlign:'left',color:theme.text,fontWeight:'700'}}>Batch No</th><th style={{padding:'12px',textAlign:'left',color:theme.text,fontWeight:'700'}}>EAN</th><th style={{padding:'12px',textAlign:'left',color:theme.text,fontWeight:'700'}}>Product</th><th style={{padding:'12px',textAlign:'right',color:theme.text,fontWeight:'700'}}>Inward</th><th style={{padding:'12px',textAlign:'right',color:theme.text,fontWeight:'700'}}>Outward</th><th style={{padding:'12px',textAlign:'right',color:theme.text,fontWeight:'700'}}>Balance</th><th style={{padding:'12px',textAlign:'left',color:theme.text,fontWeight:'700'}}>Supplier</th></tr></thead>
                       <tbody>
-                        <tr><td colSpan={7} style={{padding:'40px',textAlign:'center',color:theme.textSecondary}}>
-                          <div style={{fontSize:'48px',marginBottom:'12px'}}>🏷️</div>
-                          <p style={{fontSize:'16px'}}>No batch data available</p>
-                        </td></tr>
+                        {!selectedWarehouse ? (
+                          <tr><td colSpan={7} style={{padding:'40px',textAlign:'center',color:theme.textSecondary}}>
+                            <div style={{fontSize:'48px',marginBottom:'12px'}}>🏭</div>
+                            <p style={{fontSize:'16px'}}>Please select a warehouse from the top-right selector</p>
+                          </td></tr>
+                        ) : batchReportRows.length === 0 ? (
+                          <tr><td colSpan={7} style={{padding:'40px',textAlign:'center',color:theme.textSecondary}}>
+                            <div style={{fontSize:'48px',marginBottom:'12px'}}>🏷️</div>
+                            <p style={{fontSize:'16px'}}>No batch data available</p>
+                          </td></tr>
+                        ) : batchReportRows.slice(0, 200).map((row:any, idx:number)=>(
+                          <tr key={idx} style={{borderBottom:`1px solid ${theme.border}`}}>
+                            <td style={{padding:'12px',color:theme.textSecondary,fontFamily:'monospace',fontSize:'12px'}}>{row['Batch No']}</td>
+                            <td style={{padding:'12px',color:theme.textSecondary,fontSize:'11px',fontFamily:'monospace'}}>{row.EAN}</td>
+                            <td style={{padding:'12px',color:theme.text,fontWeight:'600'}}>{row.Product}</td>
+                            <td style={{padding:'12px',textAlign:'right',color:'#10b981',fontWeight:'700'}}>{row.Inward}</td>
+                            <td style={{padding:'12px',textAlign:'right',color:'#f59e0b',fontWeight:'700'}}>{row.Outward}</td>
+                            <td style={{padding:'12px',textAlign:'right',color:theme.text,fontWeight:'900'}}>{row.Balance}</td>
+                            <td style={{padding:'12px',color:theme.textSecondary}}>{row.Supplier}</td>
+                          </tr>
+                        ))}
                       </tbody>
                     </table>
+                    {selectedWarehouse && batchReportRows.length > 200 && (
+                      <p style={{marginTop:'10px',color:theme.textSecondary,fontSize:'12px'}}>Showing first 200 rows. Export to download full data.</p>
+                    )}
                   </div>
                 </div>
               )}

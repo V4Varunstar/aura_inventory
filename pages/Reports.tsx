@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import * as XLSX from 'xlsx';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Select from '../components/ui/Select';
@@ -178,6 +180,11 @@ const Reports: React.FC = () => {
   const generateReport = async () => {
     if (!company) {
       addToast('Company not found', 'error');
+      return;
+    }
+
+    if (!selectedWarehouse?.id) {
+      addToast('Please select a warehouse from the top-right selector before generating reports', 'error');
       return;
     }
 
@@ -653,6 +660,11 @@ const Reports: React.FC = () => {
 
   // Export to Excel
   const exportToExcel = () => {
+    if (!selectedWarehouse?.id) {
+      addToast('Please select a warehouse from the top-right selector before exporting reports', 'error');
+      return;
+    }
+
     if (reportType === 'valueAnalysis' && valueAnalysisData) {
       // Export value analysis summary
       const summaryData = [
@@ -714,6 +726,83 @@ const Reports: React.FC = () => {
       const fileName = `${sheetName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.xlsx`;
       XLSX.writeFile(wb, fileName);
       
+      addToast('Report exported successfully', 'success');
+    } catch (error) {
+      console.error('Error exporting report:', error);
+      addToast('Failed to export report', 'error');
+    }
+  };
+
+  const exportToPDF = () => {
+    if (!selectedWarehouse?.id) {
+      addToast('Please select a warehouse from the top-right selector before exporting reports', 'error');
+      return;
+    }
+
+    try {
+      const reportNames: Record<ReportType, string> = {
+        inward: 'Inward Report',
+        outward: 'Outward Report',
+        stock: 'Stock Summary',
+        lowStock: 'Low Stock Alert',
+        partyWise: 'Party-wise Report',
+        dateWise: 'Date-wise Movement',
+        valueAnalysis: 'Value Analysis',
+      };
+
+      const title = reportNames[reportType];
+      const fileName = `${title.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
+
+      const doc = new jsPDF({
+        orientation: reportType === 'stock' ? 'landscape' : 'portrait',
+        unit: 'pt',
+        format: 'a4',
+      });
+
+      doc.setFontSize(14);
+      doc.text(title, 40, 40);
+
+      if (reportType === 'valueAnalysis' && valueAnalysisData) {
+        const summaryData = [
+          { Metric: 'Total Inward Quantity', Value: String(valueAnalysisData.totalInwardQty) },
+          { Metric: 'Total Inward Value', Value: valueAnalysisData.totalInwardValue.toFixed(2) },
+          { Metric: 'Total Outward Quantity', Value: String(valueAnalysisData.totalOutwardQty) },
+          { Metric: 'Total Outward Value', Value: valueAnalysisData.totalOutwardValue.toFixed(2) },
+          { Metric: 'Average Inward Price', Value: valueAnalysisData.avgInwardPrice.toFixed(2) },
+          { Metric: 'Average Outward Price', Value: valueAnalysisData.avgOutwardPrice.toFixed(2) },
+          { Metric: 'Current Stock Quantity', Value: String(valueAnalysisData.currentStockQty) },
+          { Metric: 'Current Stock Value', Value: valueAnalysisData.currentStockValue.toFixed(2) },
+        ];
+
+        autoTable(doc, {
+          startY: 60,
+          head: [['Metric', 'Value']],
+          body: summaryData.map((r) => [r.Metric, r.Value]),
+          styles: { fontSize: 9 },
+          headStyles: { fillColor: [59, 130, 246] },
+        });
+
+        doc.save(fileName);
+        addToast('Report exported successfully', 'success');
+        return;
+      }
+
+      if (reportData.length === 0) {
+        addToast('No data to export', 'warning');
+        return;
+      }
+
+      const keys = Object.keys(reportData[0] || {});
+      autoTable(doc, {
+        startY: 60,
+        head: [keys],
+        body: reportData.map((row) => keys.map((k) => String(row?.[k] ?? ''))),
+        styles: { fontSize: 8 },
+        headStyles: { fillColor: [16, 185, 129] },
+        tableWidth: 'auto',
+      });
+
+      doc.save(fileName);
       addToast('Report exported successfully', 'success');
     } catch (error) {
       console.error('Error exporting report:', error);
@@ -918,13 +1007,22 @@ const Reports: React.FC = () => {
               Generate Report
             </Button>
             {(reportData.length > 0 || valueAnalysisData) && (
-              <Button
-                onClick={exportToExcel}
-                variant="secondary"
-                leftIcon={<Download size={18} />}
-              >
-                Export to Excel
-              </Button>
+              <>
+                <Button
+                  onClick={exportToExcel}
+                  variant="secondary"
+                  leftIcon={<Download size={18} />}
+                >
+                  Export to Excel
+                </Button>
+                <Button
+                  onClick={exportToPDF}
+                  variant="secondary"
+                  leftIcon={<FileText size={18} />}
+                >
+                  Export to PDF
+                </Button>
+              </>
             )}
           </div>
         </div>
