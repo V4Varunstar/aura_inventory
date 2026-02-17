@@ -93,7 +93,8 @@ export default defineConfig(({ mode }) => {
       optimizeDeps: {
         include: [
           'react', 
-          'react-dom', 
+          'react-dom',
+          'scheduler',
           'react-router-dom',
           'lucide-react',
           'recharts'
