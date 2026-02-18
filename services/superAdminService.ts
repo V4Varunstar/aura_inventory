@@ -43,6 +43,7 @@ const loadFromStorage = <T>(key: string, defaultValue: T): T => {
 const saveToStorage = (key: string, data: any): void => {
   try {
     localStorage.setItem(key, JSON.stringify(data));
+    console.log(`✅ SAVED TO STORAGE: ${key}`, data);
   } catch (error) {
     console.error(`Error saving ${key} to localStorage:`, error);
   }
@@ -51,6 +52,8 @@ const saveToStorage = (key: string, data: any): void => {
 // Initialize with demo data if empty
 let companies: Company[] = loadFromStorage(SUPER_ADMIN_STORAGE_KEYS.COMPANIES, []);
 let superAdminUsers: any[] = loadFromStorage(SUPER_ADMIN_STORAGE_KEYS.USERS, []);
+
+console.log('🚀 SuperAdminService loaded! Current users in storage:', superAdminUsers.length, superAdminUsers.map((u: any) => ({ email: u.email, password: u.password ? '***' : 'NONE' })));
 
 // Start with clean slate - no demo data
 
