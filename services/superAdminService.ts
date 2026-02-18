@@ -397,6 +397,12 @@ export const updateCompanyUser = async (
 
   const passwordUpdated = nextPassword !== currentUser.password;
 
+  console.log('🔄 updateCompanyUser called for:', emailKey);
+  console.log('   Current password:', currentUser.password ? '***' : 'NONE');
+  console.log('   New password:', nextPassword ? '***' : 'NONE');
+  console.log('   Password changed:', passwordUpdated);
+  console.log('   Exact new password value:', JSON.stringify(nextPassword));
+
   const nextUser = {
     ...currentUser,
     name: typeof updates.name === 'string' ? updates.name : currentUser.name,
@@ -413,6 +419,7 @@ export const updateCompanyUser = async (
 
   if (passwordUpdated) {
     console.log('✅ Password updated for user:', nextUser.email, '- New password saved to localStorage');
+    console.log('   Verified in storage:', superAdminUsers[userIndex].password);
   }
 
   if (isRemoteStoreEnabled()) {
