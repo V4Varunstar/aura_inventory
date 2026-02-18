@@ -773,7 +773,7 @@ export const mockLogin = (email: string, pass: string): Promise<User> => {
         const superAdminUsers = getStoredSuperAdminUsers();
         console.log('📋 Found SuperAdmin users in localStorage:', superAdminUsers.length);
         
-        // Sync each user to global registry
+        // Sync each user to global registry (ALWAYS update, even if exists - to get latest password)
         superAdminUsers.forEach((userData: any) => {
           const existingUser = users.find(u => u.email === userData.email);
           if (!existingUser) {
@@ -788,6 +788,14 @@ export const mockLogin = (email: string, pass: string): Promise<User> => {
               isEnabled: userData.isEnabled,
               password: userData.password
             });
+          } else {
+            // User exists - UPDATE the password and other fields to get latest changes
+            console.log('🔄 Refreshing user data in global registry:', userData.email);
+            (existingUser as any).password = userData.password;
+            (existingUser as any).name = userData.name;
+            (existingUser as any).role = userData.role;
+            (existingUser as any).isEnabled = userData.isEnabled;
+            (existingUser as any).updatedAt = new Date(userData.updatedAt || new Date());
           }
         });
         

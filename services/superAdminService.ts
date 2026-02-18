@@ -395,6 +395,8 @@ export const updateCompanyUser = async (
       ? updates.password
       : currentUser.password;
 
+  const passwordUpdated = nextPassword !== currentUser.password;
+
   const nextUser = {
     ...currentUser,
     name: typeof updates.name === 'string' ? updates.name : currentUser.name,
@@ -408,6 +410,10 @@ export const updateCompanyUser = async (
 
   superAdminUsers[userIndex] = nextUser;
   saveToStorage(SUPER_ADMIN_STORAGE_KEYS.USERS, superAdminUsers);
+
+  if (passwordUpdated) {
+    console.log('✅ Password updated for user:', nextUser.email, '- New password saved to localStorage');
+  }
 
   if (isRemoteStoreEnabled()) {
     upsertRemoteUser(nextUser).catch((e) => console.warn('⚠️ Failed to write user update to Firestore', e));
