@@ -857,11 +857,22 @@ export const mockLogin = (email: string, pass: string): Promise<User> => {
         // Check SuperAdmin created users password
         try {
           const superAdminUsers = getStoredSuperAdminUsers();
+          console.log('🔍 SuperAdmin users in localStorage:', superAdminUsers.map((u: any) => ({ email: u.email, password: u.password ? '***' : 'NO_PASSWORD' })));
+          
           const superAdminUser = superAdminUsers.find((u: any) => String(u?.email ?? '').trim().toLowerCase() === emailNorm);
           const storedPass = superAdminUser ? String((superAdminUser as any).password ?? '') : '';
+          
+          console.log('📧 Looking for user:', emailNorm);
+          console.log('👤 Found user:', superAdminUser ? 'YES' : 'NO');
+          console.log('🔐 Stored password:', storedPass ? '***' : 'EMPTY');
+          console.log('📝 Provided password (raw):', passRaw ? '***' : 'EMPTY');
+          console.log('📝 Provided password (trimmed):', passTrim ? '***' : 'EMPTY');
+          
           if (storedPass && (storedPass === passRaw || storedPass === passTrim)) {
             validPassword = true;
             console.log('✅ Password validated against SuperAdmin user');
+          } else if (storedPass) {
+            console.log('❌ Password MISMATCH! Stored:', storedPass, 'Got:', passRaw);
           }
         } catch (error) {
           console.error('❌ Error checking SuperAdmin user password:', error);
