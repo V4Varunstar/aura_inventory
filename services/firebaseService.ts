@@ -2,6 +2,7 @@ import {
   fetchAllRemoteCompanies,
   fetchAllRemoteUsers,
   isRemoteStoreEnabled,
+  findRemoteUserByEmailNorm,
 } from './superAdminRemoteStore';
 import {
   User,
@@ -255,13 +256,17 @@ export const addUserToGlobalRegistry = (userData: {
   isEnabled: boolean;
   password: string;
 }) => {
+  // normalize email for lookup/storage
+  const emailKey = String(userData.email || '').trim().toLowerCase();
   // Check if user already exists
-  const existingUser = users.find(u => u.email === userData.email);
+  const existingUser = users.find(
+    u => String(u.email || '').trim().toLowerCase() === emailKey
+  );
   if (!existingUser) {
     const newUser: User & { password?: string } = {
       id: userData.id,
       name: userData.name,
-      email: userData.email,
+      email: emailKey,
       role: userData.role,
       orgId: userData.orgId,
       companyId: userData.companyId,
@@ -271,7 +276,7 @@ export const addUserToGlobalRegistry = (userData: {
       password: userData.password // Store password for validation
     };
     users.push(newUser);
-    console.log('✅ Added user to global registry:', userData.email);
+    console.log('✅ Added user to global registry:', emailKey);
   }
 };
 
@@ -285,7 +290,10 @@ export const upsertUserInGlobalRegistry = (userData: {
   isEnabled: boolean;
   password: string;
 }) => {
-  const existingUser = users.find(u => u.email === userData.email);
+  const emailKey = String(userData.email || '').trim().toLowerCase();
+  const existingUser = users.find(
+    u => String(u.email || '').trim().toLowerCase() === emailKey
+  );
   if (!existingUser) {
     addUserToGlobalRegistry(userData);
     return;
@@ -299,7 +307,7 @@ export const upsertUserInGlobalRegistry = (userData: {
   (existingUser as any).isEnabled = userData.isEnabled;
   (existingUser as any).password = userData.password;
   (existingUser as any).updatedAt = new Date();
-  console.log('✅ Updated user in global registry:', userData.email);
+  console.log('✅ Updated user in global registry:', emailKey);
 };
 
 // Initialize users from localStorage on app start (optimized with caching)
@@ -678,24 +686,45 @@ const getStoredSuperAdminCompanies = (): SuperAdminStoredCompany[] => {
   }
 };
 const syncSuperAdminFromRemoteIfNeeded = async (): Promise<void> => {
-  if (!isRemoteStoreEnabled()) return;
-
-  // Only sync when local is empty to avoid extra reads.
-  const localUsers = getStoredSuperAdminUsers();
-  const localCompanies = getStoredSuperAdminCompanies();
-  if (localUsers.length > 0 && localCompanies.length > 0) return;
+  const remoteEnabled = isRemoteStoreEnabled();
+  console.log('🔁 syncSuperAdminFromRemoteIfNeeded invoked (remoteEnabled=' + remoteEnabled + ')');
+  if (!remoteEnabled) return;
 
   try {
+    // always try to fetch remote data and merge/update local storage
     const [remoteUsers, remoteCompanies] = await Promise.all([
-      localUsers.length > 0 ? Promise.resolve([]) : fetchAllRemoteUsers(),
-      localCompanies.length > 0 ? Promise.resolve([]) : fetchAllRemoteCompanies(),
+      fetchAllRemoteUsers(),
+      fetchAllRemoteCompanies(),
     ]);
 
-    if (remoteUsers.length > 0) {
-      localStorage.setItem('superadmin_users', JSON.stringify(remoteUsers));
+    if (remoteUsers && remoteUsers.length > 0) {
+      // merge remote users with any local ones, preferring remote values
+      const local = getStoredSuperAdminUsers();
+      const merged = [...local];
+      remoteUsers.forEach((ru) => {
+        const idx = merged.findIndex(
+          (lu) => String(lu.email || '').trim().toLowerCase() === String(ru.email || '').trim().toLowerCase()
+        );
+        if (idx === -1) {
+          merged.push(ru);
+        } else {
+          merged[idx] = ru;
+        }
+      });
+      localStorage.setItem('superadmin_users', JSON.stringify(merged));
     }
-    if (remoteCompanies.length > 0) {
-      localStorage.setItem('superadmin_companies', JSON.stringify(remoteCompanies));
+    if (remoteCompanies && remoteCompanies.length > 0) {
+      const localC = getStoredSuperAdminCompanies();
+      const mergedC = [...localC];
+      remoteCompanies.forEach((rc) => {
+        const idx = mergedC.findIndex(c => c.id === rc.id || c.orgId === rc.orgId);
+        if (idx === -1) {
+          mergedC.push(rc);
+        } else {
+          mergedC[idx] = rc;
+        }
+      });
+      localStorage.setItem('superadmin_companies', JSON.stringify(mergedC));
     }
   } catch (e) {
     console.warn('⚠️ Firestore sync failed during login; falling back to localStorage', e);
@@ -775,13 +804,15 @@ export const mockLogin = (email: string, pass: string): Promise<User> => {
         
         // Sync each user to global registry (ALWAYS update, even if exists - to get latest password)
         superAdminUsers.forEach((userData: any) => {
-          const existingUser = users.find(u => u.email === userData.email);
+          // normalize when syncing
+          const emailKey = String(userData.email || '').trim().toLowerCase();
+          const existingUser = users.find(u => String(u.email || '').trim().toLowerCase() === emailKey);
           if (!existingUser) {
             console.log('🔄 Syncing user to global registry:', userData.email);
             addUserToGlobalRegistry({
               id: userData.id,
               name: userData.name,
-              email: userData.email,
+              email: emailKey,
               role: userData.role,
               orgId: userData.orgId,
               companyId: userData.companyId,
@@ -806,11 +837,11 @@ export const mockLogin = (email: string, pass: string): Promise<User> => {
           foundUser = {
             id: superAdminUser.id,
             name: superAdminUser.name,
-            email: superAdminUser.email,
+            email: String(superAdminUser.email).trim().toLowerCase(),
             role: superAdminUser.role,
             orgId: superAdminUser.orgId,
             companyId: superAdminUser.companyId,
-            isEnabled: superAdminUser.isEnabled,
+            isEnabled: superAdminUser.isEnabled !== false,
             createdAt: new Date(superAdminUser.createdAt),
             updatedAt: new Date(superAdminUser.updatedAt)
           };
@@ -821,25 +852,71 @@ export const mockLogin = (email: string, pass: string): Promise<User> => {
 
       // If not found in SuperAdmin users, only allow a tiny set of dev/test accounts.
       if (!foundUser) {
-        const allowList = new Set<string>(['superadmin@aura.com']);
-        if (isDevHost) {
-          allowList.add('admin@test.com');
-          allowList.add('Test@orgatre.com');
+        // try remote lookup if available to support cross-browser login
+        if (isRemoteStoreEnabled()) {
+          try {
+            console.log('🔎 Attempting remote lookup for user:', emailNorm);
+            // use indexed lookup helper if available
+            const remote = await findRemoteUserByEmailNorm(emailNorm);            if (remote) {
+              console.log('🔁 Remote user found, adding to local cache:', emailNorm);
+              // merge into local storage
+              const existing = getStoredSuperAdminUsers();
+              const merged = existing.filter(
+                (u: any) => String(u.email || '').trim().toLowerCase() !== emailNorm
+              );
+              merged.push(remote);
+              localStorage.setItem('superadmin_users', JSON.stringify(merged));
+              // also sync into global registry
+              addUserToGlobalRegistry({
+                id: remote.id,
+                name: remote.name,
+                email: String(remote.email).trim().toLowerCase(),
+                role: remote.role,
+                orgId: remote.orgId,
+                companyId: remote.companyId,
+                isEnabled: remote.isEnabled !== false,
+                password: remote.password || ''
+              });
+              foundUser = {
+                id: remote.id,
+                name: remote.name,
+                email: String(remote.email).trim().toLowerCase(),
+                role: remote.role,
+                orgId: remote.orgId,
+                companyId: remote.companyId,
+                isEnabled: remote.isEnabled !== false,
+                createdAt: new Date(remote.createdAt || Date.now()),
+                updatedAt: new Date(remote.updatedAt || Date.now()),
+              };
+            } else {
+              console.log('ℹ️ Remote lookup did not find user:', emailNorm);
+            }
+          } catch (err) {
+            console.error('❌ Error during remote lookup:', err);
+          }
         }
 
-        const allowListNorm = new Set(Array.from(allowList).map((e) => String(e).trim().toLowerCase()));
+        if (!foundUser) {
+          const allowList = new Set<string>(['superadmin@aura.com']);
+          if (isDevHost) {
+            allowList.add('admin@test.com');
+            allowList.add('Test@orgatre.com');
+          }
 
-        if (allowListNorm.has(emailNorm)) {
-          foundUser = users.find(u => String(u.email ?? '').trim().toLowerCase() === emailNorm) || null;
-          console.log('🧪 Allowlisted dev user:', emailNorm, foundUser ? 'FOUND' : 'NOT FOUND');
-        } else {
-          console.log('❌ Login blocked: user not created by Super Admin:', emailNorm);
-          reject(
-            new Error(
-              'User not found. Please contact Super Admin to create your account (use the same browser + aura-inventory.vercel.app).'
-            )
-          );
-          return;
+          const allowListNorm = new Set(Array.from(allowList).map((e) => String(e).trim().toLowerCase()));
+
+          if (allowListNorm.has(emailNorm)) {
+            foundUser = users.find(u => String(u.email ?? '').trim().toLowerCase() === emailNorm) || null;
+            console.log('🧪 Allowlisted dev user:', emailNorm, foundUser ? 'FOUND' : 'NOT FOUND');
+          } else {
+            console.log('❌ Login blocked: user not found:', emailNorm);
+            reject(
+              new Error(
+                'User not found. Please contact Super Admin to create your account.'
+              )
+            );
+            return;
+          }
         }
       }
       
@@ -919,9 +996,10 @@ export const mockLogin = (email: string, pass: string): Promise<User> => {
       
       // Final validation and login
       if (foundUser && validPassword) {
-        if (!foundUser.isEnabled) {
-            console.log('❌ User account disabled');
-            reject(new Error("Your account is disabled. Please contact an administrator."));
+        // treat undefined as enabled, only explicit false/blocked values should reject
+        if (foundUser.isEnabled === false || (foundUser as any).isBlocked === true) {
+            console.log('❌ User account disabled/blocked', { isEnabled: foundUser.isEnabled, isBlocked: (foundUser as any).isBlocked });
+            reject(new Error("Your account is disabled or blocked. Please contact an administrator."));
         } else {
             console.log('✅ Login successful for:', foundUser.email);
             console.log('🔐 Setting session for user:', foundUser.email);

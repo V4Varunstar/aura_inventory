@@ -225,20 +225,29 @@ export const createCompanyUser = async (
     throw new Error(`User limit exceeded. Maximum ${company.limits.maxUsers} users allowed.`);
   }
 
+  // Normalize email on creation (case/whitespace)
+  const normalizedEmail = String(userData.email || '').trim().toLowerCase();
+  if (!normalizedEmail) {
+    throw new Error('Email is required');
+  }
+
   // Reload users from storage to check for existing users
   superAdminUsers = loadFromStorage(SUPER_ADMIN_STORAGE_KEYS.USERS, []);
   
-  // Check if user already exists
-  const existingUser = superAdminUsers.find(u => u.email === userData.email);
+  // Check if user already exists (case insensitive)
+  const existingUser = superAdminUsers.find(
+    u => String(u.email || '').trim().toLowerCase() === normalizedEmail
+  );
   if (existingUser) {
-    console.log('❌ User already exists:', userData.email);
+    console.log('❌ User already exists:', normalizedEmail);
     throw new Error('User with this email already exists');
   }
 
   const newUser = {
     id: `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
     name: userData.name,
-    email: userData.email,
+    // store normalized email; if you ever need original case, you can store separately
+    email: normalizedEmail,
     password: userData.password || 'password123', // Default or provided password
     role: userData.role,
     orgId: userData.orgId,
