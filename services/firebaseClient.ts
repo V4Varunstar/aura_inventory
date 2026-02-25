@@ -1,5 +1,6 @@
 import { initializeApp, getApps } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
+import { getAuth } from 'firebase/auth';
 
 type FirebaseEnvConfig = {
   apiKey?: string;
@@ -34,4 +35,11 @@ export const getFirestoreDb = () => {
   const cfg = getFirebaseEnvConfig();
   const app = getApps().length ? getApps()[0] : initializeApp(cfg);
   return getFirestore(app);
+};
+
+export const getFirebaseAuth = () => {
+  if (!isFirebaseConfigured()) return null;
+  const cfg = getFirebaseEnvConfig();
+  const app = getApps().length ? getApps()[0] : initializeApp(cfg);
+  return getAuth(app);
 };

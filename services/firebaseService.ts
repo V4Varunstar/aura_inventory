@@ -20,6 +20,25 @@ import {
   InwardSource,
 } from '../types';
 import { getSources } from './sourceService';
+import { getFirebaseAuth } from './firebaseClient';
+
+// Helper to attempt Firebase authentication if configured
+const firebaseSignIn = async (email: string, password: string): Promise<any> => {
+  try {
+    const auth = getFirebaseAuth();
+    if (!auth) {
+      console.log('🔐 Firebase Auth not configured; skipping firebaseSignIn');
+      return null;
+    }
+    const { signInWithEmailAndPassword } = await import('firebase/auth');
+    const cred = await signInWithEmailAndPassword(auth, email, password);
+    console.log('🔐 Firebase signIn success for', email, 'uid=', cred.user.uid);
+    return cred.user;
+  } catch (err: any) {
+    console.log('🔐 Firebase signIn failed for', email, 'error=', err.message || err);
+    return null;
+  }
+};
 
 // Performance optimization: Cache management
 interface CacheEntry<T> {
@@ -778,35 +797,36 @@ const validateCompanyAccess = (
   return { ok: true };
 };
 
-// --- MOCK AUTH FUNCTIONS ---
-export const mockLogin = (email: string, pass: string): Promise<User> => {
-  return new Promise((resolve, reject) => {
-    setTimeout(async () => {
-      const rawEmail = String(email ?? '');
-      const emailNorm = rawEmail.trim().toLowerCase();
-      const passRaw = String(pass ?? '');
-      const passTrim = passRaw.trim();
-      console.log('🔐 mockLogin called for:', rawEmail, '->', emailNorm);
+// --- AUTH FUNCTIONS (with Firebase fallback) ---
 
-      await syncSuperAdminFromRemoteIfNeeded();
+export const mockLogin = async (email: string, pass: string): Promise<User> => {
+  // simulate network delay
+  await new Promise((res) => setTimeout(res, 1000));
 
-      const now = new Date();
-      const isDevHost =
-        window.location.hostname === 'localhost' ||
-        window.location.hostname === '127.0.0.1' ||
-        window.location.hostname.endsWith('.local');
-      
-      // ALWAYS sync users from localStorage first (critical for incognito mode)
+  const rawEmail = String(email ?? '');
+  const emailNorm = rawEmail.trim().toLowerCase();
+  const passRaw = String(pass ?? '');
+  const passTrim = passRaw.trim();
+  console.log('🔐 mockLogin called for:', rawEmail, '->', emailNorm);
+
+  const now = new Date();
+  const isDevHost =
+    window.location.hostname === 'localhost' ||
+    window.location.hostname === '127.0.0.1' ||
+    window.location.hostname.endsWith('.local');
+
+await syncSuperAdminFromRemoteIfNeeded();
+
+      // always build internal user record by syncing storage first
       let foundUser = null;
       try {
         const superAdminUsers = getStoredSuperAdminUsers();
         console.log('📋 Found SuperAdmin users in localStorage:', superAdminUsers.length);
-        
-        // Sync each user to global registry (ALWAYS update, even if exists - to get latest password)
         superAdminUsers.forEach((userData: any) => {
-          // normalize when syncing
           const emailKey = String(userData.email || '').trim().toLowerCase();
-          const existingUser = users.find(u => String(u.email || '').trim().toLowerCase() === emailKey);
+          const existingUser = users.find(
+            u => String(u.email || '').trim().toLowerCase() === emailKey
+          );
           if (!existingUser) {
             console.log('🔄 Syncing user to global registry:', userData.email);
             addUserToGlobalRegistry({
@@ -820,7 +840,6 @@ export const mockLogin = (email: string, pass: string): Promise<User> => {
               password: userData.password
             });
           } else {
-            // User exists - UPDATE the password and other fields to get latest changes
             console.log('🔄 Refreshing user data in global registry:', userData.email);
             (existingUser as any).password = userData.password;
             (existingUser as any).name = userData.name;
@@ -829,9 +848,10 @@ export const mockLogin = (email: string, pass: string): Promise<User> => {
             (existingUser as any).updatedAt = new Date(userData.updatedAt || new Date());
           }
         });
-        
-        // Check if the login email is a SuperAdmin user
-        const superAdminUser = superAdminUsers.find((u: any) => String(u?.email ?? '').trim().toLowerCase() === emailNorm);
+
+        const superAdminUser = getStoredSuperAdminUsers().find((u: any) =>
+          String(u?.email ?? '').trim().toLowerCase() === emailNorm
+        );
         if (superAdminUser) {
           console.log('🎯 Found user in SuperAdmin users:', emailNorm);
           foundUser = {
@@ -850,87 +870,114 @@ export const mockLogin = (email: string, pass: string): Promise<User> => {
         console.error('❌ Error syncing users:', error);
       }
 
-      // If not found in SuperAdmin users, only allow a tiny set of dev/test accounts.
-      if (!foundUser) {
-        // try remote lookup if available to support cross-browser login
-        if (isRemoteStoreEnabled()) {
-          try {
-            console.log('🔎 Attempting remote lookup for user:', emailNorm);
-            // use indexed lookup helper if available
-            const remote = await findRemoteUserByEmailNorm(emailNorm);            if (remote) {
-              console.log('🔁 Remote user found, adding to local cache:', emailNorm);
-              // merge into local storage
-              const existing = getStoredSuperAdminUsers();
-              const merged = existing.filter(
-                (u: any) => String(u.email || '').trim().toLowerCase() !== emailNorm
-              );
-              merged.push(remote);
-              localStorage.setItem('superadmin_users', JSON.stringify(merged));
-              // also sync into global registry
-              addUserToGlobalRegistry({
-                id: remote.id,
-                name: remote.name,
-                email: String(remote.email).trim().toLowerCase(),
-                role: remote.role,
-                orgId: remote.orgId,
-                companyId: remote.companyId,
-                isEnabled: remote.isEnabled !== false,
-                password: remote.password || ''
-              });
-              foundUser = {
-                id: remote.id,
-                name: remote.name,
-                email: String(remote.email).trim().toLowerCase(),
-                role: remote.role,
-                orgId: remote.orgId,
-                companyId: remote.companyId,
-                isEnabled: remote.isEnabled !== false,
-                createdAt: new Date(remote.createdAt || Date.now()),
-                updatedAt: new Date(remote.updatedAt || Date.now()),
-              };
-            } else {
-              console.log('ℹ️ Remote lookup did not find user:', emailNorm);
-            }
-          } catch (err) {
-            console.error('❌ Error during remote lookup:', err);
+      // now attempt Firebase Auth if needed (and we have internal record)
+      let fbUser = null;
+      if (foundUser) {
+        fbUser = await firebaseSignIn(emailNorm, passTrim);
+        if (fbUser) {
+          console.log('🔁 Firebase Auth returned a user for', emailNorm, 'uid=', fbUser.uid);
+          if (!foundUser.firebaseUid && fbUser.uid) {
+            (foundUser as any).firebaseUid = fbUser.uid;
           }
+        } else {
+          console.log('🔁 Firebase Auth did not recognize the user', emailNorm);
         }
-
-        if (!foundUser) {
-          const allowList = new Set<string>(['superadmin@aura.com']);
-          if (isDevHost) {
-            allowList.add('admin@test.com');
-            allowList.add('Test@orgatre.com');
-          }
-
-          const allowListNorm = new Set(Array.from(allowList).map((e) => String(e).trim().toLowerCase()));
-
-          if (allowListNorm.has(emailNorm)) {
-            foundUser = users.find(u => String(u.email ?? '').trim().toLowerCase() === emailNorm) || null;
-            console.log('🧪 Allowlisted dev user:', emailNorm, foundUser ? 'FOUND' : 'NOT FOUND');
-          } else {
-            console.log('❌ Login blocked: user not found:', emailNorm);
-            reject(
-              new Error(
-                'User not found. Please contact Super Admin to create your account.'
-              )
-            );
-            return;
-          }
-        }
-      }
-      
-      // Password validation
-      let validPassword = false;
-      
-      // Check built-in test users first
-      if (emailNorm === 'test@orgatre.com' && (passRaw === 'Test@1234' || passTrim === 'Test@1234')) {
-        validPassword = true;
-      } else if (emailNorm === 'superadmin@aura.com' && (passRaw === 'SuperAdmin@123' || passTrim === 'SuperAdmin@123')) {
-        validPassword = true;
-      } else if (emailNorm === 'admin@test.com' && (passRaw === 'Admin@123' || passTrim === 'Admin@123')) {
-        validPassword = true;
       } else {
+        console.log('ℹ️ Skipping Firebase Auth; internal user not found yet');
+      }
+
+
+  // If not found in SuperAdmin users, only allow a tiny set of dev/test accounts.
+  if (!foundUser) {
+    // If Firebase authenticated but we still don't have an internal user,
+    // we can't proceed. Log explicitly.
+    if (fbUser) {
+      console.log('❌ Firebase authenticated but no internal user record for', emailNorm);
+      throw new Error('User authenticated by Firebase but internal account not found.');
+      return;
+    }
+    // try remote lookup if available to support cross-browser login
+    if (isRemoteStoreEnabled()) {
+      try {
+        console.log('🔎 Attempting remote lookup for user:', emailNorm);
+        // use indexed lookup helper if available
+        const remote = await findRemoteUserByEmailNorm(emailNorm);
+        if (remote) {
+          console.log('🔁 Remote user found, adding to local cache:', emailNorm);
+          // merge into local storage
+          const existing = getStoredSuperAdminUsers();
+          const merged = existing.filter(
+            (u: any) => String(u.email || '').trim().toLowerCase() !== emailNorm
+          );
+          merged.push(remote);
+          localStorage.setItem('superadmin_users', JSON.stringify(merged));
+          // also sync into global registry
+          addUserToGlobalRegistry({
+            id: remote.id,
+            name: remote.name,
+            email: String(remote.email).trim().toLowerCase(),
+            role: remote.role,
+            orgId: remote.orgId,
+            companyId: remote.companyId,
+            isEnabled: remote.isEnabled !== false,
+            password: remote.password || ''
+          });
+          foundUser = {
+            id: remote.id,
+            name: remote.name,
+            email: String(remote.email).trim().toLowerCase(),
+            role: remote.role,
+            orgId: remote.orgId,
+            companyId: remote.companyId,
+            isEnabled: remote.isEnabled !== false,
+            createdAt: new Date(remote.createdAt || Date.now()),
+            updatedAt: new Date(remote.updatedAt || Date.now()),
+          };
+        } else {
+          console.log('ℹ️ Remote lookup did not find user:', emailNorm);
+        }
+      } catch (err) {
+        console.error('❌ Error during remote lookup:', err);
+      }
+    }
+
+    if (!foundUser) {
+      const allowList = new Set<string>(['superadmin@aura.com']);
+      if (isDevHost) {
+        allowList.add('admin@test.com');
+        allowList.add('Test@orgatre.com');
+      }
+
+      const allowListNorm = new Set(Array.from(allowList).map((e) => String(e).trim().toLowerCase()));
+
+      if (allowListNorm.has(emailNorm)) {
+        foundUser = users.find(u => String(u.email ?? '').trim().toLowerCase() === emailNorm) || null;
+        console.log('🧪 Allowlisted dev user:', emailNorm, foundUser ? 'FOUND' : 'NOT FOUND');
+      } else {
+        console.log('❌ Login blocked: user not found:', emailNorm);
+        throw new Error('User not found. Please contact Super Admin to create your account.');
+      }
+    }
+  }
+
+  // Password validation
+  let validPassword = false;
+
+  // if firebase login already succeeded, we trust it
+  if (fbUser) {
+    validPassword = true;
+    console.log('✅ Password implicitly valid via Firebase Auth for', emailNorm);
+  }
+
+  // Check built-in test users first (only if still not validated)
+  if (!validPassword) {
+        if (emailNorm === 'test@orgatre.com' && (passRaw === 'Test@1234' || passTrim === 'Test@1234')) {
+          validPassword = true;
+        } else if (emailNorm === 'superadmin@aura.com' && (passRaw === 'SuperAdmin@123' || passTrim === 'SuperAdmin@123')) {
+          validPassword = true;
+        } else if (emailNorm === 'admin@test.com' && (passRaw === 'Admin@123' || passTrim === 'Admin@123')) {
+          validPassword = true;
+        } else {
         // Check SuperAdmin created users password
         try {
           const superAdminUsers = getStoredSuperAdminUsers();
@@ -965,6 +1012,7 @@ export const mockLogin = (email: string, pass: string): Promise<User> => {
           }
         }
       }
+    }
 
       // Company validation for SuperAdmin created users
       if (foundUser && foundUser.role !== ('SuperAdmin' as any) && validPassword) {
@@ -974,22 +1022,21 @@ export const mockLogin = (email: string, pass: string): Promise<User> => {
 
           if (!userCompany) {
             console.log('❌ Company not found for user:', foundUser.email);
-            reject(new Error('Company not found for this user. Please contact Super Admin.'));
-            return;
+            throw new Error('Company not found for this user. Please contact Super Admin.');
           }
 
           console.log('🏢 Found user company:', userCompany.name);
           const companyAccess = validateCompanyAccess(userCompany, now);
           if (companyAccess.ok === false) {
             console.log('❌ Company access blocked:', companyAccess.reason);
-            reject(new Error(companyAccess.reason));
+            throw new Error(companyAccess.reason);
             return;
           }
 
           console.log('✅ Company validation passed (status + validity window)');
         } catch (error) {
           console.error('❌ Error validating company status:', error);
-          reject(new Error('Unable to validate company access. Please try again.'));
+          throw new Error('Unable to validate company access. Please try again.');
           return;
         }
       }
@@ -999,7 +1046,7 @@ export const mockLogin = (email: string, pass: string): Promise<User> => {
         // treat undefined as enabled, only explicit false/blocked values should reject
         if (foundUser.isEnabled === false || (foundUser as any).isBlocked === true) {
             console.log('❌ User account disabled/blocked', { isEnabled: foundUser.isEnabled, isBlocked: (foundUser as any).isBlocked });
-            reject(new Error("Your account is disabled or blocked. Please contact an administrator."));
+            throw new Error("Your account is disabled or blocked. Please contact an administrator.");
         } else {
             console.log('✅ Login successful for:', foundUser.email);
             console.log('🔐 Setting session for user:', foundUser.email);
@@ -1016,8 +1063,7 @@ export const mockLogin = (email: string, pass: string): Promise<User> => {
             const savedSession = localStorage.getItem(SESSION_KEY);
             if (!savedSession || savedSession !== sessionData) {
                 console.error('❌ Failed to save session to localStorage');
-                reject(new Error('Failed to save login session. Please try again.'));
-                return;
+                throw new Error('Failed to save login session. Please try again.');
             }
             
             console.log('✅ Session established and verified for:', foundUser.email);
@@ -1028,15 +1074,15 @@ export const mockLogin = (email: string, pass: string): Promise<User> => {
                 size: sessionData.length + ' bytes',
                 backupCreated: true
             });
-            resolve(foundUser);
+            return foundUser;
         }
       } else {
         console.log('❌ Login failed for:', email, { foundUser: !!foundUser, validPassword });
-        reject(new Error("Invalid email or password"));
+        throw new Error("Invalid email or password");
       }
-    }, 1000);
-  });
-};
+
+      // end of login logic – return handled above or fall through to throw
+  };
 
 export const mockLogout = (): Promise<void> => {
     return new Promise(resolve => {

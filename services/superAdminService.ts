@@ -53,6 +53,87 @@ const saveToStorage = (key: string, data: any): void => {
 let companies: Company[] = loadFromStorage(SUPER_ADMIN_STORAGE_KEYS.COMPANIES, []);
 let superAdminUsers: any[] = loadFromStorage(SUPER_ADMIN_STORAGE_KEYS.USERS, []);
 
+// ***** Firebase Admin SDK helpers ****
+import admin from 'firebase-admin';
+
+// attempt to initialize admin using service account from env
+const initFirebaseAdmin = () => {
+  if (admin.apps.length) return;
+  try {
+    const saJson = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
+    if (saJson) {
+      const sa = JSON.parse(saJson);
+      admin.initializeApp({
+        credential: admin.credential.cert(sa)
+      });
+      console.log('🔧 Initialized Firebase Admin SDK');
+    } else {
+      console.log('⚠️ No service account JSON provided; Firebase Admin unavailable');
+    }
+  } catch (err) {
+    console.error('❌ Failed to init Firebase Admin', err);
+  }
+};
+
+// create user through admin SDK if available, otherwise fall back to REST
+const FIREBASE_API_KEY = import.meta.env.VITE_FIREBASE_API_KEY;
+const createFirebaseUser = async (email: string, password: string): Promise<string | null> => {
+  // try admin first
+  try {
+    initFirebaseAdmin();
+    if (admin.apps.length) {
+      const user = await admin.auth().createUser({ email, password, disabled: false });
+      console.log('✅ Firebase-admin created user', email, 'uid=', user.uid);
+      return user.uid;
+    }
+  } catch (err) {
+    console.warn('⚠️ Firebase-admin createUser failed, falling back to REST', err);
+  }
+
+  if (!FIREBASE_API_KEY) {
+    console.log('🔧 Firebase API key not configured; skipping createFirebaseUser');
+    return null;
+  }
+  try {
+    const res = await fetch(
+      `https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${FIREBASE_API_KEY}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password, returnSecureToken: true })
+      }
+    );
+    const data = await res.json();
+    if (data.error) {
+      console.error('❌ Firebase create user error', data.error);
+      return null;
+    }
+    console.log('✅ Firebase REST user created:', email, 'uid=', data.localId);
+    return data.localId;
+  } catch (err) {
+    console.error('❌ createFirebaseUser failed', err);
+    return null;
+  }
+};
+
+const updateFirebaseUser = async (
+  uid: string,
+  updates: { email?: string; password?: string; disabled?: boolean }
+): Promise<void> => {
+  initFirebaseAdmin();
+  if (admin.apps.length && uid) {
+    try {
+      await admin.auth().updateUser(uid, updates as any);
+      console.log('✅ Firebase-admin updated user', uid, updates);
+      return;
+    } catch (err) {
+      console.error('⚠️ Firebase-admin updateUser failed', err);
+    }
+  }
+  // otherwise just log for now
+  console.log('🔧 updateFirebaseUser (no-admin) called for', uid, updates);
+};
+
 console.log('🚀 SuperAdminService loaded! Current users in storage:', superAdminUsers.length, superAdminUsers.map((u: any) => ({ email: u.email, password: u.password ? '***' : 'NONE' })));
 
 // Start with clean slate - no demo data
@@ -243,7 +324,7 @@ export const createCompanyUser = async (
     throw new Error('User with this email already exists');
   }
 
-  const newUser = {
+  const newUser: any = {
     id: `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
     name: userData.name,
     // store normalized email; if you ever need original case, you can store separately
@@ -257,6 +338,16 @@ export const createCompanyUser = async (
     createdAt: new Date(),
     updatedAt: new Date()
   };
+
+  // create corresponding Firebase Auth user if possible
+  try {
+    const fbUid = await createFirebaseUser(normalizedEmail, newUser.password);
+    if (fbUid) {
+      newUser.firebaseUid = fbUid;
+    }
+  } catch (err) {
+    console.warn('⚠️ Failed to sync new user to Firebase Auth', err);
+  }
 
   console.log('✅ Creating new user:', { ...newUser, password: '***' });
 
@@ -361,6 +452,7 @@ export const updateCompanyUser = async (
     isEnabled?: boolean;
     companyId?: string;
     password?: string;
+    email?: string;
   }
 ): Promise<any> => {
   const emailKey = userEmail.trim().toLowerCase();
@@ -415,7 +507,7 @@ export const updateCompanyUser = async (
   console.log('   Password changed:', passwordUpdated);
   console.log('   Exact new password value:', JSON.stringify(nextPassword));
 
-  const nextUser = {
+  const nextUser: any = {
     ...currentUser,
     name: typeof updates.name === 'string' ? updates.name : currentUser.name,
     role: (updates.role ?? currentUser.role) as Role,
@@ -425,6 +517,15 @@ export const updateCompanyUser = async (
     password: nextPassword,
     updatedAt: new Date(),
   };
+
+  // attempt to update Firebase Auth record if we have a UID
+  if (currentUser.firebaseUid) {
+    updateFirebaseUser(currentUser.firebaseUid, {
+      email: updates.email ? String(updates.email).trim().toLowerCase() : undefined,
+      password: passwordUpdated ? nextPassword : undefined,
+      disabled: updates.isEnabled === false ? true : undefined,
+    }).catch((e) => console.warn('⚠️ Firebase update user failed', e));
+  }
 
   superAdminUsers[userIndex] = nextUser;
   saveToStorage(SUPER_ADMIN_STORAGE_KEYS.USERS, superAdminUsers);
