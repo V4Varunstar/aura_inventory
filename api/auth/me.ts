@@ -1,16 +1,6 @@
-/**
- * Vercel Serverless Function: Get Current User
- * GET /api/auth/me
- * 
- * Validates session cookie and returns authenticated user info
- * Uses proper HTTP status codes:
- * - 401: No token or invalid token (not an error, just not authenticated)
- * - 200: Valid session, user info returned
- */
-
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import jwt from 'jsonwebtoken';
 import { parse } from 'cookie';
-import { verifyToken, getCookieConfig } from './jwt-utils';
 
 export default function handler(req: VercelRequest, res: VercelResponse) {
   // Only allow GET
@@ -19,49 +9,27 @@ export default function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    // Parse cookies from request
-    const cookies = parse(req.headers.cookie || '');
-    const cookieConfig = getCookieConfig();
-    const token = cookies[cookieConfig.name];
+    const cookies = req.headers.cookie ? parse(req.headers.cookie) : {};
+    const token = cookies.aura_session;
 
-    // 🔴 FIX #1: No token → NOT an error (return 401 with authenticated: false)
+    // ✅ NO TOKEN = NOT LOGGED IN (401, NOT 500)
     if (!token) {
-      console.log('[API-ME] No session cookie found');
       return res.status(401).json({
         authenticated: false,
         message: 'Not authenticated',
       });
     }
 
-    // Verify JWT token
-    const payload = verifyToken(token);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET as string);
 
-    // 🔴 FIX #2: Invalid token → 401 (not 500)
-    if (!payload) {
-      console.log('[API-ME] Invalid or expired token');
-      return res.status(401).json({
-        authenticated: false,
-        message: 'Invalid or expired session',
-      });
-    }
-
-    console.log('[API-ME] ✅ Valid session for:', payload.email);
-
-    // Return user info from token payload
     return res.status(200).json({
       authenticated: true,
-      user: {
-        id: payload.userId,
-        email: payload.email,
-        role: payload.role,
-        orgId: payload.orgId,
-        companyId: payload.companyId,
-        isEnabled: true, // Assumed from valid token
-      },
+      user: decoded,
     });
-  } catch (err: any) {
-    console.error('[API-ME] Error:', err.message);
-    // Token errors should return 401, not 500
+  } catch (error) {
+    console.error('[AUTH ME ERROR]', error);
+
+    // ✅ INVALID / EXPIRED TOKEN = 401
     return res.status(401).json({
       authenticated: false,
       message: 'Invalid or expired session',
