@@ -80,7 +80,11 @@ export default async function handler(req: any, res: any) {
     console.error('[SERVER] Error updating Firebase user:', err.message);
     return res.status(400).json({
       success: false,
-      error: err.message || 'Failed to update Firebase user',
+      message: 'Failed to update Firebase user',
+      // Include error details in development mode only
+      error: process.env.NODE_ENV !== 'production'
+        ? err?.message || String(err)
+        : undefined,
     });
   }
 }

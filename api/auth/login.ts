@@ -76,7 +76,11 @@ export default async function handler(req: any, res: any) {
     console.error('[API-LOGIN] ❌ Unexpected error:', err);
     return res.status(500).json({
       success: false,
-      error: 'Internal server error',
+      message: 'Server error during login',
+      // Include error details in development mode only
+      error: process.env.NODE_ENV !== 'production'
+        ? err?.message || String(err)
+        : undefined,
     });
   }
 }

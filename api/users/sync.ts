@@ -87,7 +87,11 @@ export default async function handler(req: any, res: any) {
     console.error('[API-SYNC-USER] ❌ Error:', err.message);
     return res.status(500).json({
       success: false,
-      error: err.message || 'Failed to sync user',
+      message: 'Failed to sync user to server',
+      // Include error details in development mode only
+      error: process.env.NODE_ENV !== 'production'
+        ? err?.message || String(err)
+        : undefined,
     });
   }
 }

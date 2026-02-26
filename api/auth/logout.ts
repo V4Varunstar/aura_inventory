@@ -36,7 +36,11 @@ export default async function handler(req: any, res: any) {
     console.error('[API-LOGOUT] ❌ Error:', err);
     return res.status(500).json({
       success: false,
-      error: 'Internal server error',
+      message: 'Server error during logout',
+      // Include error details in development mode only
+      error: process.env.NODE_ENV !== 'production'
+        ? err?.message || String(err)
+        : undefined,
     });
   }
 }
