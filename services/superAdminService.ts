@@ -111,6 +111,33 @@ const updateFirebaseUser = async (
   }
 };
 
+/**
+ * Sync user to server-side Firestore for cross-device authentication
+ * This ensures users created by SuperAdmin can login from any browser/device
+ */
+const syncUserToServer = async (user: any, action: 'upsert' | 'delete' = 'upsert'): Promise<void> => {
+  try {
+    console.log('[SYNC] Syncing user to server:', user.email, 'action:', action);
+    
+    const response = await fetch('/api/users/sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ user, action })
+    });
+
+    const data = await response.json();
+    
+    if (data.success) {
+      console.log('✅ [SYNC] User synced to server:', user.email);
+    } else {
+      console.warn('⚠️ [SYNC] Failed to sync user to server:', data.error);
+    }
+  } catch (err: any) {
+    console.error('❌ [SYNC] Error syncing user to server:', err.message);
+  }
+};
+
 console.log('🚀 SuperAdminService loaded! Current users in storage:', superAdminUsers.length, superAdminUsers.map((u: any) => ({ email: u.email, password: u.password ? '***' : 'NONE' })));
 
 // Start with clean slate - no demo data
@@ -332,6 +359,12 @@ export const createCompanyUser = async (
   superAdminUsers.push(newUser);
   saveToStorage(SUPER_ADMIN_STORAGE_KEYS.USERS, superAdminUsers);
 
+  // Sync user to server-side Firestore for cross-device authentication
+  // This is critical so users can login from any browser/device
+  syncUserToServer(newUser, 'upsert').catch((e) => 
+    console.warn('⚠️ Failed to sync user to server for authentication', e)
+  );
+
   if (isRemoteStoreEnabled()) {
     upsertRemoteUser(newUser).catch((e) => console.warn('⚠️ Failed to write user to Firestore', e));
   }
@@ -506,6 +539,11 @@ export const updateCompanyUser = async (
 
   superAdminUsers[userIndex] = nextUser;
   saveToStorage(SUPER_ADMIN_STORAGE_KEYS.USERS, superAdminUsers);
+
+  // Sync updated user to server-side Firestore for cross-device authentication
+  syncUserToServer(nextUser, 'upsert').catch((e) => 
+    console.warn('⚠️ Failed to sync updated user to server', e)
+  );
 
   if (passwordUpdated) {
     console.log('✅ Password updated for user:', nextUser.email, '- New password saved to localStorage');

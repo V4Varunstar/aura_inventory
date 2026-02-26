@@ -1,9 +1,7 @@
 /**
  * Server-Side Authentication Logic
  * This module handles user validation on the server
- * 
- * IMPORTANT: For production, user data should come from a database.
- * Currently uses environment variables for demo purposes.
+ * Queries Firestore for user data to support cross-device authentication
  */
 
 import admin from 'firebase-admin';
@@ -44,29 +42,36 @@ interface UserRecord {
 }
 
 /**
- * Load users from environment variable (temporary solution)
- * In production, this should query a real database (Firestore, PostgreSQL, etc.)
+ * Query Firestore for user by email
  */
-const loadUsersFromEnvironment = (): UserRecord[] => {
+const findUserInFirestore = async (emailNorm: string): Promise<UserRecord | null> => {
   try {
-    const usersJson = process.env.SUPERADMIN_USERS;
-    if (!usersJson) {
-      console.log('[SERVER-AUTH] No SUPERADMIN_USERS environment variable');
-      return [];
+    if (!initFirebaseAdmin()) return null;
+    
+    const db = admin.firestore();
+    const usersSnapshot = await db.collection('users')
+      .where('email', '==', emailNorm)
+      .limit(1)
+      .get();
+    
+    if (usersSnapshot.empty) {
+      console.log('[SERVER-AUTH] No user found in Firestore for:', emailNorm);
+      return null;
     }
     
-    const users = JSON.parse(usersJson);
-    console.log('[SERVER-AUTH] Loaded', users.length, 'users from environment');
-    return users;
-  } catch (err) {
-    console.error('[SERVER-AUTH] Failed to parse SUPERADMIN_USERS:', err);
-    return [];
+    const userDoc = usersSnapshot.docs[0];
+    const userData = userDoc.data() as UserRecord;
+    console.log('[SERVER-AUTH] ✅ User found in Firestore:', emailNorm);
+    return userData;
+  } catch (err: any) {
+    console.error('[SERVER-AUTH] Firestore query error:', err.message);
+    return null;
   }
 };
 
 /**
  * Validate user credentials (server-side)
- * This replicates the core auth logic from mockLogin but runs on the server
+ * Checks hardcoded test users, then Firestore, then Firebase Auth
  */
 export const validateUserCredentials = async (
   email: string,
@@ -109,42 +114,47 @@ export const validateUserCredentials = async (
       },
     ];
 
-    // Step 2: Load SuperAdmin created users from environment
-    const dynamicUsers = loadUsersFromEnvironment();
-    const allUsers = [...testUsers, ...dynamicUsers];
-
-    console.log('[SERVER-AUTH] Checking against', allUsers.length, 'users');
-
-    // Find user by email
-    const foundUser = allUsers.find(u => u.email === emailNorm);
-
-    if (foundUser && foundUser.password === passTrim) {
-      console.log('[SERVER-AUTH] ✅ User authenticated:', emailNorm);
-      const { password: _, ...userWithoutPassword } = foundUser;
+    const testUser = testUsers.find(u => u.email === emailNorm);
+    if (testUser && testUser.password === passTrim) {
+      console.log('[SERVER-AUTH] ✅ Test user authenticated:', emailNorm);
+      const { password: _, ...userWithoutPassword } = testUser;
       return { success: true, user: userWithoutPassword };
     }
 
-    // Step 3: Try Firebase Authentication (if no local match)
+    // Step 2: Query Firestore for SuperAdmin-created users
+    const firestoreUser = await findUserInFirestore(emailNorm);
+    if (firestoreUser) {
+      if (!firestoreUser.isEnabled) {
+        console.log('[SERVER-AUTH] ❌ User is disabled:', emailNorm);
+        return {
+          success: false,
+          error: 'Account is disabled',
+        };
+      }
+      
+      if (firestoreUser.password === passTrim) {
+        console.log('[SERVER-AUTH] ✅ Firestore user authenticated:', emailNorm);
+        const { password: _, ...userWithoutPassword } = firestoreUser;
+        return { success: true, user: userWithoutPassword };
+      } else {
+        console.log('[SERVER-AUTH] ❌ Password mismatch for Firestore user:', emailNorm);
+        return {
+          success: false,
+          error: 'Invalid email or password',
+        };
+      }
+    }
+
+    // Step 3: Try Firebase Authentication (for Firebase-managed users)
     if (initFirebaseAdmin()) {
       try {
-        // Verify Firebase user exists
         const firebaseUser = await admin.auth().getUserByEmail(emailNorm);
-        console.log('[SERVER-AUTH] ✅ Firebase user found:', emailNorm, 'uid:', firebaseUser.uid);
+        console.log('[SERVER-AUTH] ✅ Firebase Auth user found:', emailNorm, 'uid:', firebaseUser.uid);
         
-        // For Firebase-managed users, we can't verify password server-side
-        // The client-side Firebase SDK should verify the password first
-        // For now, we'll trust that Firebase authentication happened on the client
+        // Note: We can't verify password server-side for Firebase users
+        // Password verification must happen client-side with Firebase Client SDK
+        // This branch is mainly for users who were created via Firebase Console
         
-        // Check if user is in our user list (to get role and org info)
-        const userRecord = allUsers.find(u => u.email === emailNorm || u.firebaseUid === firebaseUser.uid);
-        
-        if (userRecord) {
-          console.log('[SERVER-AUTH] ✅ Firebase user with local record');
-          const { password: _, ...userWithoutPassword } = userRecord;
-          return { success: true, user: userWithoutPassword };
-        }
-        
-        // Return basic Firebase user if no local record
         return {
           success: true,
           user: {
@@ -157,13 +167,13 @@ export const validateUserCredentials = async (
           },
         };
       } catch (fbErr: any) {
-        console.log('[SERVER-AUTH] Firebase lookup failed:', fbErr.code);
+        console.log('[SERVER-AUTH] Firebase Auth lookup failed:', fbErr.code);
       }
     }
 
-    // Step 4: Authentication failed
+    // Step 4: Authentication failed - no match found
     console.log('[SERVER-AUTH] ❌ Authentication failed for:', emailNorm);
-    console.log('[SERVER-AUTH] Available users:', allUsers.map(u => u.email));
+    console.log('[SERVER-AUTH] Checked: test users, Firestore, Firebase Auth');
     
     return {
       success: false,
