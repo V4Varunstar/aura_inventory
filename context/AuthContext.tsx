@@ -111,13 +111,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw new Error(data.message || 'Login failed');
       }
 
-      if (data.success && data.user) {
-        console.log('[AUTH-CONTEXT] ✅ Login successful:', data.user.email);
-        setUser(data.user);
-        return data.user;
-      } else {
-        throw new Error('Invalid response from server');
+      if (data.success) {
+        // Force fresh session validation
+        const meRes = await fetch('/api/auth/me', {
+          credentials: 'include',
+        });
+
+        if (meRes.ok) {
+          const meData = await meRes.json();
+          setUser(meData.user);
+          return meData.user;
+        }
+
+        throw new Error('Session validation failed');
       }
+
+      throw new Error('Invalid response from server');
     } catch (error: any) {
       console.error('[AUTH-CONTEXT] ❌ Login error:', error.message);
       setUser(null);
