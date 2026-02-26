@@ -53,85 +53,62 @@ const saveToStorage = (key: string, data: any): void => {
 let companies: Company[] = loadFromStorage(SUPER_ADMIN_STORAGE_KEYS.COMPANIES, []);
 let superAdminUsers: any[] = loadFromStorage(SUPER_ADMIN_STORAGE_KEYS.USERS, []);
 
-// ***** Firebase Admin SDK helpers ****
-import admin from 'firebase-admin';
-
-// attempt to initialize admin using service account from env
-const initFirebaseAdmin = () => {
-  if (admin.apps.length) return;
-  try {
-    const saJson = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
-    if (saJson) {
-      const sa = JSON.parse(saJson);
-      admin.initializeApp({
-        credential: admin.credential.cert(sa)
-      });
-      console.log('🔧 Initialized Firebase Admin SDK');
-    } else {
-      console.log('⚠️ No service account JSON provided; Firebase Admin unavailable');
-    }
-  } catch (err) {
-    console.error('❌ Failed to init Firebase Admin', err);
-  }
-};
-
-// create user through admin SDK if available, otherwise fall back to REST
-const FIREBASE_API_KEY = import.meta.env.VITE_FIREBASE_API_KEY;
+// ***** Firebase User Management (Server-Side API Calls) ****
+/**
+ * Call server-side API to create Firebase Auth user
+ * The actual Firebase Admin SDK calls happen on the backend, never in client code
+ */
 const createFirebaseUser = async (email: string, password: string): Promise<string | null> => {
-  // try admin first
   try {
-    initFirebaseAdmin();
-    if (admin.apps.length) {
-      const user = await admin.auth().createUser({ email, password, disabled: false });
-      console.log('✅ Firebase-admin created user', email, 'uid=', user.uid);
-      return user.uid;
-    }
-  } catch (err) {
-    console.warn('⚠️ Firebase-admin createUser failed, falling back to REST', err);
-  }
+    console.log('[AUTH] Calling API to create Firebase user:', email);
+    const response = await fetch('/api/firebase/create-user', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
 
-  if (!FIREBASE_API_KEY) {
-    console.log('🔧 Firebase API key not configured; skipping createFirebaseUser');
-    return null;
-  }
-  try {
-    const res = await fetch(
-      `https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${FIREBASE_API_KEY}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, returnSecureToken: true })
-      }
-    );
-    const data = await res.json();
-    if (data.error) {
-      console.error('❌ Firebase create user error', data.error);
+    const data = await response.json();
+    
+    if (data.success && data.uid) {
+      console.log('✅ [CLIENT] Firebase user created via API:', email, 'uid=', data.uid);
+      return data.uid;
+    } else {
+      console.warn('⚠️ [CLIENT] API failed to create Firebase user:', data.error);
       return null;
     }
-    console.log('✅ Firebase REST user created:', email, 'uid=', data.localId);
-    return data.localId;
   } catch (err) {
-    console.error('❌ createFirebaseUser failed', err);
+    console.error('❌ [CLIENT] createFirebaseUser API call failed', err);
     return null;
   }
 };
 
+/**
+ * Call server-side API to update Firebase Auth user
+ * The actual Firebase Admin SDK calls happen on the backend, never in client code
+ */
 const updateFirebaseUser = async (
   uid: string,
   updates: { email?: string; password?: string; disabled?: boolean }
 ): Promise<void> => {
-  initFirebaseAdmin();
-  if (admin.apps.length && uid) {
-    try {
-      await admin.auth().updateUser(uid, updates as any);
-      console.log('✅ Firebase-admin updated user', uid, updates);
-      return;
-    } catch (err) {
-      console.error('⚠️ Firebase-admin updateUser failed', err);
+  try {
+    console.log('[AUTH] Calling API to update Firebase user:', uid);
+    
+    const response = await fetch('/api/firebase/update-user', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ uid, ...updates })
+    });
+
+    const data = await response.json();
+    
+    if (data.success) {
+      console.log('✅ [CLIENT] Firebase user updated via API:', uid);
+    } else {
+      console.warn('⚠️ [CLIENT] API failed to update Firebase user:', data.error);
     }
+  } catch (err) {
+    console.error('❌ [CLIENT] updateFirebaseUser API call failed', err);
   }
-  // otherwise just log for now
-  console.log('🔧 updateFirebaseUser (no-admin) called for', uid, updates);
 };
 
 console.log('🚀 SuperAdminService loaded! Current users in storage:', superAdminUsers.length, superAdminUsers.map((u: any) => ({ email: u.email, password: u.password ? '***' : 'NONE' })));
