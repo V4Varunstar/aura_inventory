@@ -38,8 +38,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           credentials: 'include', // Include cookies in request
         });
 
+        // Get text first to handle non-JSON responses safely
+        const text = await response.text();
+        
         if (response.ok) {
-          const data = await response.json();
+          let data;
+          try {
+            data = JSON.parse(text);
+          } catch (parseError) {
+            console.error('[AUTH-CONTEXT] ❌ Non-JSON response from /api/auth/me:', text);
+            setUser(null);
+            return;
+          }
+          
           if (data.success && data.user) {
             console.log('[AUTH-CONTEXT] ✅ Session valid:', data.user.email);
             setUser(data.user);
@@ -78,14 +89,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         body: JSON.stringify({ email, password }),
       });
 
-      const data = await response.json();
+      // Get text first to handle non-JSON responses safely
+      const text = await response.text();
+      
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch (parseError) {
+        console.error('[AUTH-CONTEXT] ❌ Non-JSON response from server:', text);
+        throw new Error('Server error during login. Please try again.');
+      }
 
       if (response.ok && data.success && data.user) {
         console.log('[AUTH-CONTEXT] ✅ Login successful:', data.user.email);
         setUser(data.user);
         return data.user;
       } else {
-        const error = data.error || 'Login failed';
+        const error = data.error || data.message || 'Login failed';
         console.error('[AUTH-CONTEXT] ❌ Login failed:', error);
         throw new Error(error);
       }
