@@ -44,14 +44,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         try {
           data = JSON.parse(text);
         } catch {
-          throw new Error('Server returned invalid response');
+          console.error('[AUTH-CONTEXT] Invalid response from /api/auth/me');
+          setUser(null);
+          return;
         }
 
+        // 401 means not authenticated (not an error condition)
+        if (response.status === 401) {
+          console.log('[AUTH-CONTEXT] No active session');
+          setUser(null);
+          return;
+        }
+
+        // Other non-2xx responses are errors
         if (!response.ok) {
-          throw new Error(data.message || 'Session validation failed');
+          console.error('[AUTH-CONTEXT] Server error:', data.message || 'Unknown error');
+          setUser(null);
+          return;
         }
 
-        if (data.success && data.user) {
+        // Check if authenticated
+        if (data.authenticated && data.user) {
           console.log('[AUTH-CONTEXT] ✅ Session valid:', data.user.email);
           setUser(data.user);
         } else {
@@ -59,7 +72,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setUser(null);
         }
       } catch (error: any) {
-        console.error('[AUTH-CONTEXT] ❌ Session check failed:', error.message);
+        console.error('[AUTH-CONTEXT] Unexpected error during session check:', error.message);
         setUser(null);
       } finally {
         setLoading(false);
