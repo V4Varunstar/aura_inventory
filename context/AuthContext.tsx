@@ -1,106 +1,96 @@
 
-import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
-import { User, Role } from '../types';
-import { mockLogin, mockLogout, mockFetchUser } from '../services/firebaseService';
+import React, { createContext, useState, useContext, useEffect } from 'react';
+import { User } from '../types';
 
-const SESSION_KEY = 'aura_inventory_user';
-const SESSION_BACKUP_KEY = 'aura_inventory_user_backup';
-
-const tryReadStoredUser = (): User | null => {
-  try {
-    const raw = localStorage.getItem(SESSION_KEY) || localStorage.getItem(SESSION_BACKUP_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    if (!parsed || !parsed.email || !parsed.id || !parsed.role) return null;
-    return parsed as User;
-  } catch {
-    return null;
-  }
-};
+/**
+ * AuthContext - Server-Side Session Based Authentication
+ * 
+ * This context now uses HTTP-only cookies for authentication.
+ * NO localStorage dependency for auth state.
+ * Sessions work across all browsers, incognito, and devices.
+ */
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
   login: (email: string, pass: string) => Promise<User>;
-  logout: () => void;
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Optimistic initial restore helps prevent false logouts during refresh.
-  const [user, setUser] = useState<User | null>(() => tryReadStoredUser());
-  const [loading, setLoading] = useState(true); // TRUE initially to prevent redirect during session check
-  const [sessionChecked, setSessionChecked] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
 
+  /**
+   * Check session on mount by calling /api/auth/me
+   * This validates the HTTP-only cookie stored by the browser
+   */
   useEffect(() => {
-    // Check session ONLY once on mount - no retries to prevent infinite loops
-    if (sessionChecked) return;
-    
     const checkSession = async () => {
       setLoading(true);
       try {
-        console.log('🔍 AuthProvider: Checking user session on mount/refresh...');
-        console.log('📦 localStorage keys:', Object.keys(localStorage));
-        console.log('🔑 Session key present:', !!localStorage.getItem(SESSION_KEY));
+        console.log('[AUTH-CONTEXT] Checking session via /api/auth/me');
         
-        const loggedInUser = await mockFetchUser();
-        
-        console.log('✅ AuthProvider: Session restored successfully:', {
-          email: loggedInUser.email,
-          role: loggedInUser.role,
-          orgId: loggedInUser.orgId,
-          timestamp: new Date().toISOString()
+        const response = await fetch('/api/auth/me', {
+          method: 'GET',
+          credentials: 'include', // Include cookies in request
         });
-        
-        setUser(loggedInUser);
-      } catch (error: any) {
-        console.log('⚠️ AuthProvider: Session check failed:', error?.message || error);
-        const fallbackUser = tryReadStoredUser();
-        if (fallbackUser) {
-          console.log('🛟 AuthProvider: Using fallback stored session (will re-validate later):', {
-            email: (fallbackUser as any).email,
-            role: (fallbackUser as any).role,
-            orgId: (fallbackUser as any).orgId,
-          });
-          setUser(fallbackUser);
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.user) {
+            console.log('[AUTH-CONTEXT] ✅ Session valid:', data.user.email);
+            setUser(data.user);
+          } else {
+            console.log('[AUTH-CONTEXT] ⚠️ Session invalid');
+            setUser(null);
+          }
         } else {
-          console.log('🚪 AuthProvider: No valid session - user will be redirected to login');
+          console.log('[AUTH-CONTEXT] No active session');
           setUser(null);
         }
+      } catch (error: any) {
+        console.error('[AUTH-CONTEXT] ❌ Session check failed:', error.message);
+        setUser(null);
       } finally {
         setLoading(false);
-        setSessionChecked(true);
       }
     };
-    
-    checkSession();
-  }, [sessionChecked]);
 
-  const login = async (email: string, pass: string) => {
+    checkSession();
+  }, []); // Run only once on mount
+
+  /**
+   * Login by calling /api/auth/login
+   * Server sets HTTP-only cookie on success
+   */
+  const login = async (email: string, password: string): Promise<User> => {
     setLoading(true);
     try {
-      console.log('🔐 Login attempt:', { email, timestamp: new Date().toISOString() });
-      
-      // Prevent any automatic session switching during login
-      const currentSession = localStorage.getItem(SESSION_KEY);
-      if (currentSession) {
-        const currentUser = JSON.parse(currentSession);
-        console.log('🔍 Existing session detected for:', currentUser.email);
-      }
-      
-      const loggedInUser = await mockLogin(email, pass);
-      console.log('✅ Login successful:', { 
-        email: loggedInUser.email, 
-        role: loggedInUser.role,
-        orgId: loggedInUser.orgId,
-        sessionReplaced: !!currentSession
+      console.log('[AUTH-CONTEXT] Attempting login for:', email);
+
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include', // Include cookies
+        body: JSON.stringify({ email, password }),
       });
-      
-      setUser(loggedInUser);
-      return loggedInUser;
-    } catch(error) {
-      console.error('❌ Login failed:', error);
+
+      const data = await response.json();
+
+      if (response.ok && data.success && data.user) {
+        console.log('[AUTH-CONTEXT] ✅ Login successful:', data.user.email);
+        setUser(data.user);
+        return data.user;
+      } else {
+        const error = data.error || 'Login failed';
+        console.error('[AUTH-CONTEXT] ❌ Login failed:', error);
+        throw new Error(error);
+      }
+    } catch (error: any) {
+      console.error('[AUTH-CONTEXT] ❌ Login error:', error.message);
       setUser(null);
       throw error;
     } finally {
@@ -108,27 +98,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const logout = async () => {
-    await mockLogout();
-    setUser(null);
-  };
+  /**
+   * Logout by calling /api/auth/logout
+   * Server clears HTTP-only cookie
+   */
+  const logout = async (): Promise<void> => {
+    try {
+      console.log('[AUTH-CONTEXT] Logging out');
 
-  // Listen for visibility changes to restore session if lost
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible' && !user && sessionChecked) {
-        console.log('👁️ Tab became visible - checking if session needs restoration');
-        const sessionExists = localStorage.getItem(SESSION_KEY) || localStorage.getItem(SESSION_BACKUP_KEY);
-        if (sessionExists && !user) {
-          console.log('🔄 Session exists but user not set - restoring...');
-          setSessionChecked(false); // Trigger re-check
-        }
-      }
-    };
-    
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, [user, sessionChecked]);
+      await fetch('/api/auth/logout', {
+        method: 'POST',
+        credentials: 'include', // Include cookies
+      });
+
+      console.log('[AUTH-CONTEXT] ✅ Logout successful');
+      setUser(null);
+    } catch (error: any) {
+      console.error('[AUTH-CONTEXT] ❌ Logout error:', error.message);
+      // Clear user state even if API call fails
+      setUser(null);
+    }
+  };
 
   const value = { user, loading, login, logout };
 
