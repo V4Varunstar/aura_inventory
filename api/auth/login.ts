@@ -5,24 +5,35 @@
  * Authenticates user and sets HTTP-only session cookie
  */
 
+import type { VercelRequest, VercelResponse } from '@vercel/node';
+import jwt from 'jsonwebtoken';
 import { serialize } from 'cookie';
-import { generateToken, getCookieConfig } from './jwt-utils';
+import { getCookieConfig } from './jwt-utils';
 import { validateUserCredentials } from './server-auth-utils';
 
-export default async function handler(req: any, res: any) {
+export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Only allow POST
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+    return res.status(405).json({ success: false, message: 'Method not allowed' });
   }
 
   try {
-    const { email, password } = req.body;
+    if (!process.env.JWT_SECRET) {
+      console.error('JWT_SECRET missing');
+      return res.status(500).json({
+        success: false,
+        message: 'Server misconfiguration',
+      });
+    }
+    const jwtSecret = process.env.JWT_SECRET;
+
+    const { email, password } = req.body || {};
 
     // Input validation
     if (!email || !password) {
       return res.status(400).json({
         success: false,
-        error: 'Email and password are required',
+        message: 'Email and password are required',
       });
     }
 
@@ -35,7 +46,7 @@ export default async function handler(req: any, res: any) {
       console.log('[API-LOGIN] ❌ Login failed:', result.error);
       return res.status(401).json({
         success: false,
-        error: result.error || 'Invalid credentials',
+        message: result.error || 'Invalid credentials',
       });
     }
 
@@ -43,13 +54,20 @@ export default async function handler(req: any, res: any) {
     console.log('[API-LOGIN] ✅ User authenticated:', user.email);
 
     // Generate JWT token
-    const token = generateToken({
-      userId: user.id,
-      email: user.email,
-      role: user.role,
-      orgId: user.orgId,
-      companyId: user.companyId,
-    });
+    const token = jwt.sign(
+      {
+        userId: user.id,
+        email: user.email,
+        role: user.role,
+        orgId: user.orgId,
+        companyId: user.companyId,
+      },
+      jwtSecret,
+      {
+        expiresIn: '7d',
+        issuer: 'aura-inventory',
+      }
+    );
 
     // Set HTTP-only cookie
     const cookieConfig = getCookieConfig();
@@ -73,14 +91,10 @@ export default async function handler(req: any, res: any) {
       },
     });
   } catch (err: any) {
-    console.error('[API-LOGIN] ❌ Unexpected error:', err);
+    console.error('[API-LOGIN] Login handler crashed:', err);
     return res.status(500).json({
       success: false,
-      message: 'Server error during login',
-      // Include error details in development mode only
-      error: process.env.NODE_ENV !== 'production'
-        ? err?.message || String(err)
-        : undefined,
+      message: 'Login failed',
     });
   }
 }
